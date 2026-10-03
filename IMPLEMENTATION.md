@@ -13,7 +13,8 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [x] Escrever o PLAN.md (frontend → backend → riscos/decisões)
 - [x] Escrever o IMPLEMENTATION.md
 - [x] Registrar as regras de desenvolvimento para agentes (CLAUDE.md / AGENTS.md)
-- [ ] Revisão do plano pelo time e decisão sobre o merge na `main` (impacto no Lovable)
+- [x] Registrar as decisões de backend (PLAN.md §34): Java, Claude + ChatGPT pelos planos, LGPD nos termos, idioma pelo sistema, sem editar/excluir, 1 grupo por pessoa, OAuth2 próprio, VPS
+- [ ] Decisão sobre o merge na `main` (impacto no Lovable)
 
 ---
 
@@ -86,24 +87,29 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 2 — Authentication and onboarding
 
-- [ ] `services/authService.ts` (interface + mock): `signInAsDemo(userId)`, `signUp(email)`, `signOut()`, `getSession()`
+- [ ] `services/authService.ts` (interface + mock): `startOAuth("google" | "facebook")` (simulado), `signInWithPassword`, `signUp`, `signInAsDemo(userId)` (só em dev), `signOut()`, `getSession()`
 - [ ] `stores/sessionStore.ts` (persistido): `status`, `userId`, `accessToken`
 - [ ] `profileService.getMe()` mock + `useMe()` (query `me`)
 - [ ] `SessionGate` (carrega `me`, mostra `AppSkeleton`) e guards reais
-- [ ] `WelcomePage`: proposta, animação de exemplo, "Create account" e "Continue as demo" (Lucas pt-BR / Cam vi-VN)
+- [ ] `WelcomePage`: proposta, animação de exemplo, Continue with Google / Facebook / email, aviso "By continuing you agree…" com links e "Continue as demo" (Lucas pt-BR / Cam vi-VN, só em dev)
+- [ ] `/signin` e `/signup` (email + senha, rhf + zod)
+- [ ] `/terms` e `/privacy` (páginas de leitura com texto provisório e versão; o texto definitivo depende de PLAN.md §34.2)
 - [ ] `OnboardingLayout` com progresso, voltar/continuar (fixos no mobile) e rota `/onboarding/:step`
 - [ ] `onboardingDraftStore` (sessionStorage)
-- [ ] Step 1 — Welcome (exemplo visual PT → VI)
-- [ ] Step 2 — Native language (`LanguagePicker` com busca, nome nativo em destaque)
+- [ ] Step 1 — Welcome & terms (exemplo visual PT → VI + aceite obrigatório dos Termos e da Política, informando o uso de IA de terceiros; `profileService.acceptTerms(version)`)
+- [ ] `detectSystemLanguage()` em `lib/languages.ts` (`navigator.languages` → catálogo, com fallback) + testes
+- [ ] Step 2 — Native language (pré-selecionado pelo idioma do sistema, nota "Detected from your device"; `LanguagePicker` com busca, nome nativo em destaque)
 - [ ] Step 3 — Receive language (pré-preenchido com o nativo, texto explicativo)
 - [ ] Step 4 — Create profile (rhf + zod: nome, username com checagem mock e debounce, avatar com preview, bio opcional, país)
 - [ ] Step 5 — Discover people (sugestões com Follow/Message, "Start chatting")
 - [ ] `profileService.completeOnboarding()` + invalidar `me` + redirect para `/chats`
 - [ ] Sign out (limpa sessão, cache do Query e drafts)
-- [ ] Testes: guards (sem sessão → /welcome; sem onboarding → /onboarding; onboardado em /welcome → /chats), validação do username
+- [ ] Testes: guards (sem sessão → /welcome; sem onboarding → /onboarding; onboardado em /welcome → /chats), validação do username, termos obrigatórios
 
 **Done when**
-- [ ] Um novo usuário completa os 5 passos e chega em `/chats`
+- [ ] Um novo usuário (por Google, Facebook ou email, simulados) aceita os termos, completa os 5 passos e chega em `/chats`
+- [ ] Não é possível avançar no onboarding sem aceitar os termos
+- [ ] O idioma nativo vem pré-selecionado com o idioma do sistema
 - [ ] Um reload no meio do onboarding mantém as respostas
 - [ ] Um reload no app mantém a sessão; sign out volta para `/welcome` sem dados residuais
 - [ ] O login demo pula o onboarding
@@ -114,12 +120,12 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 ## Phase 3 — Chat
 
 ### Dados
-- [ ] Seed: usuários (≥ 12, vários idiomas, incluindo um RTL), conversas (diretas + 2 grupos), ~200 mensagens com IDs estáveis e traduções por idioma
+- [ ] Seed: usuários (≥ 12, vários idiomas, incluindo um RTL), conversas diretas (1:1), ~200 mensagens com IDs estáveis e traduções por idioma
 - [ ] `chatService` (interface + mock) conforme o §16.1, com a projeção da tradução para o viewer
-- [ ] `chatKeys` + hooks: `useConversations`, `useConversation`, `useMessages` (infinite), `useSendMessage`, `useMarkAsRead`, `useReactToMessage`, `useDeleteMessage`
+- [ ] `chatKeys` + hooks: `useConversations`, `useConversation`, `useMessages` (infinite), `useSendMessage`, `useMarkAsRead`, `useReactToMessage`
 - [ ] `messageCache.ts`: `upsertMessage`, `patchMessage`, `patchConversationPreview` + testes (dedupe por id/clientId, ordem, identidade preservada)
 - [ ] `groupMessages.ts` + testes (dias, janela de 5 min, posições)
-- [ ] `conversationFilters.ts` (All/Unread/Groups + busca) + testes
+- [ ] `conversationFilters.ts` (All/Unread + busca) + testes
 
 ### Realtime mock
 - [ ] `services/realtime/realtimeClient.ts` (interface + `RealtimeEventMap`)
@@ -152,15 +158,14 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [ ] Emissão de typing (throttle 3s, stop após 5s / no envio)
 
 ### Envio e ações
-- [ ] Envio otimista completo (§13.1) com falha → `failed` + retry com o mesmo `clientId` + delete
+- [ ] Envio otimista completo (§13.1) com falha → `failed` + retry com o mesmo `clientId` + discard (descarta o que não foi enviado)
 - [ ] `markAsRead` por visibilidade (debounce) zerando o `unreadCount`
 - [ ] `MessageActionsProvider` + `MessageActionsMenu` (context menu + botão "⋯" em hover/foco) + `MessageActionsDrawer` (long-press no mobile, `useLongPress`)
 - [ ] Reply (com `ReplyQuote` clicável que rola até a mensagem)
 - [ ] Reactions (picker rápido + chips, otimista)
 - [ ] Copy (texto exibido / original) com toast
 - [ ] Forward (dialog de seleção de conversas)
-- [ ] Delete for me (AlertDialog de confirmação)
-- [ ] Edit visível e desabilitado
+- [ ] Sem Edit/Delete no menu (fora do escopo, PLAN.md §34)
 - [ ] `getOrCreateDirectConversation` (usado por "Message" no Discover/Perfil)
 
 **Done when**
@@ -223,7 +228,7 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ### Settings
 - [ ] `SettingsNav` + rotas `/settings/:section` (SidePanel com navegação interna em md+; páginas no mobile)
-- [ ] Account (atalho para edit profile, username, email, password mock)
+- [ ] Account (atalho para edit profile, username, email, password, connected accounts Google/Facebook, versão dos termos aceita; tudo mock)
 - [ ] Language (native, receiving, interface)
 - [ ] Translation (já feita na Phase 4; integrar na navegação)
 - [ ] Appearance (Light/Dark/System com preview)
@@ -268,7 +273,7 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ---
 
-## Phase 7 — Stories and notifications
+## Phase 7 — Stories, notifications and groups
 
 ### Stories
 - [ ] `storyService` (interface + mock): `getTray()`, `getUserStories(userId)`, `markViewed`, `reactToStory`, `replyToStory`, `createStory` (upload + texto opcional)
@@ -284,45 +289,91 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [ ] Badge no rail e no sino do header do Feed (mobile)
 - [ ] `notification.created` via realtime mock (ex.: o auto-responder curte um post)
 
+### Groups
+- [ ] `chatService.createGroup` (mock) com regra de **no máximo 1 grupo criado por pessoa** (erro claro na UI ao tentar o segundo)
+- [ ] Fluxo de criar grupo (nome, avatar, adicionar membros)
+- [ ] Header e info do grupo (membros e idiomas de cada um)
+- [ ] Filtro **Groups** na lista de conversas
+- [ ] Avatar e nome do remetente nas mensagens de grupo; tradução por membro (o mock projeta o idioma de cada um)
+
 **Done when**
 - [ ] O viewer é navegável por toque e teclado; o progresso pausa ao segurar
 - [ ] Responder a um story cria a mensagem na conversa correspondente
 - [ ] Os badges de notificação atualizam em tempo real (mock) e zeram ao abrir a lista
+- [ ] Criar um grupo funciona; tentar criar um segundo é bloqueado
 
 ---
 
 ## Phase 8 — Backend integration
 
-> Antes de começar: detalhar a Parte II do PLAN.md e resolver as decisões do §34.
+> Antes de começar: detalhar a Parte II do PLAN.md e fechar os itens em aberto do §34.2.
 
-- [ ] Projeto Supabase (dev/staging/prod) + Supabase CLI + migrations versionadas
-- [ ] Schema conforme o §27 (incluindo `message_revisions`, `message_translations`, `content_translations`, `blocks`, `reports`)
-- [ ] Policies de RLS para todas as tabelas + testes de policy
-- [ ] RPCs/Edge Functions: `send_message` (idempotente por `client_id`), `mark_as_read`, `complete_onboarding`, `follow`, `get_or_create_direct_conversation`, com validação zod e rate limit
-- [ ] Supabase Auth (magic link + OAuth) e `authService` real
-- [ ] Mappers DTO → tipos de domínio (`src/types`) por serviço
-- [ ] Implementações reais: `chatService`, `profileService`, `discoverService`, `feedService`, `storyService`, `notificationService`, `translationService`
-- [ ] Seleção mock × real via `lib/env.ts`
-- [ ] Storage: buckets do §29, upload por URL assinada, validação, thumbnails
-- [ ] Worker de tradução (fila + LLM + contexto + versionamento + retry) conforme o §28
-- [ ] Seeds de desenvolvimento no banco
-- [ ] Os testes de serviços rodam contra o mock e (em CI) contra o staging
+### Projeto e infraestrutura local
+- [ ] `backend/`: Spring Boot 3 + Java 21 + Maven (Web, Security, OAuth2 Client, WebSocket, Validation, Data JPA, Actuator, Flyway, springdoc)
+- [ ] `deploy/docker-compose.dev.yml` (Postgres 16) para desenvolvimento local
+- [ ] Monolito modular por pacotes (`auth`, `users`, `chat`, `translation`, `realtime`, `media`, …)
+- [ ] Erros no formato Problem Details (RFC 9457) + mapeamento no `toAppError` do frontend
+
+### Banco
+- [ ] Migrations Flyway conforme o PLAN.md §27 (incluindo `oauth_accounts`, `terms_acceptances`, `translation_jobs`, índice único parcial de 1 grupo por criador)
+- [ ] Seeds de desenvolvimento
+
+### Autenticação
+- [ ] Spring Security com sessão em cookie (Spring Session JDBC) + CSRF por cookie
+- [ ] OAuth2 Google e Facebook (`/oauth2/authorization/{provider}`), criação/vinculação de conta
+- [ ] Email + senha (argon2id), cadastro, login, bloqueio progressivo
+- [ ] Verificação de e-mail e redefinição de senha (depende do SMTP, §34.2)
+- [ ] Aceite de termos versionado (`terms_acceptances`) obrigatório antes do perfil
+- [ ] `GET /api/me` e `authService` real no frontend (`startOAuth` com redirect, `signInWithPassword`, `signUp`, `signOut`, `getSession`)
+
+### API e serviços
+- [ ] Endpoints REST para conversas, mensagens (idempotente por `client_id`), leitura, reações, perfis, discover, preferências
+- [ ] `ConversationAccessPolicy` + teste de autorização em todo endpoint
+- [ ] Rate limit (Bucket4j) em login, cadastro, envio, retry de tradução e upload
+- [ ] OpenAPI (springdoc) → conferir os tipos do frontend (openapi-typescript)
+- [ ] Implementações HTTP no frontend (`httpChatService`, `httpProfileService`, …) + mappers DTO → domínio, selecionadas em `lib/env.ts`
+
+### Tradução (Claude + ChatGPT pelos planos)
+- [ ] Interface `Translator` + `ClaudeCliTranslator` (`claude -p … --output-format json`) + `CodexCliTranslator` (`codex exec …`) + `FallbackTranslator`
+- [ ] Confirmar as flags de cada CLI, a seleção de modelo e o modo sem ferramentas (somente texto)
+- [ ] Fila `translation_jobs` (SKIP LOCKED) + workers com concorrência limitada, timeout e retry com backoff
+- [ ] Prompt com contexto (últimas N mensagens, idioma provável) e saída JSON `{ natural, literal }` validada
+- [ ] Health check das duas CLIs no Actuator
+- [ ] Desativar o uso de dados para treinamento nas contas Claude e ChatGPT
+- [ ] Revisar os termos das assinaturas antes de abrir o app para mais pessoas (R14)
+
+### Mídia
+- [ ] `MediaStorage` + `LocalDiskMediaStorage` (`/data/media`), upload multipart, MIME real (Tika), thumbnail, remoção de EXIF
+- [ ] `GET /api/media/{id}` com autorização e suporte a `Range`
+- [ ] Teto técnico de upload configurável (sem limite de produto) e alerta de disco
+
+### Deploy na VPS
+- [ ] `deploy/docker-compose.yml`: caddy (TLS, SPA, proxy `/api`, `/oauth2`, `/login/oauth2`, `/ws`), backend (JRE 21 + Node + CLIs), postgres
+- [ ] Imagem multi-stage do backend; volumes `pgdata`, `media`, `cli-credentials`
+- [ ] Login das CLIs no servidor (uma vez) com credenciais persistidas
+- [ ] `.env` de produção fora do git; domínio e DNS
+- [ ] Hardening da VPS (SSH por chave, firewall 80/443/22, fail2ban, atualizações automáticas)
+- [ ] Backups (`pg_dump` diário + `/data/media`) com restauração testada
+- [ ] CI/CD: GitHub Actions → GHCR → deploy via SSH
 
 **Done when**
 - [ ] Todos os fluxos das Phases 2–7 funcionam contra o backend real **sem alterações em componentes ou hooks**
-- [ ] Nenhuma chave secreta no bundle (verificado no build)
-- [ ] As policies de RLS impedem acesso a conversas de terceiros (teste automatizado)
+- [ ] Login com Google, Facebook e email/senha funciona em produção, com aceite de termos registrado
+- [ ] Mensagens são traduzidas pelo Claude e, com o Claude indisponível, pelo ChatGPT
+- [ ] Nenhum segredo no bundle do frontend (verificado no build)
+- [ ] Testes de autorização impedem acesso a conversas de terceiros
 
 ---
 
 ## Phase 9 — Realtime
 
-- [ ] `supabaseRealtimeClient` implementando `RealtimeClient`
-- [ ] Canais por conversa (Broadcast) + canal por usuário para eventos projetados (`translation.updated`)
-- [ ] Presence: online/offline, last seen
-- [ ] Typing via broadcast efêmero
+- [ ] Backend: WebSocket em `/ws` autenticado pela sessão; envelope `{ type, payload }` igual ao `RealtimeEventMap`
+- [ ] Registro de conexões por usuário e envio por membro (tradução projetada)
+- [ ] Frontend: `wsRealtimeClient` implementando `RealtimeClient`, selecionado em `lib/env.ts`
+- [ ] Presença (online/offline, last seen) e typing
 - [ ] Delivered/read derivados dos cursores e emitidos pelo servidor
-- [ ] Recuperação de lacunas no reconnect (fetch incremental)
+- [ ] `translation.updated` emitido pelos workers de tradução
+- [ ] Heartbeat, reconexão com backoff e fetch incremental (`?after=`) no reconnect
 - [ ] Indicador discreto de conexão ("Connecting…") no header da lista
 - [ ] Teste manual e2e com duas contas em navegadores diferentes
 
@@ -340,15 +391,15 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [ ] Lighthouse (performance, a11y, best practices) ≥ 90 nas telas principais
 - [ ] Auditoria axe sem violações críticas nos dois temas
 - [ ] Playwright e2e: onboarding, chat entre duas contas, modos de tradução, feed, stories, responsividade
-- [ ] Block/report/moderação de ponta a ponta; message requests (se decidido)
+- [ ] Block/report de ponta a ponta
+- [ ] Exclusão de conta e exportação de dados (LGPD)
+- [ ] Termos de Uso e Política de Privacidade definitivos (uso de IA de terceiros, retenção, direitos do titular)
 - [ ] Rate limits validados sob carga
-- [ ] Observabilidade: Sentry (frontend e funções), métricas de latência e custo de tradução
-- [ ] Headers de segurança (CSP, HSTS), revisão de dependências
+- [ ] Monitoramento: uptime, disco, cotas e falhas das CLIs de IA; Sentry opcional
+- [ ] Headers de segurança no Caddy (CSP, HSTS), revisão de dependências
 - [ ] PWA opcional (manifest, ícones, instalação)
-- [ ] CI/CD: lint → typecheck → test → build → e2e em preview; deploy de produção
-- [ ] Política de privacidade e termos refletindo o uso de IA (§34)
 
 **Done when**
 - [ ] Metas de performance e acessibilidade atingidas
-- [ ] Pipeline de deploy verde e reproduzível
-- [ ] Checklist de segurança do §31 verificado
+- [ ] Deploy reproduzível na VPS, com backup restaurado com sucesso pelo menos uma vez
+- [ ] Checklist de segurança do PLAN.md §31 verificado

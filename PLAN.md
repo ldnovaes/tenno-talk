@@ -43,12 +43,12 @@
 29. [Storage](#29-storage)
 30. [Autenticação](#30-autenticação)
 31. [Segurança](#31-segurança)
-32. [Deploy](#32-deploy)
+32. [Deploy (VPS)](#32-deploy-vps)
 
 **Parte III — Riscos e decisões**
 
 33. [Riscos técnicos](#33-riscos-técnicos)
-34. [Decisões a tomar antes do backend](#34-decisões-a-tomar-antes-do-backend)
+34. [Decisões de backend](#34-decisões-de-backend)
 35. [Regras de desenvolvimento](#35-regras-de-desenvolvimento)
 
 ---
@@ -79,9 +79,11 @@ O MVP é **somente frontend, com camada de mock**. Ele deve ser navegável e con
 
 **Escopo do MVP (Phases 1 a 5)**
 
-- Autenticação simulada (contas demo).
+- Autenticação simulada: Google, Facebook e email/senha (mock), mais contas demo para desenvolvimento.
+- Aceite dos Termos de Uso e da Política de Privacidade (LGPD) na criação da conta.
 - Onboarding em 5 passos.
-- Lista de conversas com busca e filtros (All / Unread / Groups).
+- Lista de conversas com busca e filtros (All / Unread).
+- Foco em **conversas entre duas pessoas** (uso inicial do produto).
 - Chat com envio otimista, status de entrega, reply, reações, copy e ações.
 - Mensagens e tradução mockadas, incluindo falhas e "tradução melhorada".
 - Alternância Original / Translation (global e por mensagem).
@@ -93,11 +95,11 @@ O MVP é **somente frontend, com camada de mock**. Ele deve ser navegável e con
 
 **Pós-MVP (Phases 6 e 7)**
 
-Feed, criação de post, likes, comments, Stories e notificações.
+Feed, criação de post, likes, comments, Stories, notificações e **grupos** (cada pessoa cria no máximo 1).
 
 **Fora do escopo do frontend inicial**
 
-Backend real, push notifications, chamadas de voz/vídeo, gravação de áudio, editor de stories, criptografia.
+Backend real, push notifications, chamadas de voz/vídeo, gravação de áudio, editor de stories, criptografia ponta a ponta, **edição e exclusão de mensagens** (decisão de 2026-10-03).
 
 ## 3. Stack frontend
 
@@ -138,7 +140,7 @@ Backend real, push notifications, chamadas de voz/vídeo, gravação de áudio, 
 | D5 | **Mensagem com tradução projetada para quem lê** | Em grupos, cada membro tem um idioma de recebimento. A API devolve a mensagem já com a tradução do *viewer*, não um `translatedText` global (§12). |
 | D6 | **Tradução versionada** | `originalText` é imutável; a tradução tem `version` e pode ser substituída por uma melhor (§14). |
 | D7 | **Toda escrita de mensagem no cache passa por `upsertMessage`** | Reconcilia envio otimista, resposta HTTP e eco do realtime sem duplicatas (§13). |
-| D8 | **Realtime atrás de interface tipada** | `RealtimeClient` com mapa de eventos tipado; o mock vem primeiro e o Supabase (ou outro) depois (§17). |
+| D8 | **Realtime atrás de interface tipada** | `RealtimeClient` com mapa de eventos tipado; o mock vem primeiro e o WebSocket do backend Java depois (§17, §26). |
 | D9 | **Overlay routes para perfil/settings/stories/create** | No desktop, perfil e configurações abrem como painel lateral sobre a tela atual (com blur no fundo) e continuam endereçáveis por URL (§8). |
 | D10 | **Lógica de exibição como funções puras** | `groupMessages`, `resolveMessageDisplay` e `upsertMessage` são puras e testadas unitariamente; os componentes só renderizam. |
 | D11 | **Nada de `useTranslation()` próprio** | Colide com o hook do react-i18next. Usamos `useMessageTranslation`, `useContentTranslation` e `useTranslationPreferences`. |
@@ -305,7 +307,7 @@ src/
 │  │  │  ├─ message/             MessageBubble, BubbleShell, BubbleMeta, DeliveryTicks, ReplyQuote, ReactionChips, content/*
 │  │  │  ├─ actions/             MessageActionsMenu, MessageActionsDrawer, ReactionPicker
 │  │  │  └─ composer/            Composer, ComposerTextarea, AttachmentButton, EmojiButton, ReplyPreviewBar
-│  │  ├─ hooks/      useConversations, useConversation, useMessages, useSendMessage, useMarkAsRead, useReactToMessage, useDeleteMessage
+│  │  ├─ hooks/      useConversations, useConversation, useMessages, useSendMessage, useMarkAsRead, useReactToMessage
 │  │  ├─ lib/        queryKeys.ts, groupMessages.ts, messageCache.ts (upsertMessage, patchMessage), conversationFilters.ts
 │  │  └─ stores/     composerStore.ts
 │  ├─ translation/
@@ -367,7 +369,9 @@ Regras:
 
 | Rota | Guard | Mobile | Tablet/Desktop |
 |---|---|---|---|
-| `/welcome` | `RedirectIfAuthed` | Landing + login simulado | Card centralizado |
+| `/welcome` | `RedirectIfAuthed` | Landing + Continue with Google / Facebook / Email | Card centralizado |
+| `/signin`, `/signup` | `RedirectIfAuthed` | Formulário email + senha | Card centralizado |
+| `/terms`, `/privacy` | — | Termos de Uso / Política de Privacidade | Página de leitura |
 | `/onboarding/:step` | `RequireAuth` | Passo em tela cheia | Card centralizado |
 | `/` | — | → `/chats` | → `/chats` |
 | `/chats` | `RequireOnboarded` | Lista | Lista + "Select a chat to start messaging" |
@@ -383,7 +387,7 @@ Regras:
 | `/settings/:section` | `RequireOnboarded` | Seção | `SidePanel` com navegação interna |
 | `*` | — | NotFound | NotFound |
 
-Passos do onboarding: `welcome`, `native-language`, `receive-language`, `profile`, `discover`.
+Passos do onboarding: `welcome` (inclui o aceite dos termos), `native-language`, `receive-language`, `profile`, `discover`.
 Seções de settings: `account`, `language`, `translation`, `appearance`, `privacy`, `notifications`.
 
 ### 8.1 Overlay routes
@@ -426,16 +430,24 @@ export const paths = {
 
 ## 9. Telas
 
-### 9.1 Welcome / login simulado
+### 9.1 Welcome / login
 
-Logo TENNO TALK, a proposta em uma frase ("Talk to anyone. In your own language."), uma animação curta de uma mensagem sendo "recebida" em outro idioma e o botão **Continue**. No MVP, o login simulado tem duas opções: **criar conta nova** (passa pelo onboarding) ou **entrar como conta demo** (Lucas · pt-BR, Cam · vi-VN), já onboardadas. Trocar de conta permite ver a mesma conversa pelos dois lados.
+Logo TENNO TALK, a proposta em uma frase ("Talk to anyone. In your own language.") e uma animação curta de uma mensagem sendo "recebida" em outro idioma. Opções de entrada:
+
+- **Continue with Google**
+- **Continue with Facebook**
+- **Continue with email**: `/signin` (email + senha) ou `/signup` (email + senha + confirmação)
+
+Abaixo dos botões fica o texto "By continuing you agree to our Terms of Use and Privacy Policy", com links para `/terms` e `/privacy`. O aceite formal acontece no primeiro passo do onboarding (§9.2).
+
+No MVP tudo é simulado pelo `authService` mock: os botões sociais criam uma conta nova que passa pelo onboarding. Em desenvolvimento há também **contas demo** (Lucas · pt-BR, Cam · vi-VN), já onboardadas. Trocar de conta permite ver a mesma conversa pelos dois lados. Quando o backend existir, os botões sociais fazem redirect de página inteira para o OAuth2 do backend (§30).
 
 ### 9.2 Onboarding
 
 Stepper com 5 passos. Progresso no topo, voltar/continuar embaixo (no mobile, fixos acima da safe area).
 
-1. **Welcome:** explica a ideia com um exemplo visual (mensagem PT → VI).
-2. **Native language:** `LanguagePicker` com busca, nome nativo em destaque ("Tiếng Việt") e nome em inglês secundário. Bandeira só como acessório, e por variante regional (pt-BR 🇧🇷, pt-PT 🇵🇹), porque bandeira não é idioma.
+1. **Welcome & terms:** explica a ideia com um exemplo visual (mensagem PT → VI) e exige o aceite dos **Termos de Uso e da Política de Privacidade** (checkbox obrigatório, com links). O texto informa de forma clara que as mensagens são traduzidas por IA de terceiros. Sem aceite não há como continuar, e o aceite é gravado com a versão dos documentos (`profileService.acceptTerms`).
+2. **Native language:** **pré-selecionado a partir do idioma do sistema** (`navigator.languages`, mapeado para o catálogo por `detectSystemLanguage()` em `lib/languages.ts`), com a nota "Detected from your device". É o idioma em que a pessoa escreve, e serve como origem das traduções (não há detecção automática por mensagem). `LanguagePicker` com busca, nome nativo em destaque ("Tiếng Việt") e nome em inglês secundário. Bandeira só como acessório, e por variante regional (pt-BR 🇧🇷, pt-PT 🇵🇹), porque bandeira não é idioma.
 3. **Receive language:** pré-selecionado com o idioma nativo e texto explicando "Messages from others will be translated to this language". O usuário pode escolher outro.
 4. **Create profile:** nome, username (validação de formato + disponibilidade mock com debounce), avatar (upload local com preview e crop circular simples), bio opcional, país.
 5. **Discover people:** 4 a 6 sugestões (`PersonCard` compacto) com Follow / Message, e "Start chatting" ao final.
@@ -447,7 +459,7 @@ O rascunho fica em `onboardingDraftStore` (Zustand persistido em `sessionStorage
 - Header: título "Chats" (mobile) e botão "New chat" (abre busca de pessoas).
 - **StoriesTray** horizontal, com o próprio avatar e "+" no início.
 - Busca (filtra localmente por nome/username; busca remota no futuro).
-- Filtros: **All / Unread / Groups**.
+- Filtros: **All / Unread** (o filtro **Groups** entra junto com os grupos, no pós-MVP).
 - Lista com: avatar (com dot online), nome, @username opcional (só quando há homônimos ou em grupos), preview da última mensagem **já na forma de exibição do usuário** (traduzida ou original, conforme a preferência; "You: …" para as próprias), horário relativo, ticks da última mensagem própria, badge de não lidas, ícone de silenciado e "typing…" substituindo o preview.
 - Empty: "No conversations yet — Find someone from another country and start talking." com CTA para Discover.
 - Desktop: sem conversa selecionada, a coluna central mostra um estado vazio leve.
@@ -457,7 +469,7 @@ O rascunho fica em `onboardingDraftStore` (Zustand persistido em `sessionStorage
 - **Header:** voltar (mobile), avatar e nome (clicáveis → perfil no SidePanel), status (online / "last seen 5 min ago" / "typing…"), botão de chamada desabilitado com tooltip "Coming soon", menu (View profile, Search in chat (futuro), Mute, Clear history (futuro), Block (futuro)).
 - **Lista de mensagens:** fundo `chat-bg`, divisores de dia ("Today", "Yesterday", data), grupos por remetente, avatar só na última mensagem do grupo recebido (em grupos), indicador de digitação, botão "scroll to bottom" com contador de novas, carregamento de mensagens antigas ao chegar no topo.
 - **Composer fixo:** emoji, anexar (imagem/vídeo; arquivo no futuro), textarea com auto-resize (até 6 linhas), microfone desabilitado ("Voice messages coming soon") quando vazio e **send** quando há texto. Reply aparece como uma barra acima do composer. O draft é salvo por conversa.
-- **Ações por mensagem:** Reply, React, Copy, Forward, Show original / Show translation, Learning (se ativo), Delete; Edit visível porém desabilitado. Desktop: context menu + botão "⋯" em hover/foco. Mobile: long-press → Drawer.
+- **Ações por mensagem:** Reply, React, Copy, Forward, Show original / Show translation, Learning (se ativo). **Editar e excluir estão fora do escopo** por enquanto e não aparecem no menu. Desktop: context menu + botão "⋯" em hover/foco. Mobile: long-press → Drawer.
 
 ### 9.5 Discover
 
@@ -500,7 +512,7 @@ Lista agrupada (Today / This week / Earlier). Tipos: like, comment, follow, stor
 
 | Seção | Campos |
 |---|---|
-| **Account** | Profile (atalho para edit), Username, Email, Password (mock) |
+| **Account** | Profile (atalho para edit), Username, Email, Password, Connected accounts (Google / Facebook), Terms & Privacy (versão aceita), Delete account (antes do lançamento público, LGPD) |
 | **Language** | Native language, Preferred receiving language, Interface language |
 | **Translation** | Display mode (Translation only / Original + Translation / Original only), Automatically translate posts, Automatically translate stories, Learning Mode |
 | **Appearance** | Light / Dark / System (preview ao vivo) |
@@ -552,12 +564,12 @@ MessageBubble  ({ message, position: "single"|"first"|"middle"|"last", isOwn, sh
    │  ├─ VideoContent          # poster + play + duração
    │  ├─ AudioContent          # waveform estática + play (futuro)
    │  └─ FileContent           # ícone, nome, tamanho
-   ├─ BubbleMeta               # hora · "edited" · DeliveryTicks · TranslationStatusHint
+   ├─ BubbleMeta               # hora · DeliveryTicks · TranslationStatusHint
    └─ ReactionChips?
 ```
 
 - `TranslatedText` recebe o resultado de `useMessageTranslation(message)` e renderiza `primary` e, se houver, `secondary` com rótulo "Original". Cada bloco leva `lang` e `dir="auto"`.
-- O `MessageBubble` não busca dados nem conhece serviços. As ações vêm de um `MessageActionsProvider` no nível da `MessageList` (reply, react, delete…), sem prop drilling.
+- O `MessageBubble` não busca dados nem conhece serviços. As ações vêm de um `MessageActionsProvider` no nível da `MessageList` (reply, react, forward…), sem prop drilling.
 - `React.memo` em `MessageBubble` é justificado: a lista é longa e recebe patches frequentes de cache (status, traduções, reações). Como `upsertMessage` mantém a identidade dos objetos não alterados, o memo realmente evita re-render.
 
 ### 10.3 Componentes comuns
@@ -736,8 +748,7 @@ export interface Message {
   reactions: ReactionSummary[];
   deliveryStatus: DeliveryStatus;           // relevante para mensagens próprias
   createdAt: ISODateString;
-  editedAt: ISODateString | null;
-  deletedAt: ISODateString | null;
+  // Sem editedAt/deletedAt: edição e exclusão estão fora do escopo (§34).
 }
 
 /** Learning Mode — carregado sob demanda. */
@@ -863,11 +874,11 @@ Ciclo de status visível na bolha:
 | `sent` | ✓ |
 | `delivered` | ✓✓ |
 | `read` | ✓✓ em `--primary` |
-| `failed` | ícone de alerta + "Tap to retry" / Delete |
+| `failed` | ícone de alerta + "Tap to retry" / Discard (descarta a mensagem que não chegou a ser enviada) |
 
 `delivered` e `read` chegam por realtime (`message.delivered`, `message.read`). No backend futuro eles são derivados dos cursores `last_delivered_message_id` / `last_read_message_id` de cada membro.
 
-O idioma enviado no original (`me.nativeLanguage`) é apenas uma **dica**. O servidor detecta o idioma real (o usuário pode escrever em outra língua) e devolve o `OriginalText` corrigido.
+O idioma do original é o **idioma nativo do remetente** (`me.nativeLanguage`), pré-selecionado no onboarding a partir do idioma do sistema e editável em Settings. Não há detecção automática por mensagem (decisão de §34; limitação em R17).
 
 ### 13.2 `upsertMessage`: um único ponto de escrita
 
@@ -910,15 +921,14 @@ Todas as fontes (otimista, resposta HTTP, `message.created` do realtime, refetch
 | React | Picker com 6 emojis rápidos + "mais"; otimista (`reaction.created`). |
 | Copy | Copia o **texto exibido** (com opção "Copy original" quando estiver traduzido); toast "Copied". |
 | Forward | Dialog para escolher conversas; reenvia o original. |
-| Delete | "Delete for me" no MVP; "for everyone" depende de decisão de produto (§34). |
-| Edit | Visível, desabilitado ("Coming soon"). A semântica de edição está em §27. |
+| Edit / Delete | Fora do escopo por enquanto (§34). Quando entrarem, a edição cria uma revisão nova e o original continua imutável (§27). |
 | Retry (falha) | Reenvia com o **mesmo** `clientId` (idempotente). |
 
 ## 14. Fluxo de tradução
 
 ### 14.1 Responsabilidades
 
-- **Backend (futuro):** detecta o idioma, traduz com contexto, versiona, persiste e emite eventos.
+- **Backend (futuro):** traduz com contexto (Claude/ChatGPT, §28), versiona, persiste e emite eventos.
 - **Frontend:** **só envia e recebe estados.** Nunca chama provedor de IA. Toda interação passa por `translationService`.
 
 ```ts
@@ -1037,14 +1047,13 @@ export interface ChatService {
   sendMessage(input: SendMessageInput): Promise<Message>;
   markAsRead(conversationId: string, messageId: string): Promise<void>;
   react(messageId: string, emoji: string): Promise<void>;
-  deleteMessage(messageId: string, scope: "me"): Promise<void>;
   getOrCreateDirectConversation(userId: string): Promise<Conversation>;
 }
 
 export const chatService: ChatService = mockChatService;
 ```
 
-Os hooks chamam `chatService.getConversations()` dentro de `queryFn`; nenhum componente chama serviço diretamente. Na Phase 8, a última linha passa a escolher `httpChatService` (ou `supabaseChatService`) via `env.ts`, **sem tocar em componentes nem hooks**. Não criamos stubs HTTP antes da hora.
+Os hooks chamam `chatService.getConversations()` dentro de `queryFn`; nenhum componente chama serviço diretamente. Na Phase 8, a última linha passa a escolher `httpChatService` (backend Java, §25) via `env.ts`, **sem tocar em componentes nem hooks**. Não criamos stubs HTTP antes da hora.
 
 ### 16.2 Banco mock
 
@@ -1068,7 +1077,6 @@ Os hooks chamam `chatService.getConversations()` dentro de `queryFn`; nenhum com
 export interface RealtimeEventMap {
   "message.created":      { message: Message };
   "message.updated":      { message: Message };
-  "message.deleted":      { conversationId: string; messageId: string };
   "message.delivered":    { conversationId: string; messageIds: string[] };
   "message.read":         { conversationId: string; readerId: string; upToMessageId: string };
   "translation.updated":  { conversationId: string; messageId: string; translation: ContentTranslation };
@@ -1102,7 +1110,7 @@ export const realtimeClient: RealtimeClient = mockRealtimeClient;
   - notificações → cache de notifications + badge.
 - No reconnect, invalida `chatKeys.conversations()` e as mensagens da conversa aberta para recuperar lacunas.
 - O typing é emitido pelo composer com throttle de 3s e `typing.stopped` após 5s de inatividade ou envio.
-- Nenhum tipo do Supabase vaza para fora do adapter.
+- Nenhum detalhe de transporte vaza para fora do adapter. O adapter real é o `wsRealtimeClient` (WebSocket do backend Java, §26).
 
 ## 18. Dark mode
 
@@ -1178,7 +1186,7 @@ Há três conceitos distintos de idioma, que não devem ser confundidos no códi
 
 | Conceito | Campo | Afeta |
 |---|---|---|
-| Idioma nativo | `profile.nativeLanguage` | Dica do idioma em que o usuário escreve; mostrado no perfil. |
+| Idioma nativo | `profile.nativeLanguage` | Idioma em que o usuário escreve e origem das traduções; pré-selecionado a partir do idioma do sistema; mostrado no perfil. |
 | Idioma de recebimento | `preferences.translation.receivingLanguage` | Para qual idioma o **backend** traduz o conteúdo dos outros. |
 | Idioma da interface | `preferences.interfaceLanguage` | Textos de botões e menus (i18next) e formatação de datas. |
 
@@ -1215,14 +1223,14 @@ O detalhamento (checklist) está no [IMPLEMENTATION.md](IMPLEMENTATION.md).
 | Fase | Entrega | Critério de conclusão (resumo) |
 |---|---|---|
 | **1. Foundation** | Migração para Vite SPA, tokens, layouts, roteamento, providers, tipos, mock db | `dev`/`build`/`lint`/`typecheck`/`test` verdes; navegação mobile/desktop com placeholders; tema sem flash |
-| **2. Auth & onboarding** | Login simulado, SessionGate, onboarding de 5 passos | Novo usuário completa o onboarding e chega em `/chats`; sessão sobrevive ao reload |
+| **2. Auth & onboarding** | Login simulado (Google/Facebook/email), termos, SessionGate, onboarding de 5 passos | Novo usuário aceita os termos, completa o onboarding e chega em `/chats`; sessão sobrevive ao reload |
 | **3. Chat** | Lista, conversa, composer, envio otimista, realtime mock, auto-responder | Ciclo sending → sent → delivered → read visível; resposta automática chega; falha com retry |
 | **4. Translation UX** | 3 modos, override por mensagem, estados, retry, versão, Learning Mode | Troca de modo reflete na hora; falha preserva o original; tradução melhorada substitui sem regressão |
 | **5. Profiles, discovery & settings** | Perfil, edição, follow, Discover, Settings completas | **MVP completo** em 360/768/1024/1440px com a11y básica |
 | **6. Feed** | Feed, create post, likes, comments, tradução de legendas | Post criado aparece no feed e no perfil; tradução respeita a preferência |
-| **7. Stories & notifications** | Tray, viewer, reply/reaction, notificações | Viewer navegável por toque/teclado; badges atualizam |
-| **8. Backend integration** | Supabase, serviços reais, storage, worker de tradução | Mesmos fluxos contra backend real sem alterar componentes |
-| **9. Realtime** | Adapter real, presença, typing, recuperação | Duas contas conversam em tempo real em idiomas diferentes |
+| **7. Stories, notifications & groups** | Tray, viewer, reply/reaction, notificações, grupos (máx. 1 criado por pessoa) | Viewer navegável por toque/teclado; badges atualizam; segundo grupo é bloqueado |
+| **8. Backend integration** | Backend Java (Spring Boot + PostgreSQL), OAuth2, serviços HTTP, mídia em disco, worker de tradução (Claude/ChatGPT via planos), deploy na VPS | Mesmos fluxos contra backend real sem alterar componentes |
+| **9. Realtime** | `wsRealtimeClient` + WebSocket do backend, presença, typing, recuperação | Duas contas conversam em tempo real em idiomas diferentes |
 | **10. Production hardening** | Performance, a11y, e2e, moderação, observabilidade, deploy | Metas atingidas e pipeline verde |
 
 ---
@@ -1230,133 +1238,188 @@ O detalhamento (checklist) está no [IMPLEMENTATION.md](IMPLEMENTATION.md).
 # Parte II — Backend futuro
 
 > Esta parte é direcional. Ela será detalhada depois que o frontend (Phases 1–7) estiver estável. Nada aqui deve ser implementado antes disso.
+> As decisões de produto que a orientam estão em §34 (registradas em 2026-10-03).
 
 ## 25. Arquitetura de backend
 
+**Stack:** Java 21 + Spring Boot 3 (Web MVC, Security, OAuth2 Client, WebSocket, Validation, Data JPA), PostgreSQL 16, Flyway, Maven. Tudo roda numa **única VPS** junto com o frontend (§32).
+
 ```
-Browser (SPA)
-   │  HTTPS (REST/RPC)              WebSocket
-   ▼                                   ▼
-Supabase API (PostgREST + RPC)     Supabase Realtime (Broadcast + Presence)
-   │                                   ▲
-   ▼                                   │ broadcast
-PostgreSQL (RLS) ──► fila (pgmq) ──► Translation Worker (Edge Function / serviço)
-   ▲                                   │
-   └─────────── message_translations ◄─┘──► Provedor de LLM (chave só no servidor)
-Supabase Storage (avatars, post-media, story-media, chat-media)
+Navegador (SPA)
+   │ HTTPS /api/*, /oauth2/*        WSS /ws
+   ▼                                  ▼
+Caddy (TLS automático · serve o build do Vite · proxy reverso)
+   │
+   ▼
+Backend Java (Spring Boot, monolito modular)
+   ├─ auth          Spring Security: OAuth2 (Google, Facebook) + email/senha; sessão em cookie
+   ├─ users         perfis, preferências, termos aceitos
+   ├─ chat          conversas, mensagens, reações, leitura
+   ├─ translation   fila em tabela + workers → Translator
+   │                  ├─ ClaudeCliTranslator  (Claude Code, plano de assinatura)
+   │                  └─ CodexCliTranslator   (Codex CLI, plano ChatGPT)
+   ├─ realtime      WebSocket com os eventos do RealtimeEventMap
+   ├─ media         MediaStorage → disco da VPS
+   └─ feed · stories · notifications (fases 6–7)
+   ▼
+PostgreSQL (volume)                      /data/media (volume)
 ```
 
-- **Supabase** como base: PostgreSQL, Auth, Storage e Realtime.
-- **Camada de tradução própria**, isolada do resto (Edge Function ou serviço worker em container), para trocar de provedor ou modelo sem impacto no app.
-- Operações com regras de negócio (enviar mensagem, completar onboarding, follow com notificação) via **RPC/Edge Functions** com validação, e não por inserts diretos do cliente.
-- O backend é responsável por: autorização, tradução, proteção de chaves, persistência, contexto da conversa, rate limiting e moderação futura.
+- **Monolito modular:** pacotes por domínio, espelhando as features do frontend. Um único deployable basta para a escala atual (duas pessoas) e para a VPS.
+- **Repositório:** frontend na raiz, backend em `backend/` e infraestrutura em `deploy/` (monorepo).
+- **Contrato da API:** REST + JSON. Os DTOs espelham `src/types` (camelCase, datas ISO-8601 em UTC). O OpenAPI é gerado pelo springdoc, e na Phase 8 os tipos do frontend são conferidos contra ele (openapi-typescript). Erros seguem o formato RFC 9457 (Problem Details), que o `toAppError` do frontend converte em `AppError`.
+- **Responsabilidades do backend:** autorização, tradução, proteção de credenciais, persistência, contexto da conversa, rate limiting e moderação futura.
+- **No frontend:** cada serviço ganha uma implementação HTTP (`httpChatService` etc., `fetch` com `credentials: "include"`), selecionada em `lib/env.ts`. Componentes e hooks não mudam.
 
 ## 26. Realtime
 
-- **Broadcast por conversa** (`conversation:{id}`), emitido pelo servidor depois de persistir. É preferível a Postgres Changes em escala e permite enviar a tradução **projetada por membro**: um canal por usuário (`user:{id}`) para eventos que dependem do idioma do viewer, como `translation.updated`.
-- **Presence** para online/offline e typing.
-- O adapter `supabaseRealtimeClient` implementa `RealtimeClient` (§17), mapeando canais e eventos para o `RealtimeEventMap`.
-- Recuperação de lacunas: no reconnect, o cliente refaz o fetch incremental (`after: lastSeenCursor`).
+- **Spring WebSocket** em `/ws` (sem STOMP), autenticado pela mesma sessão (cookie) no handshake.
+- Mensagens JSON `{ "type": "message.created", "payload": { … } }`, exatamente o `RealtimeEventMap` do §17. O adapter do frontend é o `wsRealtimeClient`, que implementa `RealtimeClient`.
+- O servidor mantém em memória as conexões de cada usuário (uma instância só; se um dia escalar horizontalmente, entra Redis pub/sub) e envia os eventos **para cada membro individualmente**, já com a tradução projetada no idioma dele.
+- **Presença:** conexão aberta = online; `lastSeenAt` gravado ao desconectar.
+- **Typing:** cliente → servidor → outro membro, sem persistir.
+- Heartbeat ping/pong a cada 25s. Reconexão com backoff exponencial no frontend; depois de reconectar, fetch incremental (`GET /api/conversations/{id}/messages?after=<cursor>`).
 
 ## 27. Banco de dados
 
-Entidades (nomes provisórios):
+PostgreSQL com migrations Flyway. As sessões HTTP ficam nas tabelas do Spring Session JDBC.
 
 | Tabela | Colunas-chave |
 |---|---|
-| `users` | gerida pelo Supabase Auth |
-| `profiles` | `id (= users.id)`, `username (unique, citext)`, `display_name`, `avatar_path`, `bio`, `country`, `native_language`, `onboarding_completed_at` |
+| `users` | `id (uuid)`, `email (unique, nullable)`, `email_verified_at`, `password_hash (argon2id, nullable)`, `username (citext unique)`, `display_name`, `avatar_media_id`, `bio`, `country`, `native_language`, `onboarding_completed_at`, `created_at` |
+| `oauth_accounts` | `user_id`, `provider (google \| facebook)`, `provider_user_id`, `email` — único `(provider, provider_user_id)` |
+| `terms_acceptances` | `user_id`, `terms_version`, `privacy_version`, `accepted_at`, `ip`, `user_agent` |
+| `user_preferences` | `user_id`, `receiving_language`, `interface_language`, `display_mode`, `auto_translate_posts`, `auto_translate_stories`, `learning_mode`, privacidade e notificações |
+| `user_learning_languages` | `user_id`, `language` |
 | `languages` | `code (pk)`, `english_name`, `native_name`, `dir`, `enabled` |
-| `user_language_preferences` | `user_id`, `receiving_language`, `interface_language`, `display_mode`, `auto_translate_posts`, `auto_translate_stories`, `learning_mode` |
-| `user_learning_languages` | `user_id`, `language`, `level` |
-| `conversations` | `id`, `kind`, `title`, `avatar_path`, `created_by`, `last_message_id`, `updated_at` |
+| `conversations` | `id`, `kind (direct \| group)`, `title`, `avatar_media_id`, `created_by`, `direct_key (unique: par ordenado de user ids)`, `updated_at` — **índice único parcial `(created_by) WHERE kind = 'group'`**: no máximo 1 grupo criado por pessoa |
 | `conversation_members` | `conversation_id`, `user_id`, `role`, `last_delivered_message_id`, `last_read_message_id`, `muted_until`, `joined_at` |
-| `messages` | `id`, `conversation_id`, `sender_id`, `client_id (unique por sender)`, `type`, `reply_to_id`, `current_revision`, `created_at`, `deleted_at` |
-| `message_revisions` | `message_id`, `revision`, `original_text`, `original_language (detectado)`, `declared_language`, `created_at` — **cada revisão é imutável** |
-| `message_translations` | `message_id`, `revision`, `target_language`, `text`, `literal_text`, `status`, `version`, `model`, `error`, `updated_at` — PK `(message_id, revision, target_language)` |
+| `messages` | `id`, `conversation_id`, `sender_id`, `client_id (unique por sender)`, `type`, `original_text`, `original_language`, `reply_to_id`, `created_at` |
+| `message_translations` | `message_id`, `target_language`, `text`, `literal_text`, `status`, `version`, `provider`, `attempts`, `error`, `updated_at` — PK `(message_id, target_language)` |
+| `translation_jobs` | `id`, `kind`, `ref_id`, `target_language`, `status`, `run_after`, `attempts`, `locked_at` — fila em tabela (`SELECT … FOR UPDATE SKIP LOCKED`) |
+| `media` | `id`, `owner_id`, `kind`, `mime`, `size_bytes`, `width`, `height`, `duration_ms`, `storage_path`, `created_at` |
 | `message_media` | `message_id`, `media_id`, `position` |
 | `message_reactions` | `message_id`, `user_id`, `emoji` |
-| `media` | `id`, `owner_id`, `bucket`, `path`, `kind`, `mime`, `size`, `width`, `height`, `duration_ms`, `status` |
-| `posts` / `post_media` | `posts(id, author_id, caption_text, caption_language, created_at)` |
-| `content_translations` | `(content_kind, content_id, target_language)`, `text`, `version` — legendas, comentários e stories |
-| `comments` | `id`, `post_id`, `author_id`, `body_text`, `body_language`, `created_at` |
-| `likes` | `post_id`, `user_id` |
-| `stories` / `story_views` | `stories(id, author_id, media_id, overlay_text, overlay_language, expires_at)` |
-| `follows` | `follower_id`, `followee_id` |
-| `blocks` | `blocker_id`, `blocked_id` |
-| `reports` | `reporter_id`, `target_kind`, `target_id`, `reason`, `status` |
-| `notifications` | `id`, `recipient_id`, `actor_id`, `type`, `payload jsonb`, `read_at` |
+| `posts`, `post_media`, `comments`, `likes`, `content_translations`, `stories`, `story_views`, `follows`, `blocks`, `reports`, `notifications` | Conforme o modelo de domínio (§12); entram nas fases 6–7 |
 
 Observações:
 
-- **"originalText é imutável" × "edit no futuro":** a edição cria uma **nova revisão**. O texto de cada revisão nunca muda, e as traduções são por revisão. A UI mostra a revisão atual com o indicador "edited".
+- **Sem edição e sem exclusão de mensagens por enquanto.** `original_text` nunca recebe UPDATE (garantido pela camada de aplicação). Quando a edição entrar, ela cria uma tabela `message_revisions`, em que o original de cada revisão é imutável e as traduções são por revisão.
 - Os ticks de entrega e leitura são **derivados** dos cursores dos membros, e não gravados por mensagem.
-- Índices: `messages(conversation_id, created_at desc, id)`, `message_translations(message_id, target_language)`, `follows` nos dois sentidos.
+- A exclusão da **conta** (direito do titular na LGPD) é diferente de excluir mensagens e precisa existir antes do lançamento público (§31).
+- Índices: `messages(conversation_id, created_at desc, id)`, `message_translations(message_id, target_language)`, `translation_jobs(status, run_after)`, `follows` nos dois sentidos.
 
 ## 28. IA e pipeline de tradução
 
-```
-send_message RPC
-  1. valida membership, bloqueio, rate limit
-  2. insere messages + message_revisions (idempotente por client_id)
-  3. calcula alvos = {receiving_language dos membros} − {idioma de origem}
-  4. insere message_translations(status = 'pending') para cada alvo
-  5. enfileira job (pgmq) e faz broadcast de message.created
-Worker
-  6. detecta o idioma de origem (corrige o declarado se preciso)
-  7. monta o contexto: últimas N mensagens (originais), tom/relacionamento, glossário da conversa
-  8. chama o LLM com prompt de tradução natural (sentido, não palavra por palavra) + versão literal opcional
-  9. grava text/version/status; em falha: status='failed', retry com backoff
- 10. broadcast translation.updated no canal de cada membro com aquele idioma
-Reprocessamento
- 11. jobs de "melhoria" podem retraduzir com mais contexto → version+1 → novo evento
+### 28.1 Provedores: Claude e ChatGPT pelos planos de assinatura
+
+Decisão de produto: usar as duas IAs **pelos planos de assinatura** (Claude Pro/Max e ChatGPT Plus/Pro), e não pelas APIs cobradas por token. Na prática, o backend executa as **CLIs oficiais em modo não interativo**, autenticadas com as contas dos planos:
+
+| Provedor | Ferramenta | Execução |
+|---|---|---|
+| Claude | Claude Code | `claude -p "<prompt>" --output-format json` |
+| ChatGPT | Codex CLI | `codex exec "<prompt>"` |
+
+As flags exatas, a seleção de modelo e o modo sem ferramentas (somente texto) de cada CLI serão confirmados na Phase 8.
+
+```java
+public interface Translator {
+    String id();                                  // "claude-cli", "codex-cli", no futuro "anthropic-api"…
+    TranslationResult translate(TranslationRequest request) throws TranslatorUnavailableException;
+}
 ```
 
-- **Chaves de IA só no servidor.** O navegador nunca chama o provedor.
-- **Provedor abstraído** (`Translator` interface no worker), o que permite trocar modelo ou provedor e fazer testes A/B.
-- **Custo:** cache por (mensagem, revisão, idioma); grupos com muitos idiomas geram fan-out, então é preciso limitar ou priorizar. Feed, comentários e stories são traduzidos **sob demanda** e cacheados em `content_translations`.
-- **Learning Mode:** `TranslationInsight` gerado sob demanda, cacheado e com rate limit próprio.
-- **Moderação futura:** o mesmo pipeline pode classificar conteúdo (spam, abuso) antes ou depois de traduzir.
+- `FallbackTranslator` compõe os dois: **primário** (proposta: Claude) e **secundário** (ChatGPT), usado em caso de falha, limite de uso atingido, timeout ou resposta inválida.
+- Trocar para API no futuro = escrever uma nova implementação de `Translator`. Nada mais muda.
+- **Operação:** as CLIs ficam instaladas na imagem do backend (requer Node.js no container). O login é feito uma vez (`docker compose exec backend claude` / `codex login`), e as credenciais ficam num volume persistente. Cada chamada roda num diretório vazio, sem acesso a ferramentas, com timeout (ex.: 60s) e concorrência limitada (1–2 processos).
+- **Saúde:** uma checagem periódica testa as duas CLIs e expõe o status no Actuator. Se a sessão de login expirar, isso aparece no health check.
+- **Limites reais:**
+  - os planos têm cotas por janela de tempo, e se a cota estourar a tradução espera até ela renovar;
+  - cada chamada leva alguns segundos (inicialização da CLI), o que a UI já trata com o estado `translating`;
+  - os termos das assinaturas são pensados para uso pessoal. Antes de abrir o app para mais pessoas, é preciso revisar os termos de cada provedor e, se necessário, migrar para a API (R14).
+- **Privacidade:** as mensagens são enviadas à Anthropic e à OpenAI pelas contas dos planos. Isso precisa constar nos Termos e na Política de Privacidade, e o **uso dos dados para treinamento deve ser desativado** nas configurações das duas contas.
+
+### 28.2 Pipeline
+
+```
+POST /api/conversations/{id}/messages
+  1. autentica; valida membership, bloqueio e rate limit
+  2. insere a mensagem (idempotente por client_id);
+     original_language = idioma nativo do remetente (definido pelo sistema dele)
+  3. alvos = idiomas de recebimento dos membros − original_language
+  4. insere message_translations(status='pending') + translation_jobs; responde 201
+  5. WebSocket: message.created para cada membro, com a tradução dele em 'pending'
+Worker (pool pequeno)
+  6. pega um job (SKIP LOCKED), marca 'translating' → translation.updated
+  7. monta o prompt: instruções de tradução natural (sentido, não palavra por palavra),
+     idioma de origem provável, últimas N mensagens da conversa (originais), mensagem-alvo;
+     pede JSON { natural, literal }
+  8. Translator primário → em falha, secundário
+  9. valida o JSON; grava text/literal/version/provider → translation.updated
+ 10. falha nos dois → 'failed' + retry automático com backoff (até 3); depois, retry manual pelo usuário
+```
+
+- **Detecção de idioma:** não existe detecção no servidor. O idioma do original é o **idioma nativo do remetente**, pré-selecionado no onboarding a partir do idioma do sistema (`navigator.languages`) e editável em Settings. O prompt informa esse idioma como "provável", então o modelo ainda traduz corretamente se a pessoa escrever em outra língua. Limitação aceita: se o idioma declarado for igual ao do destinatário, a mensagem é marcada como `not_needed` e não é traduzida.
+- **Learning Mode:** o `literal` já vem do passo 7; explicação e vocabulário são gerados sob demanda pelo mesmo pipeline.
+- **Custo:** sem custo por token, mas limitado pelas cotas dos planos. Mitigação: cache por (mensagem, idioma), tradução de feed/stories só sob demanda e fila com backpressure.
 
 ## 29. Storage
 
-| Bucket | Acesso | Conteúdo |
-|---|---|---|
-| `avatars` | público | avatares (redimensionados) |
-| `post-media` | público ou assinado, conforme a visibilidade do perfil | fotos/vídeos de posts |
-| `story-media` | assinado, expira junto com o story | stories |
-| `chat-media` | **privado**, URLs assinadas de curta duração, RLS por membership | mídia de conversas |
-
-- Upload via URL assinada emitida pelo servidor depois de validar tipo, tamanho e cota.
-- Validação de MIME real (magic bytes) no servidor e remoção de EXIF/geolocalização de imagens.
-- Thumbnails e versões redimensionadas; transcodificação de vídeo numa fase posterior.
+- **Disco da VPS**, volume `/data/media`, atrás da interface `MediaStorage` (`LocalDiskMediaStorage`). S3 ou MinIO podem ser adicionados depois, sem mudar o resto.
+- Upload multipart pelo backend (`POST /api/media`): validação do MIME real (Apache Tika), nome sanitizado, thumbnail de imagem e remoção de EXIF/geolocalização. Vídeo sem transcodificação por enquanto.
+- Leitura por `GET /api/media/{id}`, com checagem de permissão (membro da conversa, visibilidade do post) e suporte a `Range` (vídeo).
+- **Sem limite de mídia no produto** (decisão). Ainda assim, um **teto técnico** configurável e alto (ex.: 500 MB por arquivo; o padrão do Spring é 1 MB) protege a VPS. Uso de disco monitorado (R15).
 
 ## 30. Autenticação
 
-- **Supabase Auth:** email (magic link / OTP) + OAuth (Google, Apple). Senha opcional.
-- O `authService` do frontend vira adapter (`signIn`, `signOut`, `getSession`, `onAuthStateChange`), e o `sessionStore` continua sendo a única interface para a UI.
-- Tokens gerenciados pelo SDK. Nada de chaves secretas no bundle: só a `anon key`, que é pública por design e é protegida pelas policies de RLS.
-- O onboarding completo é um estado do perfil (`onboarding_completed_at`), verificado pelo guard e também pelo servidor.
+Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de autenticação além dos provedores sociais.
+
+- **Métodos:**
+  - **Continue with Google** e **Continue with Facebook**: OAuth2 Authorization Code via `spring-boot-starter-oauth2-client`;
+  - **email + senha**: argon2id, verificação de e-mail e redefinição de senha (exigem SMTP; ver §34).
+- **Sessão:** cookie `HttpOnly; Secure; SameSite=Lax` com sessão no servidor (Spring Session JDBC). SPA e API ficam no mesmo domínio (Caddy), então não há CORS e **nenhum token fica em `localStorage`**. CSRF via `CookieCsrfTokenRepository` (cookie `XSRF-TOKEN` + header `X-XSRF-TOKEN`).
+- **Fluxo social:** SPA → `GET /oauth2/authorization/{google|facebook}` (redirect de página inteira) → provedor → `/login/oauth2/code/{provider}` → o backend cria ou vincula `users` + `oauth_accounts` → redireciona para `/onboarding/welcome` (conta nova) ou `/chats`.
+- **Vinculação:** o mesmo e-mail verificado em Google, Facebook e senha resulta na mesma conta. O Facebook pode não retornar e-mail; nesse caso, a conta nasce sem e-mail.
+- **Termos de Uso e Política de Privacidade (LGPD):** o aceite é obrigatório na criação da conta, qualquer que seja o método, e acontece no **primeiro passo do onboarding**, antes de qualquer dado de perfil ser salvo. Ele fica registrado em `terms_acceptances` com a versão; uma nova versão exige novo aceite.
+- **Frontend:** o `authService` real expõe `startOAuth(provider)`, `signInWithPassword`, `signUp`, `signOut` e `getSession` (`GET /api/me`). O `sessionStore` continua sendo a única interface para a UI.
+- **Produção:** o app do Facebook precisa de *App Review*, e o Google de tela de consentimento configurada (domínio verificado).
 
 ## 31. Segurança
 
 - **O frontend nunca é fonte de autorização.** Os guards de rota são só UX.
-- **Row Level Security** em todas as tabelas: membros leem e escrevem só nas próprias conversas; perfis privados restringem posts e stories; bloqueios são aplicados em mensagens, comentários, follows e Discover.
-- **Validação no servidor** com schemas zod compartilhados em RPC/Edge Functions (tamanho de mensagem, campos, formatos).
-- **Rate limiting:** envio de mensagens, criação de conversas, follows, traduções manuais (retry, insights) e uploads.
-- **Upload validation:** MIME, tamanho, dimensões, cota por usuário.
-- **Privacidade:** "Who can message me" e "Who can comment" aplicados no servidor. Recomendado um inbox de **message requests** para pessoas que não se seguem (§34).
-- **Block system** e **report system**, com fila de moderação.
-- Proteção de conteúdo enviado à IA: minimizar o contexto, sem dados pessoais desnecessários e com contrato de não-treinamento com o provedor.
-- Headers de segurança (CSP, HSTS) no deploy do frontend; sanitização na renderização (React escapa por padrão; nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário).
+- **Autorização no backend:** Spring Security + checagem de membership em todo acesso a conversa, mensagem e mídia (`ConversationAccessPolicy`). Sem RLS, então **todo endpoint tem teste de autorização**.
+- **Validação:** Bean Validation nos DTOs; tamanho máximo do texto da mensagem (ex.: 4.000 caracteres).
+- **Rate limit:** Bucket4j por usuário/IP em login, cadastro, envio, retry de tradução e upload. Bloqueio progressivo após falhas de login.
+- **Grupos:** no máximo 1 criado por pessoa (índice único parcial + checagem no serviço).
+- **Uploads:** MIME real, armazenamento fora da raiz web, servidos só por endpoint autorizado.
+- **Block e report:** estrutura no banco desde o início; UI em fase posterior.
+- **LGPD:**
+  - os Termos e a Política informam que as mensagens são processadas por IA de terceiros (Anthropic e OpenAI) para tradução, além da base legal, retenção e direitos do titular;
+  - acesso aos dados e **exclusão da conta** são obrigatórios antes do lançamento público;
+  - treinamento desativado nas contas das IAs.
+- **Segredos** (client secrets OAuth, credenciais das CLIs, senha do banco) só no servidor: `.env` fora do git e volumes protegidos.
+- **Borda:** Caddy com HTTPS automático, HSTS, CSP e headers de segurança. Nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário.
+- **VPS:** acesso SSH só por chave, firewall (apenas 80/443/22), fail2ban, atualizações automáticas, Postgres sem porta exposta.
+- **Backups:** `pg_dump` diário + cópia de `/data/media` para fora da VPS, com restauração testada.
 
-## 32. Deploy
+## 32. Deploy (VPS)
 
-- **Frontend:** build estático (Vite) em Vercel / Netlify / Cloudflare Pages, com fallback de SPA (`/* → /index.html`), cache imutável para assets com hash, preview deploy por PR.
-- **Backend:** Supabase gerenciado (projetos separados para dev, staging e prod). Migrations versionadas (Supabase CLI) e Edge Functions com deploy via CI.
-- **CI:** lint → typecheck → test → build em cada PR; e2e (Playwright) contra preview em staging.
-- **Observabilidade:** Sentry (frontend e funções), logs estruturados do worker de tradução, métricas de latência e custo de tradução.
-- **Variáveis de ambiente:** só `VITE_*` públicas no frontend (URL do Supabase, anon key, flags). Segredos (chaves de IA, service role) só no backend.
+Uma VPS com **Docker Compose** (sugestão mínima: 2 vCPU, 4 GB de RAM, por causa da JVM, do Postgres e das CLIs em Node):
+
+```yaml
+services:
+  caddy:     # 80/443, TLS Let's Encrypt; serve o build do Vite; proxy /api, /oauth2, /login/oauth2, /ws → backend
+  backend:   # Spring Boot (JRE 21) + Node.js + CLIs claude/codex; volumes: media, cli-credentials
+  postgres:  # 16; volume pgdata; sem porta exposta
+```
+
+- **Domínio único** (ex.: `tennotalk.app`): SPA e API na mesma origem.
+- **Frontend:** `vite build` → `dist/` servido pelo Caddy, com fallback de SPA (`try_files {path} /index.html`) e cache imutável para assets com hash.
+- **Backend:** imagem multi-stage (build Maven → JRE 21 + Node + CLIs). Migrations Flyway no startup.
+- **Configuração:** `.env` não versionado (banco, client ids/secrets OAuth, URL pública, SMTP).
+- **CI/CD (GitHub Actions):** lint, typecheck, test e build do frontend; testes do backend (Testcontainers + Postgres); build das imagens → GHCR → deploy via SSH (`docker compose pull && docker compose up -d`).
+- **Ambientes:** local (`docker compose` de desenvolvimento) e produção. Staging é opcional por enquanto.
+- **Observabilidade:** logs JSON (`docker logs`), Spring Actuator (health, incluindo as CLIs de IA), monitor de uptime externo; Sentry é opcional.
 
 ---
 
@@ -1373,26 +1436,44 @@ Reprocessamento
 | R5 | Multi-escrita (vietnamita, CJK, tailandês, árabe) | Fontes quebradas, layout errado em RTL | Inter + fallbacks; `dir="auto"`; propriedades lógicas; conta seed RTL |
 | R6 | Bandeira ≠ idioma; Windows não renderiza emoji de bandeira | UX confusa, "BR" no lugar da bandeira | Nome nativo do idioma como principal; bandeiras SVG por variante regional |
 | R7 | Colisão de nomes `useTranslation` (i18n × tradução) | Imports errados, confusão | Nomenclatura definida (D11) |
-| R8 | Custo e latência da IA (grupos multilíngues, auto-tradução de feed) | Conta alta, mensagens demorando | Projeção por viewer, cache, tradução sob demanda para feed/stories, limites por plano |
+| R8 | Latência da tradução via CLI (inicialização de processo) | Mensagens ficam alguns segundos em "translating" | UI não bloqueia; concorrência controlada; fallback entre provedores |
 | R9 | `backdrop-blur` do painel lateral em dispositivos fracos | Jank | Fallback sem blur (`prefers-reduced-transparency`, heurística) |
-| R10 | Mock divergir da API real | Retrabalho na Phase 8 | `src/types` como contrato; mappers DTO → domínio; o mock imita a projeção do servidor |
+| R10 | Mock divergir da API real | Retrabalho na Phase 8 | `src/types` como contrato; OpenAPI + openapi-typescript; o mock imita a projeção do servidor |
 | R11 | Flags estritas do TS × código gerado pelo shadcn | Erros de tipo em `components/ui` | Ajustes pontuais e documentados; não afrouxar o tsconfig |
 | R12 | Tradução "melhorada" troca um texto que o usuário está lendo | Estranhamento | Crossfade suave; aplicar só se `version` maior |
-| R13 | Conectar desconhecidos de vários países | Spam, assédio | Message requests, block/report desde cedo, privacidade restritiva por padrão |
+| R13 | Conectar desconhecidos de vários países (quando abrir para mais gente) | Spam, assédio | Block/report, privacidade restritiva por padrão, message requests |
+| R14 | IA pelos planos de assinatura (CLIs) em vez da API | Cotas por janela de tempo, sessão de login expirando, mudanças nas CLIs, termos de uso pensados para uso pessoal | Interface `Translator` + fallback entre os dois; health check; revisar os termos antes de abrir o app; migração para API sem impacto no resto |
+| R15 | Mídia sem limite de produto numa VPS | Disco cheio derruba banco e app | Teto técnico alto configurável; alerta de uso de disco; mover mídia para object storage se crescer |
+| R16 | Facebook Login (App Review, e-mail ausente) | Login social atrasado ou contas sem e-mail | Começar com Google + email/senha; contas sem e-mail suportadas no modelo |
+| R17 | Idioma de origem declarado (sem detecção) | Mensagem escrita em outra língua pode não ser traduzida quando os idiomas declarados coincidem | O prompt trata o idioma como "provável"; idioma editável em Settings; detecção pode entrar depois |
 
-## 34. Decisões a tomar antes do backend
+## 34. Decisões de backend
 
-1. **Criptografia ponta a ponta × tradução no servidor.** São incompatíveis: para traduzir, o servidor precisa ler o conteúdo. Decidir explicitamente (e comunicar na política de privacidade) antes de qualquer schema.
-2. **Provedor e modelo de IA**, custo estimado por mensagem, quem paga, limites do plano gratuito.
-3. **Contexto enviado à IA:** quantas mensagens, retenção pelo provedor, opt-out de treinamento, conformidade com LGPD/GDPR e consentimento do usuário.
-4. **Detecção de idioma:** confiar no idioma declarado, detectar no servidor ou combinar os dois (recomendado: detectar, usando o declarado como dica).
-5. **Edição e exclusão:** re-traduzir em cada edição? Mostrar histórico? "Delete for everyone" com janela de tempo?
-6. **Grupos:** tamanho máximo, número máximo de idiomas por grupo, read receipts em grupo.
-7. **Segurança social:** inbox de *message requests* para quem não se segue? Idade mínima? Política de moderação e de denúncias?
-8. **Login:** métodos (magic link, Google, Apple, senha) e regras de username (tamanho, caracteres, troca).
-9. **Idiomas da interface** no lançamento.
-10. **Mídia:** limites de tamanho e duração, formatos aceitos, retenção de stories (24h?) e de mídia de chat.
-11. **Infra:** região de hospedagem (latência Brasil ↔ Vietnã), Broadcast × Postgres Changes, worker em Edge Function × serviço dedicado.
+### 34.1 Tomadas (2026-10-03)
+
+| # | Tema | Decisão |
+|---|---|---|
+| 1 | Backend | **Java** (Spring Boot 3, Java 21) + PostgreSQL |
+| 2 | Provedores de IA | **Claude + ChatGPT**, pelos **planos de assinatura** (CLIs oficiais), não pela API. Primário/secundário com fallback (proposta: Claude primário) |
+| 3 | Privacidade / LGPD | Nos **Termos de Uso e Política de Privacidade**, com aceite obrigatório na criação da conta |
+| 4 | Detecção de idioma | Pelo **idioma do sistema** da pessoa (pré-seleção do idioma nativo no onboarding); sem detecção no servidor |
+| 5 | Editar / excluir mensagens | **Fora do escopo** por enquanto |
+| 6 | Grupos | Cada pessoa **cria no máximo 1 grupo**. Uso inicial: **conversas entre duas pessoas**; grupos ficam para depois do MVP |
+| 7 | Login | **OAuth2 no próprio backend**: Google + Facebook + conta própria (email/senha) |
+| 8 | Mídia | **Sem limite de produto** por enquanto (só teto técnico de proteção) |
+| 9 | Infra | **Uma VPS** com backend + frontend (Docker Compose + Caddy) |
+| 10 | Criptografia ponta a ponta | Não se aplica: a tradução acontece no servidor (consequência das decisões 2 e 3; informada nos termos) |
+
+### 34.2 Ainda em aberto
+
+1. Qual IA é a primária e quais modelos usar em cada plano.
+2. Provedor e região da VPS; domínio.
+3. Texto jurídico dos Termos e da Política (idealmente revisado por alguém da área).
+4. Provedor de e-mail transacional (SMTP) para verificação de e-mail e redefinição de senha.
+5. Regras de username (tamanho, caracteres, troca).
+6. Idiomas da interface no lançamento.
+7. Retenção de stories (24h?) e política de mídia antiga.
+8. Segurança social para quando o app abrir para mais pessoas: message requests, idade mínima, moderação.
 
 ## 35. Regras de desenvolvimento
 
