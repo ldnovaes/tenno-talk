@@ -1011,6 +1011,7 @@ interface DisplayResult {
   O original fica em `text-sm` e `muted-foreground`, com divisor sutil.
 - A tradução que chega depois (de `translating` para `translated`) faz crossfade do original para a tradução **mantendo a âncora de scroll** quando o usuário está no fim.
 - Falha: o original aparece normalmente e "Retry translation" fica discreto no meta.
+- Tradução em espera (ex.: as duas IAs aguardando reautenticação, §28.3): a mensagem já foi entregue e aparece no original com o hint "translating". Depois de ~2 minutos, o hint vira "Translation delayed", sem tom de erro. Quando a tradução chega, ela substitui o original normalmente.
 - Feed, comentários e stories: legenda em outro idioma mostra "See translation" (ou já traduz, se `autoTranslatePosts`/`autoTranslateStories` estiver ligado), com "See original" para voltar. O original nunca é sobrescrito.
 
 ## 15. Learning Mode
@@ -1286,7 +1287,7 @@ PostgreSQL com migrations Flyway. As sessões HTTP ficam nas tabelas do Spring S
 
 | Tabela | Colunas-chave |
 |---|---|
-| `users` | `id (uuid)`, `email (unique, nullable)`, `email_verified_at`, `password_hash (argon2id, nullable)`, `username (citext unique)`, `display_name`, `avatar_media_id`, `bio`, `country`, `native_language`, `onboarding_completed_at`, `created_at` |
+| `users` | `id (uuid)`, `role (user \| admin)`, `email (unique, nullable)`, `email_verified_at`, `password_hash (argon2id, nullable)`, `username (citext unique)`, `display_name`, `avatar_media_id`, `bio`, `country`, `native_language`, `onboarding_completed_at`, `created_at` |
 | `oauth_accounts` | `user_id`, `provider (google \| facebook)`, `provider_user_id`, `email` — único `(provider, provider_user_id)` |
 | `terms_acceptances` | `user_id`, `terms_version`, `privacy_version`, `accepted_at`, `ip`, `user_agent` |
 | `user_preferences` | `user_id`, `receiving_language`, `interface_language`, `display_mode`, `auto_translate_posts`, `auto_translate_stories`, `learning_mode`, privacidade e notificações |
@@ -1296,7 +1297,8 @@ PostgreSQL com migrations Flyway. As sessões HTTP ficam nas tabelas do Spring S
 | `conversation_members` | `conversation_id`, `user_id`, `role`, `last_delivered_message_id`, `last_read_message_id`, `muted_until`, `joined_at` |
 | `messages` | `id`, `conversation_id`, `sender_id`, `client_id (unique por sender)`, `type`, `original_text`, `original_language`, `reply_to_id`, `created_at` |
 | `message_translations` | `message_id`, `target_language`, `text`, `literal_text`, `status`, `version`, `provider`, `attempts`, `error`, `updated_at` — PK `(message_id, target_language)` |
-| `translation_jobs` | `id`, `kind`, `ref_id`, `target_language`, `status`, `run_after`, `attempts`, `locked_at` — fila em tabela (`SELECT … FOR UPDATE SKIP LOCKED`) |
+| `translation_jobs` | `id`, `kind`, `ref_id`, `target_language`, `status (pending \| running \| waiting_provider \| done \| failed)`, `run_after`, `attempts`, `locked_at`, `created_at` — fila em tabela (`SELECT … FOR UPDATE SKIP LOCKED`) |
+| `ai_provider_status` | `provider (codex \| claude)`, `state (ok \| needs_reauth \| reauth_pending \| cooling_down)`, `until`, `last_error`, `checked_at` |
 | `media` | `id`, `owner_id`, `kind`, `mime`, `size_bytes`, `width`, `height`, `duration_ms`, `storage_path`, `created_at` |
 | `message_media` | `message_id`, `media_id`, `position` |
 | `message_reactions` | `message_id`, `user_id`, `emoji` |
@@ -1315,24 +1317,26 @@ Observações:
 
 Decisão de produto: usar as duas IAs **pelos planos de assinatura** (Claude Pro/Max e ChatGPT Plus/Pro), e não pelas APIs cobradas por token. Na prática, o backend executa as **CLIs oficiais em modo não interativo**, autenticadas com as contas dos planos:
 
-| Provedor | Ferramenta | Execução |
-|---|---|---|
-| Claude | Claude Code | `claude -p "<prompt>" --output-format json` |
-| ChatGPT | Codex CLI | `codex exec "<prompt>"` |
+| Ordem | Provedor | Ferramenta | Execução |
+|---|---|---|---|
+| **1. Principal** | ChatGPT | Codex CLI | `codex exec "<prompt>"` |
+| **2. Reserva** | Claude | Claude Code | `claude -p "<prompt>" --output-format json` |
 
 As flags exatas, a seleção de modelo e o modo sem ferramentas (somente texto) de cada CLI serão confirmados na Phase 8.
 
 ```java
 public interface Translator {
-    String id();                                  // "claude-cli", "codex-cli", no futuro "anthropic-api"…
-    TranslationResult translate(TranslationRequest request) throws TranslatorUnavailableException;
+    String id();                                  // "codex-cli", "claude-cli", no futuro "openai-api"…
+    TranslationResult translate(TranslationRequest request)
+        throws TranslatorAuthException,          // login expirado ou inválido
+               TranslatorQuotaException,         // limite do plano atingido
+               TranslatorTransientException;     // timeout, rede, resposta inválida
 }
 ```
 
-- `FallbackTranslator` compõe os dois: **primário** (proposta: Claude) e **secundário** (ChatGPT), usado em caso de falha, limite de uso atingido, timeout ou resposta inválida.
+- `FallbackTranslator` compõe os dois: **ChatGPT é o principal** e o **Claude só é usado quando o ChatGPT falha** (login, limite de uso, timeout ou resposta inválida). As regras de falha estão em §28.3.
 - Trocar para API no futuro = escrever uma nova implementação de `Translator`. Nada mais muda.
-- **Operação:** as CLIs ficam instaladas na imagem do backend (requer Node.js no container). O login é feito uma vez (`docker compose exec backend claude` / `codex login`), e as credenciais ficam num volume persistente. Cada chamada roda num diretório vazio, sem acesso a ferramentas, com timeout (ex.: 60s) e concorrência limitada (1–2 processos).
-- **Saúde:** uma checagem periódica testa as duas CLIs e expõe o status no Actuator. Se a sessão de login expirar, isso aparece no health check.
+- **Operação:** as CLIs ficam instaladas na imagem do backend (requer Node.js no container). O login inicial é feito uma vez (`codex login` / `claude setup-token`), e as credenciais ficam num volume persistente. Cada chamada roda num diretório vazio, sem acesso a ferramentas, com timeout (ex.: 60s) e concorrência limitada (1–2 processos).
 - **Limites reais:**
   - os planos têm cotas por janela de tempo, e se a cota estourar a tradução espera até ela renovar;
   - cada chamada leva alguns segundos (inicialização da CLI), o que a UI já trata com o estado `translating`;
@@ -1354,10 +1358,43 @@ Worker (pool pequeno)
   7. monta o prompt: instruções de tradução natural (sentido, não palavra por palavra),
      idioma de origem provável, últimas N mensagens da conversa (originais), mensagem-alvo;
      pede JSON { natural, literal }
-  8. Translator primário → em falha, secundário
+  8. ChatGPT (principal) → em falha, Claude (reserva) — regras em §28.3
   9. valida o JSON; grava text/literal/version/provider → translation.updated
- 10. falha nos dois → 'failed' + retry automático com backoff (até 3); depois, retry manual pelo usuário
+ 10. falha transitória nos dois → retry com backoff (até 3) → 'failed' + retry manual pelo usuário
+     falha de login/cota nos dois → job em 'waiting_provider': não conta tentativa e nunca vira 'failed'
 ```
+
+### 28.3 Falhas de login e de cota: nada se perde
+
+**Garantia:** uma mensagem **nunca se perde** por falha da IA. Ela é gravada no banco (passo 2) e entregue ao destinatário no original **antes** de qualquer chamada à IA. A tradução é um job separado, que só sai da fila quando é concluída. Se a IA cair no meio, o job continua lá e é retomado.
+
+Cada `Translator` classifica a falha, e o `FallbackTranslator` reage:
+
+| Falha no ChatGPT | O que acontece |
+|---|---|
+| **Login** (`TranslatorAuthException`) | ChatGPT vai para `needs_reauth` e a reautenticação começa (abaixo). O job vai **na hora** para o Claude. |
+| **Cota do plano** (`TranslatorQuotaException`) | ChatGPT vai para `cooling_down` até a renovação (quando a CLI informar o horário; senão, nova tentativa a cada 15 min). Os jobs vão para o Claude. |
+| **Transitória** (timeout, rede, JSON inválido) | Mais uma tentativa no ChatGPT; depois, Claude. |
+
+Enquanto o ChatGPT está indisponível, os jobs novos vão direto para o Claude, sem esperar timeout. Quando o ChatGPT volta a `ok`, ele reassume como principal.
+
+**Os dois indisponíveis** (ex.: ambos sem login, ou ChatGPT sem login e Claude sem cota): o job fica em `waiting_provider`. Ele **não gasta tentativas e nunca vira `failed`**. Assim que qualquer provedor volta, os jobs em espera são reprocessados em ordem de chegada e as traduções chegam aos usuários por `translation.updated`. Do lado do usuário, a conversa continua funcionando no original (§14.5).
+
+**Reautenticação:**
+
+1. **Automática.** As CLIs renovam a sessão sozinhas (refresh token) enquanto ele for válido. Quando ocorre `TranslatorAuthException`, o backend força uma renovação em segundo plano e, se der certo, o provedor volta a `ok` e os jobs são retomados sem intervenção.
+2. **Assistida, quando a renovação automática não basta.** OpenAI e Anthropic exigem que uma pessoa aprove um novo login da conta do plano, então essa etapa não pode ser 100% automática. O backend:
+   - inicia o login da CLI por link/código (*device code*, quando a CLI oferecer) e muda o estado para `reauth_pending`;
+   - **avisa o administrador** (e-mail e notificação no app) com o link e o código;
+   - o administrador aprova pelo celular, sem precisar de SSH na VPS;
+   - concluído o login, o provedor volta a `ok` e a fila é retomada automaticamente.
+3. **Para reduzir a frequência:** o Claude usa um token de longa duração do plano (`claude setup-token`), que dispensa login interativo por um período longo. O Codex usa as credenciais persistidas com refresh automático.
+
+As flags de login e de status de cada CLI serão confirmadas na Phase 8.
+
+**Painel de administração** (`/admin/ai`, só para `role = admin`): mostra o estado de cada provedor (`ok`, `needs_reauth`, `reauth_pending`, `cooling_down`), o tamanho da fila em espera e a última falha, além do botão **Reauthenticate**, que inicia o fluxo assistido manualmente.
+
+**Saúde:** uma verificação periódica e leve do status de login de cada CLI (sem gastar cota quando a CLI permitir) alimenta `ai_provider_status` e o health check do Actuator. Login prestes a expirar também gera aviso antecipado ao administrador.
 
 - **Detecção de idioma:** não existe detecção no servidor. O idioma do original é o **idioma nativo do remetente**, pré-selecionado no onboarding a partir do idioma do sistema (`navigator.languages`) e editável em Settings. O prompt informa esse idioma como "provável", então o modelo ainda traduz corretamente se a pessoa escrever em outra língua. Limitação aceita: se o idioma declarado for igual ao do destinatário, a mensagem é marcada como `not_needed` e não é traduzida.
 - **Learning Mode:** o `literal` já vem do passo 7; explicação e vocabulário são gerados sob demanda pelo mesmo pipeline.
@@ -1442,7 +1479,7 @@ services:
 | R11 | Flags estritas do TS × código gerado pelo shadcn | Erros de tipo em `components/ui` | Ajustes pontuais e documentados; não afrouxar o tsconfig |
 | R12 | Tradução "melhorada" troca um texto que o usuário está lendo | Estranhamento | Crossfade suave; aplicar só se `version` maior |
 | R13 | Conectar desconhecidos de vários países (quando abrir para mais gente) | Spam, assédio | Block/report, privacidade restritiva por padrão, message requests |
-| R14 | IA pelos planos de assinatura (CLIs) em vez da API | Cotas por janela de tempo, sessão de login expirando, mudanças nas CLIs, termos de uso pensados para uso pessoal | Interface `Translator` + fallback entre os dois; health check; revisar os termos antes de abrir o app; migração para API sem impacto no resto |
+| R14 | IA pelos planos de assinatura (CLIs) em vez da API | Cotas por janela de tempo, sessão de login expirando, mudanças nas CLIs, termos de uso pensados para uso pessoal | ChatGPT → Claude com fallback; jobs em espera sem perda (§28.3); reautenticação automática e assistida; revisar os termos antes de abrir o app; migração para API sem impacto no resto |
 | R15 | Mídia sem limite de produto numa VPS | Disco cheio derruba banco e app | Teto técnico alto configurável; alerta de uso de disco; mover mídia para object storage se crescer |
 | R16 | Facebook Login (App Review, e-mail ausente) | Login social atrasado ou contas sem e-mail | Começar com Google + email/senha; contas sem e-mail suportadas no modelo |
 | R17 | Idioma de origem declarado (sem detecção) | Mensagem escrita em outra língua pode não ser traduzida quando os idiomas declarados coincidem | O prompt trata o idioma como "provável"; idioma editável em Settings; detecção pode entrar depois |
@@ -1454,7 +1491,7 @@ services:
 | # | Tema | Decisão |
 |---|---|---|
 | 1 | Backend | **Java** (Spring Boot 3, Java 21) + PostgreSQL |
-| 2 | Provedores de IA | **Claude + ChatGPT**, pelos **planos de assinatura** (CLIs oficiais), não pela API. Primário/secundário com fallback (proposta: Claude primário) |
+| 2 | Provedores de IA | **ChatGPT (principal) + Claude (reserva, só quando o ChatGPT falha)**, pelos **planos de assinatura** (CLIs oficiais), não pela API. Falha de login dispara reautenticação, e nada do que foi enviado se perde (§28.3) |
 | 3 | Privacidade / LGPD | Nos **Termos de Uso e Política de Privacidade**, com aceite obrigatório na criação da conta |
 | 4 | Detecção de idioma | Pelo **idioma do sistema** da pessoa (pré-seleção do idioma nativo no onboarding); sem detecção no servidor |
 | 5 | Editar / excluir mensagens | **Fora do escopo** por enquanto |
@@ -1466,7 +1503,7 @@ services:
 
 ### 34.2 Ainda em aberto
 
-1. Qual IA é a primária e quais modelos usar em cada plano.
+1. Quais modelos usar em cada plano.
 2. Provedor e região da VPS; domínio.
 3. Texto jurídico dos Termos e da Política (idealmente revisado por alguém da área).
 4. Provedor de e-mail transacional (SMTP) para verificação de e-mail e redefinição de senha.

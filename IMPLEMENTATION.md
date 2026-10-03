@@ -334,11 +334,17 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [ ] Implementações HTTP no frontend (`httpChatService`, `httpProfileService`, …) + mappers DTO → domínio, selecionadas em `lib/env.ts`
 
 ### Tradução (Claude + ChatGPT pelos planos)
-- [ ] Interface `Translator` + `ClaudeCliTranslator` (`claude -p … --output-format json`) + `CodexCliTranslator` (`codex exec …`) + `FallbackTranslator`
+- [ ] Interface `Translator` (exceções de login, cota e transitória) + `CodexCliTranslator` (ChatGPT, **principal**) + `ClaudeCliTranslator` (**reserva**) + `FallbackTranslator`
 - [ ] Confirmar as flags de cada CLI, a seleção de modelo e o modo sem ferramentas (somente texto)
 - [ ] Fila `translation_jobs` (SKIP LOCKED) + workers com concorrência limitada, timeout e retry com backoff
+- [ ] Estado `waiting_provider`: jobs aguardam sem gastar tentativas quando os dois provedores estão sem login ou sem cota; retomada automática quando um volta
+- [ ] `ai_provider_status` (ok / needs_reauth / reauth_pending / cooling_down) + roteamento direto para o Claude enquanto o ChatGPT estiver indisponível
+- [ ] Reautenticação automática (refresh em segundo plano) e assistida (login por link/código + aviso ao admin por e-mail e notificação)
+- [ ] Token de longa duração do Claude (`claude setup-token`) e credenciais persistidas do Codex
+- [ ] Painel `/admin/ai` (role admin): estado dos provedores, fila em espera, última falha, botão Reauthenticate
+- [ ] Teste: derrubar o login do ChatGPT → as traduções seguem pelo Claude; derrubar os dois → nada se perde e tudo é traduzido após a reautenticação
 - [ ] Prompt com contexto (últimas N mensagens, idioma provável) e saída JSON `{ natural, literal }` validada
-- [ ] Health check das duas CLIs no Actuator
+- [ ] Health check leve das duas CLIs no Actuator + aviso antecipado de login prestes a expirar
 - [ ] Desativar o uso de dados para treinamento nas contas Claude e ChatGPT
 - [ ] Revisar os termos das assinaturas antes de abrir o app para mais pessoas (R14)
 
@@ -359,7 +365,8 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 **Done when**
 - [ ] Todos os fluxos das Phases 2–7 funcionam contra o backend real **sem alterações em componentes ou hooks**
 - [ ] Login com Google, Facebook e email/senha funciona em produção, com aceite de termos registrado
-- [ ] Mensagens são traduzidas pelo Claude e, com o Claude indisponível, pelo ChatGPT
+- [ ] Mensagens são traduzidas pelo ChatGPT e, com o ChatGPT indisponível, pelo Claude
+- [ ] Com as duas IAs sem login, nenhuma mensagem ou tradução se perde, e a fila é processada assim que uma delas é reautenticada
 - [ ] Nenhum segredo no bundle do frontend (verificado no build)
 - [ ] Testes de autorização impedem acesso a conversas de terceiros
 
