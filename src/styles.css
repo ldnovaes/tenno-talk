@@ -61,39 +61,40 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Telegram light palette: #F0F2F5 surfaces, #229ED9 primary, #17212B text */
 :root {
-  --radius: 1rem;
-  --background: oklch(0.14 0.025 250);
-  --foreground: oklch(0.96 0.01 230);
-  --card: oklch(0.2 0.03 250 / 55%);
-  --card-foreground: oklch(0.96 0.01 230);
-  --popover: oklch(0.18 0.03 250);
-  --popover-foreground: oklch(0.96 0.01 230);
-  --primary: oklch(0.8 0.13 210);
-  --primary-foreground: oklch(0.15 0.03 250);
-  --secondary: oklch(0.24 0.035 250 / 60%);
-  --secondary-foreground: oklch(0.92 0.015 230);
-  --muted: oklch(0.22 0.03 250 / 60%);
-  --muted-foreground: oklch(0.68 0.03 240);
-  --accent: oklch(0.7 0.15 235);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.65 0.2 25);
+  --radius: 0.75rem;
+  --background: oklch(0.955 0.006 240);
+  --foreground: oklch(0.24 0.02 245);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.02 245);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.02 245);
+  --primary: oklch(0.64 0.13 237);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0.004 240);
+  --secondary-foreground: oklch(0.24 0.02 245);
+  --muted: oklch(0.955 0.006 240);
+  --muted-foreground: oklch(0.55 0.02 245);
+  --accent: oklch(0.75 0.1 235);
+  --accent-foreground: oklch(0.24 0.02 245);
+  --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.78 0.17 155);
-  --border: oklch(0.85 0.05 220 / 12%);
-  --input: oklch(0.85 0.05 220 / 14%);
-  --ring: oklch(0.8 0.13 210);
-  --chart-1: oklch(0.8 0.13 210); --chart-2: oklch(0.7 0.15 235); --chart-3: oklch(0.78 0.17 155); --chart-4: oklch(0.75 0.12 300); --chart-5: oklch(0.8 0.12 60);
-  --sidebar: oklch(0.16 0.028 250 / 70%);
-  --sidebar-foreground: oklch(0.96 0.01 230);
-  --sidebar-primary: oklch(0.8 0.13 210);
-  --sidebar-primary-foreground: oklch(0.15 0.03 250);
-  --sidebar-accent: oklch(0.26 0.04 245 / 60%);
-  --sidebar-accent-foreground: oklch(0.96 0.01 230);
-  --sidebar-border: oklch(0.85 0.05 220 / 10%);
-  --sidebar-ring: oklch(0.8 0.13 210);
-  --glow: 0 0 24px -4px color-mix(in oklab, var(--primary) 55%, transparent);
-  --gradient-send: linear-gradient(135deg, var(--primary), var(--accent));
+  --success: oklch(0.7 0.15 155);
+  --border: oklch(0.88 0.01 240);
+  --input: oklch(0.955 0.006 240);
+  --ring: oklch(0.64 0.13 237);
+  --chart-1: oklch(0.64 0.13 237); --chart-2: oklch(0.75 0.1 235); --chart-3: oklch(0.7 0.15 155); --chart-4: oklch(0.75 0.12 300); --chart-5: oklch(0.8 0.12 60);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.24 0.02 245);
+  --sidebar-primary: oklch(0.64 0.13 237);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.955 0.006 240);
+  --sidebar-accent-foreground: oklch(0.24 0.02 245);
+  --sidebar-border: oklch(0.88 0.01 240);
+  --sidebar-ring: oklch(0.64 0.13 237);
+  --glow: 0 4px 14px -6px color-mix(in oklab, var(--primary) 40%, transparent);
+  --gradient-send: linear-gradient(135deg, oklch(0.66 0.12 235), var(--primary));
 }
 
 @theme inline {
@@ -105,17 +106,12 @@
 
 @utility glass {
   background: var(--card);
-  backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--border);
-  box-shadow: 0 10px 40px -12px oklch(0 0 0 / 50%);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 8%);
 }
 @utility bg-send { background-image: var(--gradient-send); }
 @utility app-bg {
-  background:
-    radial-gradient(60% 50% at 20% 10%, oklch(0.35 0.1 240 / 55%), transparent 70%),
-    radial-gradient(50% 45% at 85% 80%, oklch(0.4 0.11 205 / 40%), transparent 70%),
-    radial-gradient(40% 40% at 60% 30%, oklch(0.3 0.12 265 / 35%), transparent 70%),
-    var(--background);
+  background: var(--background);
 }
 @keyframes dot { 0%,80%,100% { opacity:.25; transform:translateY(0) } 40% { opacity:1; transform:translateY(-3px) } }
 @utility typing-dot { animation: dot 1.2s infinite ease-in-out; }
