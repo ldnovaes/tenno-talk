@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="description" content="Talk to anyone. In your own language." />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <title>TENNO TALK</title>
+    <script>
+      // Apply the persisted theme before first paint to avoid a flash (PLAN.md §18).
+      (function () {
+        try {
+          var stored = JSON.parse(localStorage.getItem("tenno.device-preferences") || "null");
+          var theme = (stored && stored.state && stored.state.theme) || "system";
+          var dark =
+            theme === "dark" ||
+            (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#17212B" : "#FFFFFF");
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

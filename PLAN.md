@@ -107,7 +107,7 @@ Backend real, push notifications, chamadas de voz/vídeo, gravação de áudio, 
 |---|---|---|
 | Build | **Vite** | SPA pura (sem SSR). |
 | UI | **React 19** + **TypeScript** estrito | Mantemos as flags estritas atuais (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`…). |
-| Roteamento | **React Router v7**, modo declarativo | `BrowserRouter` + `<Routes>`. Facilita o padrão de *overlay routes* (ver §8). Dados ficam no TanStack Query, então não usamos loaders do router. |
+| Roteamento | **React Router v8**, modo declarativo | `BrowserRouter` + `<Routes>`. Facilita o padrão de *overlay routes* (ver §8). Dados ficam no TanStack Query, então não usamos loaders do router. |
 | Estilo | **Tailwind CSS v4** | Configuração CSS-first (`@theme`), tokens em CSS variables. |
 | Componentes | **shadcn/ui** (new-york) + Radix | Já presentes no repositório; reaproveitamos. |
 | Ícones | **lucide-react** | |
@@ -268,7 +268,8 @@ src/
 │     ├─ AppRoutes.tsx           # <Routes> principal + overlay routes
 │     ├─ paths.ts                # construtores de URL tipados
 │     ├─ guards.tsx              # RequireAuth, RequireOnboarded, RedirectIfAuthed
-│     └─ overlay.tsx             # useOverlayNavigate, OverlayLink, useBackgroundLocation
+│     ├─ overlay.ts              # useOverlayNavigate, useBackgroundLocation, useCloseOverlay
+│     └─ OverlayLink.tsx
 ├─ components/
 │  ├─ ui/                        # shadcn gerado
 │  └─ common/                    # UI genérica do produto
@@ -1243,7 +1244,7 @@ O detalhamento (checklist) está no [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ## 25. Arquitetura de backend
 
-**Stack:** Java 21 + Spring Boot 3 (Web MVC, Security, OAuth2 Client, WebSocket, Validation, Data JPA), PostgreSQL 16, Flyway, Maven. Tudo roda numa **única VPS** junto com o frontend (§32).
+**Stack:** Java 21 + Spring Boot 4 (Web MVC, Security, OAuth2 Client, WebSocket, Validation, Data JPA), PostgreSQL 16, Flyway, Maven. Tudo roda numa **única VPS** junto com o frontend (§32).
 
 ```
 Navegador (SPA)
@@ -1490,7 +1491,7 @@ services:
 
 | # | Tema | Decisão |
 |---|---|---|
-| 1 | Backend | **Java** (Spring Boot 3, Java 21) + PostgreSQL |
+| 1 | Backend | **Java** (Spring Boot 4, Java 21) + PostgreSQL |
 | 2 | Provedores de IA | **ChatGPT (principal) + Claude (reserva, só quando o ChatGPT falha)**, pelos **planos de assinatura** (CLIs oficiais), não pela API. Falha de login dispara reautenticação, e nada do que foi enviado se perde (§28.3) |
 | 3 | Privacidade / LGPD | Nos **Termos de Uso e Política de Privacidade**, com aceite obrigatório na criação da conta |
 | 4 | Detecção de idioma | Pelo **idioma do sistema** da pessoa (pré-seleção do idioma nativo no onboarding); sem detecção no servidor |

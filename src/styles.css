@@ -5,18 +5,21 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * TENNO TALK design tokens (PLAN.md §5).
  *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * Palette inspired by Telegram, tuned for WCAG AA contrast. Values are oklch;
+ * the hex reference is kept in comments. Components must only use the
+ * semantic utilities generated from @theme (bg-primary, text-muted-foreground,
+ * bg-bubble-out…), never raw colors.
  */
+
+@theme {
+  --breakpoint-md: 48rem; /* 768px  tablet */
+  --breakpoint-lg: 64rem; /* 1024px desktop */
+  --breakpoint-xl: 90rem; /* 1440px large desktop */
+
+  --font-sans: "Inter Variable", system-ui, "Noto Sans", "Segoe UI", sans-serif;
+}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -24,14 +27,14 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-card-foreground: var(--foreground);
   --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -45,85 +48,183 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chat-bg: var(--chat-bg);
+  --color-bubble-in: var(--bubble-in);
+  --color-bubble-out: var(--bubble-out);
+  --color-bubble-meta: var(--bubble-meta);
+  --color-bubble-meta-out: var(--bubble-meta-out);
+  --color-online: var(--online);
+  --color-unread: var(--unread);
+  --color-unread-muted: var(--unread-muted);
+  --color-overlay-scrim: var(--overlay-scrim);
+
+  /* Initials avatars (white text, AA on every swatch). */
+  --color-avatar-1: oklch(0.56 0.17 25);
+  --color-avatar-2: oklch(0.56 0.13 60);
+  --color-avatar-3: oklch(0.52 0.13 150);
+  --color-avatar-4: oklch(0.52 0.12 200);
+  --color-avatar-5: oklch(0.52 0.15 255);
+  --color-avatar-6: oklch(0.52 0.17 300);
+  --color-avatar-7: oklch(0.55 0.17 350);
 }
 
-/* Telegram light palette: #F0F2F5 surfaces, #229ED9 primary, #17212B text */
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.955 0.006 240);
-  --foreground: oklch(0.24 0.02 245);
+
+  --background: oklch(1 0 0); /* #FFFFFF */
+  --foreground: oklch(0.188 0.013 248.5); /* #0F1419 */
+  --surface: oklch(0.979 0.003 264.5); /* #F7F8FA */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.02 245);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.02 245);
-  --primary: oklch(0.64 0.13 237);
+  --primary: oklch(0.559 0.15 253.4); /* #2675C9 */
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0.004 240);
-  --secondary-foreground: oklch(0.24 0.02 245);
-  --muted: oklch(0.955 0.006 240);
-  --muted-foreground: oklch(0.55 0.02 245);
-  --accent: oklch(0.75 0.1 235);
-  --accent-foreground: oklch(0.24 0.02 245);
-  --destructive: oklch(0.6 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.7 0.15 155);
-  --border: oklch(0.88 0.01 240);
-  --input: oklch(0.955 0.006 240);
-  --ring: oklch(0.64 0.13 237);
-  --chart-1: oklch(0.64 0.13 237); --chart-2: oklch(0.75 0.1 235); --chart-3: oklch(0.7 0.15 155); --chart-4: oklch(0.75 0.12 300); --chart-5: oklch(0.8 0.12 60);
-  --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.24 0.02 245);
-  --sidebar-primary: oklch(0.64 0.13 237);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.955 0.006 240);
-  --sidebar-accent-foreground: oklch(0.24 0.02 245);
-  --sidebar-border: oklch(0.88 0.01 240);
-  --sidebar-ring: oklch(0.64 0.13 237);
-  --glow: 0 4px 14px -6px color-mix(in oklab, var(--primary) 40%, transparent);
-  --gradient-send: linear-gradient(135deg, oklch(0.66 0.12 235), var(--primary));
+  --secondary: oklch(0.963 0.003 247.9); /* #F1F3F5 */
+  --secondary-foreground: oklch(0.188 0.013 248.5);
+  --muted: oklch(0.963 0.003 247.9);
+  --muted-foreground: oklch(0.546 0.012 248); /* #6B7177 */
+  --accent: oklch(0.96 0.017 250.8); /* #EAF3FD */
+  --accent-foreground: oklch(0.483 0.131 253.7); /* #1D5FA6 */
+  --destructive: oklch(0.578 0.206 29); /* #D93025 */
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.927 0.005 247.9); /* #E4E7EA */
+  --input: oklch(0.908 0.007 247.9); /* #DDE1E5 */
+  --ring: oklch(0.559 0.15 253.4);
+
+  --chat-bg: oklch(0.959 0.006 239.8); /* #EEF2F5 */
+  --bubble-in: oklch(1 0 0); /* #FFFFFF */
+  --bubble-out: oklch(0.952 0.024 248.1); /* #E3F1FF */
+  --bubble-meta: oklch(0.503 0.032 248.5); /* #566676 */
+  --bubble-meta-out: oklch(0.503 0.032 248.5);
+  --online: oklch(0.671 0.161 143.3); /* #4FAE4E */
+  --unread: oklch(0.559 0.15 253.4);
+  --unread-muted: oklch(0.75 0.012 243.7); /* #A8AFB5 */
+  --overlay-scrim: oklch(0 0 0 / 25%);
 }
 
-@theme inline {
-  --color-success: var(--success);
-  --font-display: "Sora", sans-serif;
-  --font-sans: "Manrope", sans-serif;
-  --shadow-glow: var(--glow);
-}
+.dark {
+  --background: oklch(0.243 0.024 248.8); /* #17212B */
+  --foreground: oklch(0.97 0 0); /* #F5F5F5 */
+  --surface: oklch(0.268 0.027 251); /* #1C2733 */
+  --card: oklch(0.287 0.032 249); /* #1E2C3A */
+  --popover: oklch(0.287 0.032 249);
+  --primary: oklch(0.718 0.123 249.9); /* #64A9EE */
+  --primary-foreground: oklch(0.198 0.025 256.5); /* #0E1621 */
+  --secondary: oklch(0.297 0.03 254.7); /* #232E3C */
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.284 0.025 248.7); /* #202B36 */
+  --muted-foreground: oklch(0.667 0.032 251.4); /* #8696A8 */
+  --accent: oklch(0.326 0.046 250.5); /* #22364B */
+  --accent-foreground: oklch(0.795 0.092 247.6); /* #8CC2F5 */
+  --destructive: oklch(0.687 0.165 25.8); /* #EF6B63 */
+  --destructive-foreground: oklch(0.198 0.025 256.5);
+  --border: oklch(0.209 0.025 249.1); /* #0F1923 */
+  --input: oklch(0.342 0.034 250.5); /* #2B3A4A */
+  --ring: oklch(0.718 0.123 249.9);
 
-@utility glass {
-  background: var(--card);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 3px oklch(0 0 0 / 8%);
+  --chat-bg: oklch(0.198 0.025 256.5); /* #0E1621 */
+  --bubble-in: oklch(0.259 0.032 250.9); /* #182533 */
+  --bubble-out: oklch(0.428 0.078 249.5); /* #2B5278 */
+  --bubble-meta: oklch(0.667 0.032 251.4); /* #8696A8 */
+  --bubble-meta-out: oklch(0.818 0.055 249.4); /* #A9C7E6 */
+  --online: oklch(0.729 0.172 143.4); /* #5BC25A */
+  --unread: oklch(0.718 0.123 249.9);
+  --unread-muted: oklch(0.437 0.045 248.9); /* #3E546A */
+  --overlay-scrim: oklch(0 0 0 / 45%);
 }
-@utility bg-send { background-image: var(--gradient-send); }
-@utility app-bg {
-  background: var(--background);
-}
-@keyframes dot { 0%,80%,100% { opacity:.25; transform:translateY(0) } 40% { opacity:1; transform:translateY(-3px) } }
-@utility typing-dot { animation: dot 1.2s infinite ease-in-out; }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Viewport helpers for the mobile shell (PLAN.md §6.2). */
+@utility h-app {
+  height: 100dvh;
+}
+@utility min-h-app {
+  min-height: 100dvh;
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Scrim behind the right side panel: blur with a no-blur fallback (R9). */
+@utility scrim-blur {
+  background-color: var(--overlay-scrim);
+  backdrop-filter: blur(6px);
+  @media (prefers-reduced-transparency: reduce) {
+    backdrop-filter: none;
+  }
+}
+
+@keyframes typing-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+@utility animate-typing-dot {
+  animation: typing-dot 1.2s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@utility text-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 0%,
+    color-mix(in oklab, currentColor 35%, transparent) 50%,
+    currentColor 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    -webkit-text-fill-color: currentColor;
   }
 }

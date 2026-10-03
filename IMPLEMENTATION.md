@@ -21,67 +21,69 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 ## Phase 1 — Foundation
 
 ### Migração do template
-- [ ] Remover o TanStack Start/Lovable: `src/server.ts`, `src/start.ts`, `src/router.tsx`, `src/routes/`, `src/routeTree.gen.ts`, `.lovable/`, `src/lib/error-capture.ts`, `src/lib/error-page.ts`, `src/lib/lovable-error-reporting.ts`
-- [ ] Remover dependências: `@tanstack/react-start`, `@tanstack/react-router`, `@tanstack/router-plugin`, `@lovable.dev/vite-tanstack-config`, `nitro`, overrides de `rolldown` (se não forem mais necessários)
-- [ ] Remover componentes shadcn não utilizados (calendar, chart, menubar, navigation-menu, input-otp, resizable, breadcrumb, pagination, carousel se substituído…) e suas deps (recharts, react-day-picker…)
-- [ ] Atualizar o README (como rodar, link para PLAN/IMPLEMENTATION)
+- [x] Remover o TanStack Start/Lovable: `src/server.ts`, `src/start.ts`, `src/router.tsx`, `src/routes/`, `src/routeTree.gen.ts`, `.lovable/`, `src/lib/error-capture.ts`, `src/lib/error-page.ts`, `src/lib/lovable-error-reporting.ts`
+- [x] Remover dependências: `@tanstack/react-start`, `@tanstack/react-router`, `@tanstack/router-plugin`, `@lovable.dev/vite-tanstack-config`, `nitro`, overrides de `rolldown` (se não forem mais necessários)
+- [x] Remover componentes shadcn não utilizados (calendar, chart, menubar, navigation-menu, input-otp, resizable, breadcrumb, pagination, carousel…) e suas deps (recharts, react-day-picker…)
+- [x] Atualizar o README (como rodar, link para PLAN/IMPLEMENTATION)
 
 ### Vite + TypeScript
-- [ ] `index.html` com meta viewport (`viewport-fit=cover, interactive-widget=resizes-content`), `theme-color` e script inline de tema (sem flash)
-- [ ] `src/main.tsx` com `createRoot`
-- [ ] `vite.config.ts` com `@vitejs/plugin-react`, `@tailwindcss/vite`, alias `@` → `src`
-- [ ] Manter o `tsconfig.json` estrito (incluindo `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)
-- [ ] Scripts: `dev`, `build`, `preview`, `lint`, `typecheck` (`tsc --noEmit`), `test`, `format`
-- [ ] ESLint + Prettier funcionando; regra contra `any` explícito (`@typescript-eslint/no-explicit-any: error`)
-- [ ] `lib/env.ts` com leitura tipada de `import.meta.env`
+- [x] `index.html` com meta viewport (`viewport-fit=cover, interactive-widget=resizes-content`), `theme-color` e script inline de tema (sem flash)
+- [x] `src/main.tsx` com `createRoot`
+- [x] `vite.config.ts` com `@vitejs/plugin-react`, `@tailwindcss/vite`, alias `@` → `src`
+- [x] Manter o `tsconfig.json` estrito (incluindo `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`)
+- [x] Scripts: `dev`, `build`, `preview`, `lint`, `typecheck` (`tsc --noEmit`), `test`, `format`
+- [x] ESLint + Prettier funcionando; regra contra `any` explícito (`@typescript-eslint/no-explicit-any: error`)
+- [x] `lib/env.ts` com leitura tipada de `import.meta.env`
 
 ### Design system
-- [ ] `styles.css`: tokens Telegram light/dark em oklch (§5.1), tokens novos (`chat-bg`, `bubble-in/out`, `bubble-meta`, `online`, `unread`, `unread-muted`, `overlay-scrim`) registrados em `@theme inline`
-- [ ] Remover utilitários futuristas do protótipo (`glass`, `bg-send`, `app-bg`, `shadow-glow`)
-- [ ] Breakpoints `md` 768, `lg` 1024, `xl` 1440
-- [ ] Fonte Inter Variable (`@fontsource-variable/inter`) + fallbacks
-- [ ] Validar o contraste AA dos pares de tokens principais nos dois temas
-- [ ] Ajustar `components.json` (caminho do CSS, base color)
+- [x] `styles.css`: tokens Telegram light/dark em oklch (§5.1), tokens novos (`chat-bg`, `bubble-in/out`, `bubble-meta`, `online`, `unread`, `unread-muted`, `overlay-scrim`) registrados em `@theme inline`
+- [x] Remover utilitários futuristas do protótipo (`glass`, `bg-send`, `app-bg`, `shadow-glow`)
+- [x] Breakpoints `md` 768, `lg` 1024, `xl` 1440
+- [x] Fonte Inter Variable (`@fontsource-variable/inter`) + fallbacks
+- [x] Validar o contraste AA dos pares de tokens principais nos dois temas
+- [x] Ajustar `components.json` (caminho do CSS, base color)
 
 ### Infra de app
-- [ ] `app/queryClient.ts` com defaults (§11.3) e `onError` global → toast
-- [ ] `lib/errors.ts` (`AppError`, `toAppError`)
-- [ ] `app/i18n.ts` (i18next + react-i18next, `en`, namespaces por feature)
-- [ ] `stores/devicePreferencesStore.ts` (tema, persistido) + `ThemeProvider` (light/dark/system)
-- [ ] `AppProviders` (Query, Theme, i18n, Tooltip, Toaster/sonner, ErrorBoundary raiz)
-- [ ] Hooks genéricos: `useMediaQuery`, `useBreakpoint` (substitui `use-mobile.tsx`)
+- [x] `app/queryClient.ts` com defaults (§11.3) e `onError` global → toast
+- [x] `lib/errors.ts` (`AppError`, `toAppError`)
+- [x] `app/i18n.ts` (i18next + react-i18next, `en`, namespaces por feature)
+- [x] `stores/devicePreferencesStore.ts` (tema, persistido) + `ThemeProvider` (light/dark/system)
+- [x] `AppProviders` (Query, Theme, i18n, Tooltip, Toaster/sonner, ErrorBoundary raiz)
+- [x] Hooks genéricos: `useMediaQuery`, `useBreakpoint` (substitui `use-mobile.tsx`)
 
 ### Roteamento e layouts
-- [ ] React Router v7 (modo declarativo) com `AppRoutes` e todas as rotas do §8 como placeholders lazy
-- [ ] `paths.ts` com construtores de URL
-- [ ] Overlay routes: `useOverlayNavigate`, `OverlayLink`, renderização com `backgroundLocation`, fallback `/chats` em deep link no desktop
-- [ ] Guards (placeholders até a Phase 2): `RequireAuth`, `RequireOnboarded`, `RedirectIfAuthed`
-- [ ] `AppShell` + `NavigationRail` (md+) + `BottomNav` (mobile, com o botão Create central)
-- [ ] `ChatLayout` (lista + Outlet; mobile alterna entre lista e conversa)
-- [ ] `ContentColumn` (Discover/Feed/Notifications)
-- [ ] `SidePanel` (Sheet à direita + scrim com blur + fallback sem blur)
-- [ ] `RouteErrorBoundary` + `NotFoundPage`
-- [ ] Safe areas e `100dvh` aplicados no shell
+- [x] React Router v7 (modo declarativo) com `AppRoutes` e todas as rotas do §8 como placeholders lazy
+- [x] `paths.ts` com construtores de URL
+- [x] Overlay routes: `useOverlayNavigate`, `OverlayLink`, renderização com `backgroundLocation`, fallback `/chats` em deep link no desktop
+- [x] Guards (placeholders até a Phase 2): `RequireAuth`, `RequireOnboarded`, `RedirectIfAuthed`
+- [x] `AppShell` + `NavigationRail` (md+) + `BottomNav` (mobile, com o botão Create central)
+- [x] `ChatLayout` (lista + Outlet; mobile alterna entre lista e conversa)
+- [x] `ContentColumn` (Discover/Feed/Notifications)
+- [x] `SidePanel` (Sheet à direita + scrim com blur + fallback sem blur)
+- [x] `RouteErrorBoundary` + `NotFoundPage`
+- [x] Safe areas e `100dvh` aplicados no shell
 
 ### Domínio e mocks (base)
-- [ ] `src/types/*` conforme o §12
-- [ ] `lib/languages.ts` (catálogo com nome nativo, dir, país padrão) + `lib/countries.ts`
-- [ ] `services/mock/db.ts` (store + persistência versionada + reset) e `latency.ts`
-- [ ] `lib/ids.ts` (`createClientId`)
+- [x] `src/types/*` conforme o §12
+- [x] `lib/languages.ts` (catálogo com nome nativo, dir, país padrão) + `lib/countries.ts`
+- [x] `services/mock/db.ts` (store + persistência versionada + reset) e `latency.ts`
+- [x] `lib/ids.ts` (`createClientId`)
 
 ### Componentes comuns
-- [ ] `UserAvatar`, `EmptyState`, `ErrorState`, `PageHeader`, `RelativeTime`, `CountryFlag`, `LanguageLabel`, `InfiniteScrollTrigger`
+- [x] `UserAvatar`, `EmptyState`, `ErrorState`, `PageHeader`, `RelativeTime`, `CountryFlag`, `LanguageLabel`, `InfiniteScrollTrigger`
 
 ### Testes
-- [ ] Substituir o teste de routing do TanStack por testes de rotas do React Router (rota conhecida renderiza a página; desconhecida → NotFound)
-- [ ] Teste do `ThemeProvider` (system → dark/light)
+- [x] Substituir o teste de routing do TanStack por testes de rotas do React Router (rota conhecida renderiza a página; desconhecida → NotFound)
+- [x] Teste do `ThemeProvider` (system → dark/light)
+
+> Notas: React Router **8** (versão estável atual; mesma API declarativa do v7). Guards são pass-through até a Phase 2. Screenshots conferidos em 390px e 1280px, nos dois temas.
 
 **Done when**
-- [ ] `bun run dev`, `build`, `lint`, `typecheck` e `test` passam sem erros
-- [ ] É possível navegar entre todas as rotas placeholder em 360px, 768px, 1024px e 1440px
-- [ ] Mobile mostra a bottom nav; md+ mostra o rail; perfil/settings abrem no SidePanel em md+ e como página no mobile
-- [ ] Alternar light/dark/system funciona e não há flash de tema no reload
-- [ ] Nenhuma referência restante a TanStack Start/Lovable no código
+- [x] `bun run dev`, `build`, `lint`, `typecheck` e `test` passam sem erros
+- [x] É possível navegar entre todas as rotas placeholder em 360px, 768px, 1024px e 1440px
+- [x] Mobile mostra a bottom nav; md+ mostra o rail; perfil/settings abrem no SidePanel em md+ e como página no mobile
+- [x] Alternar light/dark/system funciona e não há flash de tema no reload
+- [x] Nenhuma referência restante a TanStack Start/Lovable no código
 
 ---
 

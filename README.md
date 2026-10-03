@@ -1,24 +1,23 @@
-# Pixel Perfect
+# TENNO TALK
 
-Implement exactly the screenshot and nothing else
+Talk to anyone. In your own language.
 
-This project was built with [Lovable](https://lovable.dev).
+Chat social com tradução automática por IA: cada pessoa escreve no próprio idioma e lê no idioma que escolheu. O original nunca se perde.
 
-## Build with Lovable
+- Arquitetura e decisões: [PLAN.md](PLAN.md)
+- Checklist de desenvolvimento: [IMPLEMENTATION.md](IMPLEMENTATION.md)
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/c7c7b25e-f9c3-4400-9442-775f2664dc2d).
+## Frontend
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requisitos: [Bun](https://bun.sh) 1.3+ (ou Node 22+ com npm).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev        # http://localhost:5173
+bun run test       # Vitest
+bun run lint
+bun run typecheck
+bun run build
 ```
+
+Por padrão o frontend usa a camada de mock (`VITE_DATA_SOURCE=mock`).
