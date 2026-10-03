@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "@/components/common/PlaceholderScreen";
+import { LegalDocument } from "@/components/common/LegalDocument";
 
 export default function PrivacyPage() {
-  return <PlaceholderScreen name="Privacy" />;
+  return <LegalDocument document="privacy" />;
 }

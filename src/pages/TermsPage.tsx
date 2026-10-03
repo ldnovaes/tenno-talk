@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "@/components/common/PlaceholderScreen";
+import { LegalDocument } from "@/components/common/LegalDocument";
 
 export default function TermsPage() {
-  return <PlaceholderScreen name="Terms" />;
+  return <LegalDocument document="terms" />;
 }

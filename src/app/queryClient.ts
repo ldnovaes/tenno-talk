@@ -2,6 +2,7 @@ import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { toAppError } from "@/lib/errors";
+import { useSessionStore } from "@/stores/sessionStore";
 
 declare module "@tanstack/react-query" {
   interface Register {
@@ -11,7 +12,13 @@ declare module "@tanstack/react-query" {
 }
 
 function notify(error: unknown) {
-  toast.error(toAppError(error).message);
+  const appError = toAppError(error);
+  if (appError.code === "unauthenticated") {
+    // Session expired on the server: guards send the user back to /welcome.
+    useSessionStore.getState().setSession(null);
+    return;
+  }
+  toast.error(appError.message);
 }
 
 /** Global error handling: simple errors become toasts (PLAN.md §11.3, §19). */
@@ -19,6 +26,7 @@ export function createQueryClient(): QueryClient {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
+        if (toAppError(error).code === "unauthenticated") return notify(error);
         // Only toast background refetch failures; first-load failures render an ErrorState.
         if (query.meta?.silent || query.state.data === undefined) return;
         notify(error);

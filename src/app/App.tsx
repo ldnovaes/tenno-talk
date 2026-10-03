@@ -1,12 +1,15 @@
-import { AppShell } from "@/layouts/AppShell";
+import { SessionGate } from "@/features/auth/components/SessionGate";
 
 import { AppProviders } from "./providers/AppProviders";
 import { AppRoutes } from "./router/AppRoutes";
+import { ShellRoute } from "./router/ShellRoute";
 
 export function App() {
   return (
     <AppProviders>
-      <AppRoutes shell={<AppShell data={{ me: null, badges: {} }} />} />
+      <SessionGate>
+        <AppRoutes shell={<ShellRoute />} />
+      </SessionGate>
     </AppProviders>
   );
 }

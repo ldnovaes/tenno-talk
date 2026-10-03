@@ -69,13 +69,21 @@ function isKnownFlag(code: string): code is keyof typeof FLAGS {
   return code in FLAGS;
 }
 
-export function CountryFlag({ code, className }: { code: CountryCode; className?: string }) {
+interface CountryFlagProps {
+  code: CountryCode;
+  className?: string;
+  /** Hide from assistive tech when the country name is already written next to it. */
+  decorative?: boolean;
+}
+
+export function CountryFlag({ code, className, decorative = false }: CountryFlagProps) {
   if (!isKnownFlag(code)) return null;
   const Flag = FLAGS[code];
   return (
     <Flag
-      role="img"
-      aria-label={getCountryName(code)}
+      {...(decorative
+        ? { "aria-hidden": true }
+        : { role: "img", "aria-label": getCountryName(code) })}
       className={cn("inline-block h-3 w-[18px] shrink-0 rounded-[2px] shadow-sm", className)}
     />
   );

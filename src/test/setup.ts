@@ -4,7 +4,9 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
 import "@/app/i18n";
+import { mockDb } from "@/services/mock/db";
 import { resetMockConfig, setMockConfig } from "@/services/mock/latency";
+import { useSessionStore } from "@/stores/sessionStore";
 
 /** Viewport used by matchMedia in tests. Override with setViewportWidth(). */
 let viewportWidth = 375;
@@ -43,6 +45,10 @@ Object.defineProperty(window, "matchMedia", {
 
 Object.defineProperty(window, "scrollTo", { writable: true, value: () => {} });
 Element.prototype.scrollIntoView = function scrollIntoView() {};
+// Radix (Select, Slider…) relies on pointer capture APIs missing in jsdom.
+Element.prototype.hasPointerCapture = () => false;
+Element.prototype.setPointerCapture = () => {};
+Element.prototype.releasePointerCapture = () => {};
 
 class ResizeObserverStub {
   observe() {}
@@ -56,6 +62,8 @@ beforeEach(() => {
   prefersDark = false;
   localStorage.clear();
   sessionStorage.clear();
+  mockDb.reset();
+  useSessionStore.setState({ status: "unknown", userId: null });
   setMockConfig({
     minLatencyMs: 0,
     maxLatencyMs: 0,

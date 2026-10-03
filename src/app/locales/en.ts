@@ -41,6 +41,188 @@ export const en = {
     notFoundDescription: "The page you're looking for doesn't exist or has been moved.",
     goHome: "Go home",
   },
+  auth: {
+    welcomeTitle: "Talk to anyone. In your own language.",
+    welcomeSubtitle:
+      "Write the way you speak. Your friends read it in theirs — automatically, with the original always one tap away.",
+    continueWithGoogle: "Continue with Google",
+    continueWithFacebook: "Continue with Facebook",
+    continueWithEmail: "Continue with email",
+    or: "or",
+    demoTitle: "Try a demo account",
+    demoDescription: "See the same conversation from both sides.",
+    demoAs: "Sign in as {{name}}",
+    legalNotice:
+      "By continuing you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>.",
+    signInTitle: "Sign in",
+    signInSubtitle: "Welcome back.",
+    signUpTitle: "Create your account",
+    signUpSubtitle: "It takes less than a minute.",
+    email: "Email",
+    password: "Password",
+    confirmPassword: "Confirm password",
+    signIn: "Sign in",
+    signUp: "Create account",
+    noAccount: "Don't have an account? <link>Create one</link>",
+    haveAccount: "Already have an account? <link>Sign in</link>",
+    signOut: "Sign out",
+    validation: {
+      email: "Enter a valid email address.",
+      passwordLength: "Use at least 8 characters.",
+      passwordsMatch: "Passwords don't match.",
+    },
+    demoBubbleOriginal: "Estou com saudade de você.",
+    demoBubbleTranslated: "Em nhớ anh.",
+    demoBubbleCaption: "Lucas writes in Portuguese · Cam reads in Vietnamese",
+  },
+  onboarding: {
+    stepOf: "Step {{current}} of {{total}}",
+    welcome: {
+      title: "Welcome to TENNO TALK",
+      description:
+        "Write in your language. The person you talk to reads it in theirs. The original message is always kept.",
+      aiNotice:
+        "To translate, messages are processed by third-party AI services (OpenAI ChatGPT and Anthropic Claude).",
+      accept:
+        "I have read and agree to the <terms>Terms of Use</terms> and the <privacy>Privacy Policy</privacy>.",
+      acceptRequired: "You need to accept the Terms of Use and Privacy Policy to continue.",
+    },
+    native: {
+      title: "What language do you write in?",
+      description: "This is the language of your messages. Others will receive them translated.",
+      detected: "Detected from your device",
+    },
+    receive: {
+      title: "Receive messages in…",
+      description: "Messages from other people will be translated to this language.",
+      preview: "Messages will appear in {{language}}",
+    },
+    profile: {
+      title: "Create your profile",
+      description: "This is how people will find you.",
+      displayName: "Name",
+      username: "Username",
+      usernameHint: "3–20 characters: letters, numbers, “_” and “.”.",
+      usernameAvailable: "Username available",
+      usernameChecking: "Checking…",
+      bio: "Bio",
+      bioOptional: "Optional",
+      country: "Country",
+      countryPlaceholder: "Select your country",
+      avatar: "Profile photo",
+      changeAvatar: "Change photo",
+      removeAvatar: "Remove photo",
+    },
+    discover: {
+      title: "People you might like",
+      description: "Follow people from other countries. You can always find more in Discover.",
+      start: "Start chatting",
+      follow: "Follow",
+      following: "Following",
+      message: "Message",
+    },
+  },
+  validation: {
+    required: "This field is required.",
+    displayNameLength: "Use 1–40 characters.",
+    bioLength: "Use up to 160 characters.",
+    username: {
+      length: "Use 3–20 characters.",
+      format: "Start with a letter; use only lowercase letters, numbers, “_” and “.”.",
+      dots: "Don't end with a dot or use two dots in a row.",
+      reserved: "This username is reserved.",
+      taken: "This username is already taken.",
+    },
+  },
+  languagePicker: {
+    search: "Search languages",
+    noResults: "No language found.",
+  },
+  avatarPicker: {
+    tooLarge: "Choose an image smaller than 5 MB.",
+    invalid: "Choose an image file.",
+  },
+  legal: {
+    provisional: "Provisional text — pending legal review.",
+    version: "Version {{version}}",
+    terms: {
+      title: "Terms of Use",
+      sections: [
+        {
+          title: "1. The service",
+          body: "TENNO TALK is a messaging and social platform that translates content between languages using artificial intelligence. The original content is always preserved; translations are automatic representations and may contain mistakes.",
+        },
+        {
+          title: "2. Your account",
+          body: "You may sign in with Google, Facebook or an email and password. You are responsible for the activity on your account and for keeping your credentials safe.",
+        },
+        {
+          title: "3. AI translation",
+          body: "To translate messages, posts, comments and stories, their content is sent to third-party AI services — OpenAI (ChatGPT) and Anthropic (Claude) — under the operator's subscription accounts, with training on your data disabled. Do not rely on translations for legal, medical or safety-critical decisions.",
+        },
+        {
+          title: "4. Acceptable use",
+          body: "Do not use TENNO TALK to harass, threaten, spam, impersonate others or share illegal content. We may suspend accounts that break these rules.",
+        },
+        {
+          title: "5. Content",
+          body: "You keep the rights to what you post. You grant TENNO TALK a license to store, translate and display it to the people you share it with, only to operate the service.",
+        },
+        {
+          title: "6. Changes",
+          body: "When these terms change, we will ask you to accept the new version before you continue using the service.",
+        },
+      ],
+    },
+    privacy: {
+      title: "Privacy Policy",
+      sections: [
+        {
+          title: "1. Data we collect",
+          body: "Account data (name, username, email, country, languages, profile photo), the content you send (messages, posts, comments, stories, media) and technical data needed to run the service (session, device language).",
+        },
+        {
+          title: "2. Why we use it (LGPD)",
+          body: "To provide the service you requested (contract performance, art. 7, V of the LGPD), including automatic translation; to keep the platform secure (legitimate interest); and to meet legal obligations.",
+        },
+        {
+          title: "3. Sharing with AI providers",
+          body: "Content to be translated, plus a few recent messages of the same conversation for context, is processed by OpenAI and Anthropic. Training on this data is disabled on the accounts we use. No other sharing happens for advertising.",
+        },
+        {
+          title: "4. Where data is stored",
+          body: "On a server (VPS) operated by TENNO TALK. Messages are not end-to-end encrypted, because translation happens on the server.",
+        },
+        {
+          title: "5. Your rights",
+          body: "You can access, correct, export and delete your data and your account, and withdraw consent, as provided in the LGPD (art. 18). Contact the operator through the app settings.",
+        },
+        {
+          title: "6. Retention",
+          body: "We keep your data while your account exists. Stories expire after 24 hours. When you delete your account, your data is removed within 30 days, except where the law requires otherwise.",
+        },
+      ],
+    },
+  },
+  settings: {
+    title: "Settings",
+    sections: {
+      account: "Account",
+      language: "Language",
+      translation: "Translation",
+      appearance: "Appearance",
+      privacy: "Privacy",
+      notifications: "Notifications",
+    },
+    sectionDescriptions: {
+      account: "Profile, username, email and password",
+      language: "Native, receiving and interface languages",
+      translation: "How translated messages appear",
+      appearance: "Light, dark or system",
+      privacy: "Who can see and contact you",
+      notifications: "Messages, comments, likes and followers",
+    },
+  },
   placeholder: {
     title: "Under construction",
     description: "This screen is part of an upcoming phase.",

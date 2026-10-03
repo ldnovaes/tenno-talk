@@ -362,7 +362,7 @@ src/
 Regras:
 
 - `pages/` **não contém lógica.** Uma página lê params, escolhe o layout e compõe componentes de features.
-- Uma feature pode importar de `components/`, `hooks/`, `lib/`, `services/`, `stores/` e `types/`. **Features não importam umas das outras**, com uma exceção: `translation`, que é transversal (chat, feed e stories usam `TranslatedText`). Se outra dependência cruzada aparecer, o código compartilhado sobe para `components/common` ou `lib/`.
+- Uma feature pode importar de `components/`, `hooks/`, `lib/`, `services/`, `stores/` e `types/`. **Features não importam umas das outras**, com três exceções transversais: `translation` (chat, feed e stories usam `TranslatedText`), `auth` (`useMe`/`useCurrentUser`, necessários em todo o app) e `profile` (seguir pessoas e cartões de pessoa, usados por onboarding, Discover e perfil). Se outra dependência cruzada aparecer, o código compartilhado sobe para `components/common` ou `lib/`.
 - Stores específicos de uma feature ficam dentro dela (`features/chat/stores`); `src/stores/` guarda só os transversais.
 - Componentes acima de ~150 linhas devem ser divididos.
 

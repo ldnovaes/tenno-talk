@@ -5,6 +5,10 @@ import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router";
 
 import { i18n } from "@/app/i18n";
+import { AppRoutes } from "@/app/router/AppRoutes";
+import { ShellRoute } from "@/app/router/ShellRoute";
+import { SessionGate } from "@/features/auth/components/SessionGate";
+import { writeMockSession } from "@/services/mock/session";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function createTestQueryClient() {
@@ -32,4 +36,19 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}) {
     );
   }
   return { queryClient, ...render(ui, { wrapper: Wrapper, ...rest }) };
+}
+
+/** Signs in on the mock backend (as if the session cookie existed). */
+export function signInAs(userId: string) {
+  writeMockSession(userId);
+}
+
+/** Renders the whole app (session gate + routes) at a route. */
+export function renderApp(route: string, options: Omit<Options, "route"> = {}) {
+  return renderWithProviders(
+    <SessionGate>
+      <AppRoutes shell={<ShellRoute />} />
+    </SessionGate>,
+    { ...options, route },
+  );
 }

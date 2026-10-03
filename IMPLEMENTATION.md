@@ -89,33 +89,35 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 2 — Authentication and onboarding
 
-- [ ] `services/authService.ts` (interface + mock): `startOAuth("google" | "facebook")` (simulado), `signInWithPassword`, `signUp`, `signInAsDemo(userId)` (só em dev), `signOut()`, `getSession()`
-- [ ] `stores/sessionStore.ts` (persistido): `status`, `userId`, `accessToken`
-- [ ] `profileService.getMe()` mock + `useMe()` (query `me`)
-- [ ] `SessionGate` (carrega `me`, mostra `AppSkeleton`) e guards reais
-- [ ] `WelcomePage`: proposta, animação de exemplo, Continue with Google / Facebook / email, aviso "By continuing you agree…" com links e "Continue as demo" (Lucas pt-BR / Cam vi-VN, só em dev)
-- [ ] `/signin` e `/signup` (email + senha, rhf + zod)
-- [ ] `/terms` e `/privacy` (páginas de leitura com texto provisório e versão; o texto definitivo depende de PLAN.md §34.2)
-- [ ] `OnboardingLayout` com progresso, voltar/continuar (fixos no mobile) e rota `/onboarding/:step`
-- [ ] `onboardingDraftStore` (sessionStorage)
-- [ ] Step 1 — Welcome & terms (exemplo visual PT → VI + aceite obrigatório dos Termos e da Política, informando o uso de IA de terceiros; `profileService.acceptTerms(version)`)
-- [ ] `detectSystemLanguage()` em `lib/languages.ts` (`navigator.languages` → catálogo, com fallback) + testes
-- [ ] Step 2 — Native language (pré-selecionado pelo idioma do sistema, nota "Detected from your device"; `LanguagePicker` com busca, nome nativo em destaque)
-- [ ] Step 3 — Receive language (pré-preenchido com o nativo, texto explicativo)
-- [ ] Step 4 — Create profile (rhf + zod: nome, username com checagem mock e debounce, avatar com preview, bio opcional, país)
-- [ ] Step 5 — Discover people (sugestões com Follow/Message, "Start chatting")
-- [ ] `profileService.completeOnboarding()` + invalidar `me` + redirect para `/chats`
-- [ ] Sign out (limpa sessão, cache do Query e drafts)
-- [ ] Testes: guards (sem sessão → /welcome; sem onboarding → /onboarding; onboardado em /welcome → /chats), validação do username, termos obrigatórios
+- [x] `services/authService.ts` (interface + mock): `startOAuth("google" | "facebook")` (simulado), `signInWithPassword`, `signUp`, `signInAsDemo(userId)` (só em dev), `signOut()`, `getSession()`
+- [x] `stores/sessionStore.ts` (persistido): `status`, `userId`, `accessToken`
+- [x] `profileService.getMe()` mock + `useMe()` (query `me`)
+- [x] `SessionGate` (carrega `me`, mostra `AppSkeleton`) e guards reais
+- [x] `WelcomePage`: proposta, animação de exemplo, Continue with Google / Facebook / email, aviso "By continuing you agree…" com links e "Continue as demo" (Lucas pt-BR / Cam vi-VN, só em dev)
+- [x] `/signin` e `/signup` (email + senha, rhf + zod)
+- [x] `/terms` e `/privacy` (páginas de leitura com texto provisório e versão; o texto definitivo depende de PLAN.md §34.2)
+- [x] `OnboardingLayout` com progresso, voltar/continuar (fixos no mobile) e rota `/onboarding/:step`
+- [x] `onboardingDraftStore` (sessionStorage)
+- [x] Step 1 — Welcome & terms (exemplo visual PT → VI + aceite obrigatório dos Termos e da Política, informando o uso de IA de terceiros; `profileService.acceptTerms(version)`)
+- [x] `detectSystemLanguage()` em `lib/languages.ts` (`navigator.languages` → catálogo, com fallback) + testes
+- [x] Step 2 — Native language (pré-selecionado pelo idioma do sistema, nota "Detected from your device"; `LanguagePicker` com busca, nome nativo em destaque)
+- [x] Step 3 — Receive language (pré-preenchido com o nativo, texto explicativo)
+- [x] Step 4 — Create profile (rhf + zod: nome, username com checagem mock e debounce, avatar com preview, bio opcional, país)
+- [x] Step 5 — Discover people (sugestões com Follow/Message, "Start chatting")
+- [x] `profileService.completeOnboarding()` + invalidar `me` + redirect para `/chats`
+- [x] Sign out (limpa sessão, cache do Query e drafts)
+- [x] Testes: guards (sem sessão → /welcome; sem onboarding → /onboarding; onboardado em /welcome → /chats), validação do username, termos obrigatórios
+
+> Notas: a sessão do mock imita o cookie HttpOnly (`tenno.mock-session`); o `sessionStore` não persiste nada e é resolvido no boot pelo `SessionGate`. Um erro `unauthenticated` em qualquer chamada desloga o usuário. Settings ganhou uma versão mínima (lista de seções + Sign out); o conteúdo das seções vem na Phase 5. Regras de username provisórias em `lib/username.ts`.
 
 **Done when**
-- [ ] Um novo usuário (por Google, Facebook ou email, simulados) aceita os termos, completa os 5 passos e chega em `/chats`
-- [ ] Não é possível avançar no onboarding sem aceitar os termos
-- [ ] O idioma nativo vem pré-selecionado com o idioma do sistema
-- [ ] Um reload no meio do onboarding mantém as respostas
-- [ ] Um reload no app mantém a sessão; sign out volta para `/welcome` sem dados residuais
-- [ ] O login demo pula o onboarding
-- [ ] Todos os inputs têm label, os erros são anunciados e a navegação por teclado funciona
+- [x] Um novo usuário (por Google, Facebook ou email, simulados) aceita os termos, completa os 5 passos e chega em `/chats`
+- [x] Não é possível avançar no onboarding sem aceitar os termos
+- [x] O idioma nativo vem pré-selecionado com o idioma do sistema
+- [x] Um reload no meio do onboarding mantém as respostas
+- [x] Um reload no app mantém a sessão; sign out volta para `/welcome` sem dados residuais
+- [x] O login demo pula o onboarding
+- [x] Todos os inputs têm label, os erros são anunciados e a navegação por teclado funciona
 
 ---
 

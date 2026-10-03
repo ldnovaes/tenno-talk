@@ -1,17 +1,14 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { AppRoutes } from "@/app/router/AppRoutes";
 import { isOverlayPath } from "@/app/router/overlay";
 import { isOnboardingStep, isSettingsSection, paths } from "@/app/router/paths";
-import { AppShell } from "@/layouts/AppShell";
 import { setViewportWidth } from "@/test/setup";
-import { renderWithProviders } from "@/test/utils";
+import { renderApp, signInAs } from "@/test/utils";
 
 function renderAt(route: string) {
-  return renderWithProviders(<AppRoutes shell={<AppShell data={{ me: null, badges: {} }} />} />, {
-    route,
-  });
+  signInAs("usr_lucas");
+  return renderApp(route);
 }
 
 describe("AppRoutes", () => {
@@ -25,7 +22,7 @@ describe("AppRoutes", () => {
     ["/feed", "Feed"],
     ["/notifications", "Notifications"],
     ["/settings", "Settings"],
-    ["/settings/appearance", "Settings"],
+    ["/settings/appearance", "Appearance"],
     ["/u/cam", "Profile"],
   ])("renders %s", async (route, name) => {
     renderAt(route);

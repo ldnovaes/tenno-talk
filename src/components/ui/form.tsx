@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import {
@@ -140,7 +141,10 @@ const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField();
-  const body = error ? String(error?.message ?? "") : children;
+  const { t, i18n } = useTranslation();
+  const raw = error ? String(error?.message ?? "") : children;
+  // Zod schemas use i18n keys as messages; plain strings pass through.
+  const body = typeof raw === "string" && i18n.exists(raw) ? t(raw as never) : raw;
 
   if (!body) {
     return null;
