@@ -1,7 +1,10 @@
 import type { Notification } from "@/types/notification";
 import type { ContentTranslation, Message } from "@/types/message";
 
+import { env } from "@/lib/env";
+
 import { mockRealtimeClient } from "./mockRealtimeClient";
+import { wsRealtimeClient } from "./wsRealtimeClient";
 
 /** Typed events pushed by the server (PLAN.md §17). Payloads are already projected for the viewer. */
 export interface RealtimeEventMap {
@@ -39,4 +42,5 @@ export interface RealtimeClient {
   emitTyping(conversationId: string, isTyping: boolean): void;
 }
 
-export const realtimeClient: RealtimeClient = mockRealtimeClient;
+export const realtimeClient: RealtimeClient =
+  env.dataSource === "http" ? wsRealtimeClient : mockRealtimeClient;

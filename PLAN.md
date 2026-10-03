@@ -1298,7 +1298,12 @@ IDs malformados respondem 404, como IDs inexistentes. O OpenAPI fica em `/api/op
 - O servidor mantém em memória as conexões de cada usuário (uma instância só; se um dia escalar horizontalmente, entra Redis pub/sub) e envia os eventos **para cada membro individualmente**, já com a tradução projetada no idioma dele.
 - **Presença:** conexão aberta = online; `lastSeenAt` gravado ao desconectar.
 - **Typing:** cliente → servidor → outro membro, sem persistir.
-- Heartbeat ping/pong a cada 25s. Reconexão com backoff exponencial no frontend; depois de reconectar, fetch incremental (`GET /api/conversations/{id}/messages?after=<cursor>`).
+- **Heartbeat de aplicação:** o navegador não envia frames de ping do WebSocket, então o cliente manda `{"type":"ping"}` a cada 25s e o servidor responde `{"type":"pong"}`. Sem pong em 10s, a conexão é considerada morta.
+- **Reconexão (`wsRealtimeClient`):** backoff exponencial com jitter (0,5–1× de min(30s, 1s·2ⁿ)). O evento `offline` do navegador derruba a conexão na hora, e `online` ou a volta à aba reconectam sem esperar o backoff. Um socket morto é **abandonado imediatamente**: numa rede caída, `close()` só dispara `close` depois que o handshake expira, e esperar por ele deixaria o app offline em silêncio.
+- **Recuperação de lacunas:** quando o status volta para `open`, a bridge invalida as queries do chat e das notificações (refetch). Isso cobre o que se perdeu sem um endpoint `?after=`; ele pode entrar se o volume crescer. A presença ao vivo é zerada ao desconectar, e os dados refeitos voltam a valer.
+- **Ordem dos eventos:** `message.created` vai para todos os membros **antes** de qualquer `message.delivered`, para o remetente nunca receber recibo de uma mensagem que ainda não conhece.
+- **UI:** o título "Chats" vira "Connecting…" durante a reconexão (na primeira conexão, não).
+- A sessão fica no Postgres, então reiniciar o backend não desloga ninguém: os clientes reconectam sozinhos.
 
 ## 27. Banco de dados
 

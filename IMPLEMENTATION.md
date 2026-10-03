@@ -396,20 +396,23 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 9 — Realtime
 
-- [ ] Backend: WebSocket em `/ws` autenticado pela sessão; envelope `{ type, payload }` igual ao `RealtimeEventMap`
-- [ ] Registro de conexões por usuário e envio por membro (tradução projetada)
-- [ ] Frontend: `wsRealtimeClient` implementando `RealtimeClient`, selecionado em `lib/env.ts`
-- [ ] Presença (online/offline, last seen) e typing
-- [ ] Delivered/read derivados dos cursores e emitidos pelo servidor
-- [ ] `translation.updated` emitido pelos workers de tradução
-- [ ] Heartbeat, reconexão com backoff e fetch incremental (`?after=`) no reconnect
-- [ ] Indicador discreto de conexão ("Connecting…") no header da lista
-- [ ] Teste manual e2e com duas contas em navegadores diferentes
+> Concluída em 2026-10-03.
+
+- [x] Backend: WebSocket em `/ws` autenticado pela sessão; envelope `{ type, payload }` igual ao `RealtimeEventMap`; origem restrita à URL pública
+- [x] Registro de conexões por usuário (vários dispositivos) e envio por membro (tradução projetada)
+- [x] Frontend: `wsRealtimeClient` implementando `RealtimeClient`, selecionado por `VITE_DATA_SOURCE=http`
+- [x] Presença (online/offline, last seen) e typing (só entre membros da conversa)
+- [x] Delivered/read derivados dos cursores e emitidos pelo servidor (`message.created` sempre antes do recibo)
+- [x] `translation.updated` emitido pelo worker de tradução
+- [x] Heartbeat ping/pong de aplicação, reconexão com backoff + jitter, `offline`/`online`/visibilidade, socket morto abandonado na hora
+- [x] Recuperação no reconnect por invalidação do chat e das notificações (sem `?after=`; ver PLAN.md §26)
+- [x] Indicador discreto "Connecting…" no título da lista
+- [x] Teste e2e com duas contas em navegadores diferentes contra o backend real (Playwright): mensagem ao vivo, ✓✓ entregue, ✓✓ lido, typing, mensagem enviada durante offline chega uma única vez, reinício do backend sem perder a sessão
 
 **Done when**
-- [ ] Duas contas com idiomas diferentes conversam em tempo real, cada uma lendo no próprio idioma
-- [ ] Typing, online e read receipts funcionam
-- [ ] Derrubar e restaurar a conexão não perde mensagens nem as duplica
+- [x] Duas contas com idiomas diferentes conversam em tempo real, cada uma lendo no próprio idioma (tradução real depende das CLIs logadas no servidor; o caminho foi testado com CLIs simuladas)
+- [x] Typing, online e read receipts funcionam
+- [x] Derrubar e restaurar a conexão não perde mensagens nem as duplica
 
 ---
 

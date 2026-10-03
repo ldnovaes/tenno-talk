@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useMe";
 
 import { useConversations } from "../../hooks/useConversations";
 import { filterConversations, type ConversationFilter } from "../../lib/conversationFilters";
+import { ChatsTitle } from "./ChatsTitle";
 import { ConversationFilters } from "./ConversationFilters";
 import { ConversationListItem } from "./ConversationListItem";
 import { ConversationListSkeleton } from "./ConversationListSkeleton";
@@ -59,7 +60,7 @@ export function ConversationListPane({ header }: { header?: ReactNode }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-14 shrink-0 items-center justify-between px-4">
-        <h1 className="text-[22px] font-bold">{t("chat.title")}</h1>
+        <ChatsTitle />
         <Button
           variant="ghost"
           size="icon"

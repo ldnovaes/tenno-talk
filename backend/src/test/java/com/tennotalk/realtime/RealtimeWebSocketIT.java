@@ -212,6 +212,13 @@ class RealtimeWebSocketIT extends IntegrationTest {
     }
 
     @Test
+    void pingsAreAnsweredForTheHeartbeat() throws Exception {
+        Client camDevice = connect("cam");
+        camDevice.sendRaw("{\"type\":\"ping\"}");
+        assertThat(camDevice.next("pong").isObject()).isTrue();
+    }
+
+    @Test
     void garbageFramesAreIgnored() throws Exception {
         Client camDevice = connect("cam");
         camDevice.sendRaw("not json");

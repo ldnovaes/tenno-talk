@@ -473,6 +473,7 @@ export const en = {
   },
   chat: {
     title: "Chats",
+    connecting: "Connecting…",
     newChat: "New chat",
     searchPlaceholder: "Search",
     searchLabel: "Search conversations",

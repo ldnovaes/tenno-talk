@@ -32,11 +32,15 @@ export function useMarkAllNotificationsRead() {
 /** New notifications pushed by the server refresh the list and the badge. */
 export function useNotificationsRealtime() {
   const queryClient = useQueryClient();
-  useEffect(
-    () =>
-      realtimeClient.subscribe("notification.created", () => {
-        void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+  useEffect(() => {
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    const unsubscribers = [
+      realtimeClient.subscribe("notification.created", refresh),
+      // Notifications created while the connection was down.
+      realtimeClient.onStatusChange((status) => {
+        if (status === "open") refresh();
       }),
-    [queryClient],
-  );
+    ];
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [queryClient]);
 }

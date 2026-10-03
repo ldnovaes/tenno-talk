@@ -64,6 +64,8 @@ export function useRealtimeBridge(viewerId: string) {
         presence.setOnline(userId, false, lastSeenAt),
       ),
       realtimeClient.onStatusChange((status) => {
+        // Live presence is stale while disconnected; the refetched data is the truth again.
+        if (status === "reconnecting") usePresenceStore.getState().reset();
         // Recover anything missed while disconnected (PLAN.md §17).
         if (status === "open") void queryClient.invalidateQueries({ queryKey: chatKeys.all });
       }),

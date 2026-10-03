@@ -22,6 +22,7 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler {
 
     private static final String USER_ATTRIBUTE = "tenno.userId";
     private static final String DECORATED_ATTRIBUTE = "tenno.session";
+    private static final TextMessage PONG = new TextMessage("{\"type\":\"pong\",\"payload\":{}}");
 
     private final RealtimeHub hub;
     private final JsonMapper json;
@@ -59,6 +60,16 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler {
         try {
             parsed = json.readValue(message.getPayload(), ClientMessage.class);
         } catch (JacksonException exception) {
+            return;
+        }
+        if ("ping".equals(parsed.type())) {
+            // Application-level heartbeat: browsers cannot send WebSocket ping frames (PLAN.md §26).
+            WebSocketSession decorated = (WebSocketSession) session.getAttributes().get(DECORATED_ATTRIBUTE);
+            try {
+                (decorated == null ? session : decorated).sendMessage(PONG);
+            } catch (java.io.IOException closed) {
+                // The close callback cleans up.
+            }
             return;
         }
         if ("typing".equals(parsed.type()) && parsed.conversationId() != null) {
