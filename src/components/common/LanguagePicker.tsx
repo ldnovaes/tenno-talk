@@ -15,7 +15,7 @@ interface LanguagePickerProps {
   label: string;
   /** Marks one option (e.g. the language detected from the device). */
   hint?: { code: LanguageCode; text: string } | undefined;
-  className?: string;
+  className?: string | undefined;
 }
 
 /** Searchable single-choice language list; native name first (PLAN.md §9.2). */

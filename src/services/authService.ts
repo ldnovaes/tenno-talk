@@ -21,6 +21,8 @@ export interface AuthService {
   /** Development/demo only. */
   signInAsDemo(userId: string): Promise<Session>;
   signOut(): Promise<void>;
+  /** Accounts created with Google/Facebook may set a first password (current = null). */
+  changePassword(input: { current: string | null; next: string }): Promise<void>;
 }
 
 export const authService: AuthService = mockAuthService;

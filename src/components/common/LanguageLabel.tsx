@@ -9,8 +9,8 @@ export function LanguageLabel({
   className,
 }: {
   code: LanguageCode;
-  showEnglish?: boolean;
-  className?: string;
+  showEnglish?: boolean | undefined;
+  className?: string | undefined;
 }) {
   const language = getLanguage(code);
   if (!language) return <span className={className}>{code}</span>;

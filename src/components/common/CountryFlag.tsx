@@ -71,9 +71,9 @@ function isKnownFlag(code: string): code is keyof typeof FLAGS {
 
 interface CountryFlagProps {
   code: CountryCode;
-  className?: string;
+  className?: string | undefined;
   /** Hide from assistive tech when the country name is already written next to it. */
-  decorative?: boolean;
+  decorative?: boolean | undefined;
 }
 
 export function CountryFlag({ code, className, decorative = false }: CountryFlagProps) {

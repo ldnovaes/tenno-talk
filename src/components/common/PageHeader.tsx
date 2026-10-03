@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: ReactNode;
-  onBack?: () => void;
-  actions?: ReactNode;
-  className?: string;
+  onBack?: (() => void) | undefined;
+  actions?: ReactNode | undefined;
+  className?: string | undefined;
 }
 
 /** Sticky screen header (mobile pages, panels, content columns). */

@@ -13,7 +13,7 @@ import type { CountryCode } from "@/types/language";
 import { CountryFlag } from "./CountryFlag";
 
 interface CountrySelectProps {
-  id?: string;
+  id?: string | undefined;
   value: CountryCode;
   onChange: (code: CountryCode) => void;
   placeholder: string;

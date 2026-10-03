@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { normalizeUsername, validateUsername } from "@/lib/username";
 
-import { useUsernameAvailability } from "../hooks/useOnboardingMutations";
+import { useUsernameAvailability } from "../hooks/useUsernameAvailability";
 
 /** Username input with live format + availability feedback. */
 interface UsernameFieldProps {

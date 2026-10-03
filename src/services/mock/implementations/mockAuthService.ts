@@ -115,6 +115,29 @@ export const mockAuthService: AuthService = {
     });
   },
 
+  changePassword({ current, next }) {
+    return mockRequest(() =>
+      mockDb.update((db) => {
+        const session = readMockSession();
+        const user = session ? db.users[session.userId] : undefined;
+        if (!user)
+          throw new AppError("unauthenticated", "Your session has expired. Sign in again.");
+        if (user.password !== null && user.password !== current) {
+          throw new AppError("validation", "Your current password is not correct.", {
+            fieldErrors: { current: "Your current password is not correct." },
+          });
+        }
+        if (next.length < 8) {
+          throw new AppError("validation", "Use at least 8 characters.", {
+            fieldErrors: { next: "Use at least 8 characters." },
+          });
+        }
+        user.password = next;
+        if (!user.providers.includes("password")) user.providers.push("password");
+      }),
+    );
+  },
+
   signOut() {
     return mockRequest(() => {
       clearMockSession();

@@ -20,10 +20,10 @@ import { OnboardingLayout } from "@/layouts/OnboardingLayout";
 import type { CurrentUser } from "@/types/user";
 
 import { useCompleteOnboarding } from "../../hooks/useOnboardingMutations";
-import { profileFormSchema, type ProfileFormValues } from "../../lib/profileSchema";
+import { profileFormSchema, type ProfileFormValues } from "@/features/profile/lib/profileSchema";
 import { useOnboardingDraftStore } from "../../stores/onboardingDraftStore";
 import { StepHeading } from "../StepHeading";
-import { UsernameField } from "../UsernameField";
+import { UsernameField } from "@/features/profile/components/UsernameField";
 import type { StepProps } from "./stepProps";
 
 export function ProfileStep({ me, position, onNext }: StepProps & { me: CurrentUser }) {

@@ -12,7 +12,7 @@ import { RouteErrorBoundary } from "@/components/common/RouteErrorBoundary";
 import { ChatLayout } from "@/layouts/ChatLayout";
 import { SidePanel } from "@/layouts/SidePanel";
 
-import { RedirectIfAuthed, RequireAuth, RequireOnboarded } from "./guards";
+import { OverlayGate, RedirectIfAuthed, RequireAuth, RequireOnboarded } from "./guards";
 import { useBackgroundLocation } from "./overlay";
 import { paths } from "./paths";
 
@@ -91,26 +91,28 @@ export function AppRoutes({ shell }: { shell: ReactNode }) {
       </Routes>
 
       {background && (
-        <Routes>
-          <Route
-            path="/u/:username"
-            element={<SidePanel title="Profile">{page(ProfilePage)}</SidePanel>}
-          />
-          <Route
-            path="/u/:username/edit"
-            element={<SidePanel title="Edit profile">{page(EditProfilePage)}</SidePanel>}
-          />
-          <Route
-            path="/settings"
-            element={<SidePanel title="Settings">{page(SettingsPage)}</SidePanel>}
-          />
-          <Route
-            path="/settings/:section"
-            element={<SidePanel title="Settings">{page(SettingsPage)}</SidePanel>}
-          />
-          <Route path="/create" element={page(CreatePostPage)} />
-          <Route path="/stories/:userId" element={page(StoryViewerPage)} />
-        </Routes>
+        <OverlayGate>
+          <Routes>
+            <Route
+              path="/u/:username"
+              element={<SidePanel title="Profile">{page(ProfilePage)}</SidePanel>}
+            />
+            <Route
+              path="/u/:username/edit"
+              element={<SidePanel title="Edit profile">{page(EditProfilePage)}</SidePanel>}
+            />
+            <Route
+              path="/settings"
+              element={<SidePanel title="Settings">{page(SettingsPage)}</SidePanel>}
+            />
+            <Route
+              path="/settings/:section"
+              element={<SidePanel title="Settings">{page(SettingsPage)}</SidePanel>}
+            />
+            <Route path="/create" element={page(CreatePostPage)} />
+            <Route path="/stories/:userId" element={page(StoryViewerPage)} />
+          </Routes>
+        </OverlayGate>
       )}
     </>
   );

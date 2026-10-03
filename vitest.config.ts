@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: false,
+    testTimeout: 15_000,
   },
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "./src") },

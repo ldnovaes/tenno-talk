@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 
 import { ErrorState } from "@/components/common/ErrorState";
@@ -29,4 +30,15 @@ export function RedirectIfAuthed() {
   const status = useSessionStore((state) => state.status);
   if (status === "authenticated") return <Navigate to={paths.home()} replace />;
   return <Outlet />;
+}
+
+/**
+ * Overlay routes render in a second <Routes> outside the guarded tree: only show
+ * them once the background (which carries the guards) has a ready, onboarded user.
+ */
+export function OverlayGate({ children }: { children: ReactNode }) {
+  const status = useSessionStore((state) => state.status);
+  const me = useMe();
+  if (status !== "authenticated" || !me.data?.onboardingCompletedAt) return null;
+  return children;
 }

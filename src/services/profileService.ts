@@ -44,7 +44,10 @@ export interface ProfileService {
   follow(userId: string): Promise<UserProfile>;
   unfollow(userId: string): Promise<UserProfile>;
   getBlockedUsers(): Promise<UserProfile[]>;
+  block(userId: string): Promise<void>;
   unblock(userId: string): Promise<void>;
+  /** LGPD: removes the account and its personal data. */
+  deleteAccount(): Promise<void>;
 }
 
 export const profileService: ProfileService = mockProfileService;

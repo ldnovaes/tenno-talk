@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router";
 
 import { i18n } from "@/app/i18n";
+import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { AppRoutes } from "@/app/router/AppRoutes";
 import { ShellRoute } from "@/app/router/ShellRoute";
 import { SessionGate } from "@/features/auth/components/SessionGate";
@@ -29,10 +30,12 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}) {
     return (
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-            <Toaster />
-          </TooltipProvider>
+          <ThemeProvider>
+            <TooltipProvider>
+              <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+              <Toaster />
+            </TooltipProvider>
+          </ThemeProvider>
         </QueryClientProvider>
       </I18nextProvider>
     );

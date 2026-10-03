@@ -219,43 +219,46 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 ## Phase 5 — Profiles, discovery and settings (MVP)
 
 ### Perfil
-- [ ] `profileService` (interface + mock): `getProfile(username)`, `updateProfile`, `follow`, `unfollow`, `getFollowers/Following` (estrutura), `checkUsername`
-- [ ] `ProfileHeader`, `ProfileStats`, ações (Follow/Message × Edit profile/Settings)
-- [ ] `ProfileTabs` (Posts; Media/Tagged com "Coming soon") + `MediaGrid` (usa os posts do seed)
-- [ ] `ProfileSkeleton`, perfil inexistente → estado "User not found"
-- [ ] `EditProfileForm` (rhf + zod) em `/u/:username/edit`
-- [ ] Follow/unfollow otimista (contadores e botão)
-- [ ] Perfil no SidePanel (desktop/tablet) e como página (mobile); o header da conversa abre o perfil do contato
+- [x] `profileService` (interface + mock): `getProfile(username)`, `updateProfile`, `follow`, `unfollow`, `getFollowers/Following` (estrutura), `checkUsername`
+- [x] `ProfileHeader`, `ProfileStats`, ações (Follow/Message × Edit profile/Settings)
+- [x] `ProfileTabs` (Posts; Media/Tagged com "Coming soon")
+- [~] `MediaGrid` com os posts — a aba Posts mostra o estado vazio; o grid entra com os posts na Phase 6
+- [x] `ProfileSkeleton`, perfil inexistente → estado "User not found"
+- [x] `EditProfileForm` (rhf + zod) em `/u/:username/edit`
+- [x] Follow/unfollow otimista (contadores e botão)
+- [x] Perfil no SidePanel (desktop/tablet) e como página (mobile); o header da conversa abre o perfil do contato
 
 ### Discover
-- [ ] `discoverService` (interface + mock) paginado + filtro por idioma nativo
-- [ ] `PersonCard`, `PersonCardSkeleton`, grid responsivo, infinite scroll
-- [ ] `DiscoverFilters` (idioma nativo ativo; Country/Learning/Interests estruturados e desabilitados)
-- [ ] Message → `getOrCreateDirectConversation` → navega para a conversa
-- [ ] Empty state de filtro sem resultado
+- [x] `discoverService` (interface + mock) paginado + filtro por idioma nativo
+- [x] `PersonCard`, `PersonCardSkeleton`, grid responsivo, infinite scroll
+- [x] `DiscoverFilters` (idioma nativo ativo; Country/Learning/Interests estruturados e desabilitados)
+- [x] Message → `getOrCreateDirectConversation` → navega para a conversa
+- [x] Empty state de filtro sem resultado
 
 ### Settings
-- [ ] `SettingsNav` + rotas `/settings/:section` (SidePanel com navegação interna em md+; páginas no mobile)
-- [ ] Account (atalho para edit profile, username, email, password, connected accounts Google/Facebook, versão dos termos aceita; tudo mock)
-- [ ] Language (native, receiving, interface)
-- [ ] Translation (já feita na Phase 4; integrar na navegação)
-- [ ] Appearance (Light/Dark/System com preview)
-- [ ] Privacy (visibility, who can message, who can comment, blocked users: lista mock com unblock)
-- [ ] Notifications (toggles)
-- [ ] Sign out e (dev) "Reset demo data"
-- [ ] Toggles com salvamento otimista; campos de texto com Save; erros via toast
+- [x] `SettingsNav` + rotas `/settings/:section` (SidePanel com navegação interna em md+; páginas no mobile)
+- [x] Account (atalho para edit profile, username, email, password, connected accounts Google/Facebook, versão dos termos aceita; tudo mock)
+- [x] Language (native, receiving, interface)
+- [x] Translation (já feita na Phase 4; integrar na navegação)
+- [x] Appearance (Light/Dark/System com preview)
+- [x] Privacy (visibility, who can message, who can comment, blocked users: lista mock com unblock)
+- [x] Notifications (toggles)
+- [x] Sign out e (dev) "Reset demo data"
+- [x] Toggles com salvamento otimista; campos de texto com Save; erros via toast
 
 ### Qualidade do MVP
-- [ ] Revisão de a11y básica: labels, foco visível, ordem de tab, `aria-label` em ícones, alt em imagens
-- [ ] Revisão de empty/loading/error em todas as telas do MVP
-- [ ] Revisão responsiva em 320, 360, 768, 1024 e 1440px nos dois temas
-- [ ] Revisão de i18n: nenhuma string de UI hardcoded
+- [x] Revisão de a11y básica: labels, foco visível, ordem de tab, `aria-label` em ícones, alt em imagens
+- [x] Revisão de empty/loading/error em todas as telas do MVP
+- [x] Revisão responsiva em 320, 360, 768, 1024 e 1440px nos dois temas
+- [x] Revisão de i18n: nenhuma string de UI hardcoded
+
+> Notas: bug encontrado nas capturas e corrigido: links diretos para rotas-overlay no desktop renderizavam o painel antes de carregar o usuário (`OverlayGate`). Settings ganhou "Delete account" (direito de exclusão da LGPD), troca de senha (ou criação, para contas sociais), contas conectadas e versão dos termos aceita. Perfil ganhou "Block" com confirmação. `PersonCard` e `useUsernameAvailability` ficam em `features/profile` (transversal); as páginas passam o `onMessage` do chat.
 
 **Done when (MVP)**
-- [ ] Todos os itens do MVP funcionam com mocks: auth simulada, onboarding, lista de conversas, chat, envio, mensagens e tradução mockadas, alternância Original/Translation, perfil, discover, settings, dark mode, layouts mobile e desktop
-- [ ] Iniciar uma conversa a partir do Discover e do Perfil funciona
-- [ ] Alterar o idioma de recebimento em Settings muda as traduções exibidas (o mock reprojeta)
-- [ ] Lint, typecheck e testes verdes
+- [x] Todos os itens do MVP funcionam com mocks: auth simulada, onboarding, lista de conversas, chat, envio, mensagens e tradução mockadas, alternância Original/Translation, perfil, discover, settings, dark mode, layouts mobile e desktop
+- [x] Iniciar uma conversa a partir do Discover e do Perfil funciona
+- [x] Alterar o idioma de recebimento em Settings muda as traduções exibidas (o mock reprojeta)
+- [x] Lint, typecheck e testes verdes
 
 ---
 

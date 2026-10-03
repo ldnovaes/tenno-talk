@@ -11,7 +11,7 @@ import { mockDb } from "../db";
 import { mockRequest } from "../latency";
 import { toCurrentUser, toUserProfile } from "../mappers";
 import type { MockDatabase, UserRecord } from "../schema";
-import { requireViewerId } from "../session";
+import { clearMockSession, requireViewerId } from "../session";
 
 function viewerRecord(db: MockDatabase): UserRecord {
   const viewer = db.users[requireViewerId()];
@@ -211,6 +211,48 @@ export const mockProfileService: ProfileService = {
         .map((id) => db.users[id])
         .filter((user): user is UserRecord => user !== undefined)
         .map((user) => toUserProfile(user, db, viewer.id));
+    });
+  },
+
+  block(userId) {
+    return mockRequest(() =>
+      mockDb.update((db) => {
+        const viewer = viewerRecord(db);
+        findUser(db, userId);
+        if (userId === viewer.id) throw new AppError("validation", "You can't block yourself.");
+        if (!viewer.blockedUserIds.includes(userId)) viewer.blockedUserIds.push(userId);
+        // Blocking also removes follows in both directions.
+        db.follows = db.follows.filter(
+          (f) =>
+            !(
+              (f.followerId === viewer.id && f.followeeId === userId) ||
+              (f.followerId === userId && f.followeeId === viewer.id)
+            ),
+        );
+      }),
+    );
+  },
+
+  deleteAccount() {
+    return mockRequest(() => {
+      mockDb.update((db) => {
+        const viewer = viewerRecord(db);
+        delete db.users[viewer.id];
+        db.follows = db.follows.filter(
+          (f) => f.followerId !== viewer.id && f.followeeId !== viewer.id,
+        );
+        for (const conversation of Object.values(db.conversations)) {
+          if (conversation.memberIds.includes(viewer.id)) delete db.conversations[conversation.id];
+        }
+        for (const message of Object.values(db.messages)) {
+          if (!db.conversations[message.conversationId]) delete db.messages[message.id];
+        }
+        for (const post of Object.values(db.posts))
+          if (post.authorId === viewer.id) delete db.posts[post.id];
+        for (const story of Object.values(db.stories))
+          if (story.authorId === viewer.id) delete db.stories[story.id];
+      });
+      clearMockSession();
     });
   },
 

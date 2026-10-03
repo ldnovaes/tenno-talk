@@ -3,7 +3,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSetMe } from "@/features/auth/hooks/useMe";
 import { profileKeys } from "@/features/auth/lib/queryKeys";
 import { env } from "@/lib/env";
-import { validateUsername } from "@/lib/username";
 import { profileService, type CompleteOnboardingInput } from "@/services/profileService";
 
 export function useAcceptTerms() {
@@ -19,18 +18,6 @@ export function useCompleteOnboarding() {
   return useMutation({
     mutationFn: (input: CompleteOnboardingInput) => profileService.completeOnboarding(input),
     onSuccess: setMe,
-    meta: { silent: true },
-  });
-}
-
-/** Server-side availability, only for usernames that pass the local rules. */
-export function useUsernameAvailability(username: string) {
-  const valid = username.length > 0 && validateUsername(username) === null;
-  return useQuery({
-    queryKey: profileKeys.usernameCheck(username),
-    queryFn: () => profileService.checkUsername(username),
-    enabled: valid,
-    staleTime: 30_000,
     meta: { silent: true },
   });
 }

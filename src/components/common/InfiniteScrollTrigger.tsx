@@ -7,8 +7,8 @@ export function InfiniteScrollTrigger({
   rootMargin = "400px",
 }: {
   onVisible: () => void;
-  disabled?: boolean;
-  rootMargin?: string;
+  disabled?: boolean | undefined;
+  rootMargin?: string | undefined;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const callback = useRef(onVisible);

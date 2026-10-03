@@ -22,10 +22,10 @@ const DOT_SIZES = {
 
 interface UserAvatarProps {
   user: Pick<User, "id" | "displayName" | "avatarUrl">;
-  size?: keyof typeof SIZES;
-  online?: boolean;
-  storyRing?: "unseen" | "seen" | null;
-  className?: string;
+  size?: keyof typeof SIZES | undefined;
+  online?: boolean | undefined;
+  storyRing?: "unseen" | "seen" | null | undefined;
+  className?: string | undefined;
 }
 
 export function UserAvatar({

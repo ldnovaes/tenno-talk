@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 interface EmptyStateProps {
   icon: LucideIcon;
   title: string;
-  description?: string;
-  action?: ReactNode;
-  className?: string;
+  description?: string | undefined;
+  action?: ReactNode | undefined;
+  className?: string | undefined;
 }
 
 export function EmptyState({ icon: Icon, title, description, action, className }: EmptyStateProps) {

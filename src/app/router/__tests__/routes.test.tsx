@@ -23,7 +23,7 @@ describe("AppRoutes", () => {
     ["/notifications", "Notifications"],
     ["/settings", "Settings"],
     ["/settings/appearance", "Appearance"],
-    ["/u/cam", "Profile"],
+    ["/u/cam", "@cam"],
   ])("renders %s", async (route, name) => {
     renderAt(route);
     expect(await screen.findByRole("heading", { name })).toBeInTheDocument();
@@ -87,5 +87,21 @@ describe("route helpers", () => {
     expect(isSettingsSection(undefined)).toBe(false);
     expect(isOnboardingStep("profile")).toBe(true);
     expect(isOnboardingStep("x")).toBe(false);
+  });
+});
+
+describe("overlay deep links", () => {
+  it("waits for the current user before rendering the panel content", async () => {
+    setViewportWidth(1280);
+    signInAs("usr_lucas");
+    renderApp("/u/cam");
+    expect(await screen.findByRole("heading", { name: "Cam Nguyen" })).toBeInTheDocument();
+  });
+
+  it("does not render overlays for anonymous users", async () => {
+    setViewportWidth(1280);
+    renderApp("/u/cam");
+    expect(await screen.findByRole("heading", { name: /talk to anyone/i })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
