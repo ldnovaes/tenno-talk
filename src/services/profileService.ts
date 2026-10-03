@@ -1,8 +1,10 @@
+import { env } from "@/lib/env";
 import type { CountryCode, LanguageCode } from "@/types/language";
 import type { UserPreferences } from "@/types/preferences";
 import type { CurrentUser, UserProfile } from "@/types/user";
 
 import { mockProfileService } from "./mock/implementations/mockProfileService";
+import { httpProfileService } from "./http/httpProfileService";
 
 export interface CompleteOnboardingInput {
   nativeLanguage: LanguageCode;
@@ -50,4 +52,5 @@ export interface ProfileService {
   deleteAccount(): Promise<void>;
 }
 
-export const profileService: ProfileService = mockProfileService;
+export const profileService: ProfileService =
+  env.dataSource === "http" ? httpProfileService : mockProfileService;

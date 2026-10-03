@@ -1,0 +1,55 @@
+# Production: everything on one VPS (PLAN.md §32).  cp .env.example .env && docker compose up -d --build
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [backend]
+
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/tenno
+      DATABASE_USER: tenno
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      PUBLIC_URL: https://${DOMAIN}
+      COOKIE_SECURE: "true"
+    volumes:
+      - media:/data/media
+      # CLI logins (ChatGPT / Claude plans) survive restarts and image upgrades.
+      - ai-codex:/home/tenno/.codex
+      - ai-claude:/home/tenno/.claude
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tenno
+      POSTGRES_USER: tenno
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tenno -d tenno"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  caddy-data:
+  caddy-config:
+  media:
+  ai-codex:
+  ai-claude:
+  pgdata:

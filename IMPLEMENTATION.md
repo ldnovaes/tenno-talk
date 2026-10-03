@@ -321,69 +321,76 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 8 — Backend integration
 
-> Antes de começar: detalhar a Parte II do PLAN.md e fechar os itens em aberto do §34.2.
+> Concluída em 2026-10-03 (código + testes). Itens que dependem da VPS, de SMTP ou de contas reais ficam abertos abaixo.
 
 ### Projeto e infraestrutura local
-- [ ] `backend/`: Spring Boot 3 + Java 21 + Maven (Web, Security, OAuth2 Client, WebSocket, Validation, Data JPA, Actuator, Flyway, springdoc)
-- [ ] `deploy/docker-compose.dev.yml` (Postgres 16) para desenvolvimento local
-- [ ] Monolito modular por pacotes (`auth`, `users`, `chat`, `translation`, `realtime`, `media`, …)
-- [ ] Erros no formato Problem Details (RFC 9457) + mapeamento no `toAppError` do frontend
+- [x] `backend/`: Spring Boot 4.1 + Java 21 + Maven (Web MVC, Security, OAuth2 Client, WebSocket, Validation, **JDBC/JdbcClient** em vez de JPA, Actuator, Flyway, springdoc)
+- [x] `docker-compose.dev.yml` (Postgres 16) para desenvolvimento local
+- [x] Monolito modular por pacotes (`auth`, `users`, `chat`, `translation`, `realtime`, `media`, `feed`, `stories`, `notifications`, `admin`, `ratelimit`)
+- [x] Erros no formato Problem Details (RFC 9457) com `code` + `fieldErrors` + mapeamento no frontend (`problemToAppError`)
 
 ### Banco
-- [ ] Migrations Flyway conforme o PLAN.md §27 (incluindo `oauth_accounts`, `terms_acceptances`, `translation_jobs`, índice único parcial de 1 grupo por criador)
-- [ ] Seeds de desenvolvimento
+- [x] Migrations Flyway conforme o PLAN.md §27 (incluindo `oauth_accounts`, `terms_acceptances`, `translation_jobs`, índice único parcial de 1 grupo por criador)
+- [ ] Seeds de desenvolvimento (o fluxo real de cadastro + onboarding já cobre o uso a dois)
 
 ### Autenticação
-- [ ] Spring Security com sessão em cookie (Spring Session JDBC) + CSRF por cookie
-- [ ] OAuth2 Google e Facebook (`/oauth2/authorization/{provider}`), criação/vinculação de conta
-- [ ] Email + senha (argon2id), cadastro, login, bloqueio progressivo
+- [x] Spring Security com sessão em cookie (Spring Session JDBC) + CSRF por cookie; cookie `SESSION` HttpOnly/SameSite/Secure declarado explicitamente
+- [x] OAuth2 Google e Facebook (`/oauth2/authorization/{provider}`), criação/vinculação de conta; falha volta para `/welcome?error=oauth`
+- [x] Email + senha (argon2id), cadastro, login (bloqueio progressivo: depois; o rate limit já cobre força bruta)
 - [ ] Verificação de e-mail e redefinição de senha (depende do SMTP, §34.2)
-- [ ] Aceite de termos versionado (`terms_acceptances`) obrigatório antes do perfil
-- [ ] `GET /api/me` e `authService` real no frontend (`startOAuth` com redirect, `signInWithPassword`, `signUp`, `signOut`, `getSession`)
+- [x] Aceite de termos versionado (`terms_acceptances`) obrigatório antes do perfil
+- [x] `authService` real no frontend (`startOAuth` com redirect, `signInWithPassword`, `signUp`, `signOut`, `getSession`)
 
 ### API e serviços
-- [ ] Endpoints REST para conversas, mensagens (idempotente por `client_id`), leitura, reações, perfis, discover, preferências
-- [ ] `ConversationAccessPolicy` + teste de autorização em todo endpoint
-- [ ] Rate limit (Bucket4j) em login, cadastro, envio, retry de tradução e upload
-- [ ] OpenAPI (springdoc) → conferir os tipos do frontend (openapi-typescript)
-- [ ] Implementações HTTP no frontend (`httpChatService`, `httpProfileService`, …) + mappers DTO → domínio, selecionadas em `lib/env.ts`
+- [x] Endpoints REST de todas as áreas (PLAN.md §25.1), mensagens idempotentes por `client_id`
+- [x] Autorização por membership/visibilidade + `SecurityMatrixIT` (todo endpoint: 401 anônimo, 403 sem CSRF, 403 admin)
+- [x] Rate limit (Bucket4j) em login, cadastro, envio, tradução, upload, ações sociais, criação e admin (`RateLimitRules`)
+- [ ] OpenAPI (springdoc em `/api/openapi`) → conferir os tipos do frontend com openapi-typescript
+- [x] Implementações HTTP no frontend (`src/services/http/*`), selecionadas por `VITE_DATA_SOURCE=http`; os DTOs já espelham `src/types`, então não há mappers
+- [x] Feed (posts, likes, comentários com "who can comment"), stories (tray, view, reação, resposta por DM, 24h), notificações (preferências, push realtime)
 
-### Tradução (Claude + ChatGPT pelos planos)
-- [ ] Interface `Translator` (exceções de login, cota e transitória) + `CodexCliTranslator` (ChatGPT, **principal**) + `ClaudeCliTranslator` (**reserva**) + `FallbackTranslator`
-- [ ] Confirmar as flags de cada CLI, a seleção de modelo e o modo sem ferramentas (somente texto)
-- [ ] Fila `translation_jobs` (SKIP LOCKED) + workers com concorrência limitada, timeout e retry com backoff
-- [ ] Estado `waiting_provider`: jobs aguardam sem gastar tentativas quando os dois provedores estão sem login ou sem cota; retomada automática quando um volta
-- [ ] `ai_provider_status` (ok / needs_reauth / reauth_pending / cooling_down) + roteamento direto para o Claude enquanto o ChatGPT estiver indisponível
-- [ ] Reautenticação automática (refresh em segundo plano) e assistida (login por link/código + aviso ao admin por e-mail e notificação)
-- [ ] Token de longa duração do Claude (`claude setup-token`) e credenciais persistidas do Codex
-- [ ] Painel `/admin/ai` (role admin): estado dos provedores, fila em espera, última falha, botão Reauthenticate
-- [ ] Teste: derrubar o login do ChatGPT → as traduções seguem pelo Claude; derrubar os dois → nada se perde e tudo é traduzido após a reautenticação
-- [ ] Prompt com contexto (últimas N mensagens, idioma provável) e saída JSON `{ natural, literal }` validada
-- [ ] Health check leve das duas CLIs no Actuator + aviso antecipado de login prestes a expirar
-- [ ] Desativar o uso de dados para treinamento nas contas Claude e ChatGPT
+### Tradução (ChatGPT + Claude pelos planos)
+- [x] Interface `Translator` (erros de login, cota e transitório) + `CliTranslator` por provedor (ChatGPT via `codex exec`, **principal**; Claude via `claude -p`, **reserva**) + `FallbackTranslator`
+- [ ] Confirmar no servidor as flags de cada CLI e a seleção de modelo (comandos configuráveis em `tenno.ai.providers`)
+- [x] Fila `translation_jobs` (SKIP LOCKED) + worker com lote limitado, timeout e retry com backoff
+- [x] Estado `waiting_provider`: jobs aguardam sem gastar tentativas quando os dois provedores estão indisponíveis; retomada automática quando um volta
+- [x] `ai_provider_status` (ok / needs_reauth / reauth_pending / cooling_down) + roteamento direto para o Claude enquanto o ChatGPT estiver indisponível
+- [x] Reautenticação automática (status da CLI) e assistida (login por link/código, aviso ao admin no log; e-mail depende do SMTP)
+- [x] Painel `/admin/ai` (role admin): estado dos provedores, fila, última falha, "Check now" e "Log in again" com link e código
+- [x] Teste: login do ChatGPT cai → traduções seguem pelo Claude; os dois caem → nada se perde e tudo é traduzido após a reautenticação (`TranslationPipelineIT`, `AdminAiIT`)
+- [x] Prompt com contexto (últimas N mensagens, idioma provável, anti-injeção) e saída JSON `{ natural, literal }` validada
+- [ ] Health check das CLIs no Actuator + aviso antecipado de login prestes a expirar
+- [ ] Desativar o uso de dados para treinamento nas contas Claude e ChatGPT (configuração manual nas contas)
 - [ ] Revisar os termos das assinaturas antes de abrir o app para mais pessoas (R14)
 
 ### Mídia
-- [ ] `MediaStorage` + `LocalDiskMediaStorage` (`/data/media`), upload multipart, MIME real (Tika), thumbnail, remoção de EXIF
-- [ ] `GET /api/media/{id}` com autorização e suporte a `Range`
-- [ ] Teto técnico de upload configurável (sem limite de produto) e alerta de disco
+- [x] `MediaStorage` + `LocalDiskMediaStorage`, upload multipart, MIME real (Tika), tipos com script recusados, remoção de EXIF; thumbnail: depois
+- [x] `GET /api/media/{id}` com autorização (conversa, post, story ativo, avatar), `nosniff` e suporte a `Range`
+- [x] Avatar só pode ser imagem do próprio usuário (impede tornar público um arquivo alheio)
+- [x] Teto técnico de upload configurável (`MAX_UPLOAD_SIZE`, sem limite de produto); alerta de disco: Phase 10
 
 ### Deploy na VPS
-- [ ] `deploy/docker-compose.yml`: caddy (TLS, SPA, proxy `/api`, `/oauth2`, `/login/oauth2`, `/ws`), backend (JRE 21 + Node + CLIs), postgres
-- [ ] Imagem multi-stage do backend; volumes `pgdata`, `media`, `cli-credentials`
+- [x] `deploy/docker-compose.yml`: web (Caddy + SPA: TLS, CSP, proxy `/api`, `/oauth2`, `/login/oauth2`, `/ws`), backend (JRE 21 + Node + CLIs, não-root), postgres
+- [x] Imagem multi-stage do backend (build verificado: Java 21, `codex` e `claude` presentes); volumes `pgdata`, `media`, `ai-codex`, `ai-claude`
 - [ ] Login das CLIs no servidor (uma vez) com credenciais persistidas
-- [ ] `.env` de produção fora do git; domínio e DNS
+- [x] `.env.example`; `.env` de produção fora do git
+- [ ] Domínio e DNS
 - [ ] Hardening da VPS (SSH por chave, firewall 80/443/22, fail2ban, atualizações automáticas)
 - [ ] Backups (`pg_dump` diário + `/data/media`) com restauração testada
-- [ ] CI/CD: GitHub Actions → GHCR → deploy via SSH
+- [x] CI: GitHub Actions (frontend lint/typecheck/test/build; backend `./mvnw test` com Testcontainers)
+- [ ] CD: GHCR → deploy via SSH
+
+### Testes do backend
+- [x] 360+ testes: unitários (parser, prompt, classificador de erros, fallback, regras, rate limit, mídia, cookie) e integração contra Postgres real (Auth, Profile, Chat, TranslationPipeline, Feed, Stories, Notifications, Media, AdminAi, RateLimit, SecurityMatrix, RealtimeWebSocket com servidor e sockets reais)
+- [x] Smoke test do frontend em modo http contra o backend real (Playwright): cadastro → onboarding → discover → follow → conversa → mensagens persistidas
 
 **Done when**
-- [ ] Todos os fluxos das Phases 2–7 funcionam contra o backend real **sem alterações em componentes ou hooks**
+- [x] Os fluxos das Phases 2–7 funcionam contra o backend real **sem alterações em componentes ou hooks** (realtime no navegador: Phase 9)
 - [ ] Login com Google, Facebook e email/senha funciona em produção, com aceite de termos registrado
-- [ ] Mensagens são traduzidas pelo ChatGPT e, com o ChatGPT indisponível, pelo Claude
-- [ ] Com as duas IAs sem login, nenhuma mensagem ou tradução se perde, e a fila é processada assim que uma delas é reautenticada
-- [ ] Nenhum segredo no bundle do frontend (verificado no build)
-- [ ] Testes de autorização impedem acesso a conversas de terceiros
+- [x] Mensagens são traduzidas pelo ChatGPT e, com o ChatGPT indisponível, pelo Claude (testado com CLIs simuladas)
+- [x] Com as duas IAs sem login, nenhuma mensagem ou tradução se perde, e a fila é processada assim que uma delas é reautenticada
+- [x] Nenhum segredo no bundle do frontend (só `VITE_DATA_SOURCE` é lido)
+- [x] Testes de autorização impedem acesso a conversas de terceiros
 
 ---
 

@@ -1,0 +1,13 @@
+tenno:
+  cookie-secure: false
+  public-url: http://localhost:5173
+  media:
+    root: ${java.io.tmpdir}/tenno-test-media
+  translation:
+    worker-enabled: false
+    timeout: 5s
+  rate-limit:
+    enabled: false
+logging:
+  level:
+    org.springframework.security: WARN

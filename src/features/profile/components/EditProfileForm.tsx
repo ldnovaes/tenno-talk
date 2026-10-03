@@ -118,11 +118,13 @@ export function EditProfileForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t("onboarding.profile.country")}</FormLabel>
-              <CountrySelect
-                value={field.value}
-                onChange={field.onChange}
-                placeholder={t("onboarding.profile.countryPlaceholder")}
-              />
+              <FormControl>
+                <CountrySelect
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder={t("onboarding.profile.countryPlaceholder")}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

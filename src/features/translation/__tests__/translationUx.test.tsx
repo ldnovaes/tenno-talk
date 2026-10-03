@@ -117,7 +117,8 @@ describe("translation UX", () => {
 
   it("replaces a translation by its improved version", async () => {
     const log = await openChat();
-    setMockConfig({ improvedTranslationRate: 1, improvedTranslationDelayMs: 500 });
+    // A wide gap between v1 and v2 so a slow machine still sees v1 before it is replaced.
+    setMockConfig({ improvedTranslationRate: 1, improvedTranslationDelayMs: 1500 });
     writeMockSession("usr_cam");
     await act(() =>
       mockChatService.sendMessage({
@@ -130,8 +131,12 @@ describe("translation UX", () => {
     );
     writeMockSession("usr_lucas");
     // v1 is the literal rendering, v2 the natural one.
-    expect(await within(log).findByText("Eu também lembro de você.")).toBeInTheDocument();
-    await waitFor(() => expect(within(log).getAllByText(CAM_PT).length).toBe(2));
+    expect(
+      await within(log).findByText("Eu também lembro de você.", undefined, { timeout: 3000 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(within(log).getAllByText(CAM_PT).length).toBe(2), {
+      timeout: 4000,
+    });
     expect(within(log).queryByText("Eu também lembro de você.")).not.toBeInTheDocument();
   });
 

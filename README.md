@@ -30,3 +30,38 @@ Por padrão o frontend usa a camada de mock (`VITE_DATA_SOURCE=mock`).
 
 A sessão do mock é por aba; os dados ficam no `localStorage` do navegador.
 Contatos que não estão abertos em nenhuma aba respondem automaticamente.
+
+## Backend (Java)
+
+Requisitos: Java 21 e Docker (Postgres local e testes com Testcontainers).
+
+```sh
+docker compose -f docker-compose.dev.yml up -d     # Postgres em localhost:5432
+cd backend
+COOKIE_SECURE=false ./mvnw spring-boot:run          # http://localhost:8080
+./mvnw test                                          # unitários + integração (Postgres real via Testcontainers)
+```
+
+Com o backend no ar, rode o frontend contra ele:
+
+```sh
+VITE_DATA_SOURCE=http bun run dev   # o Vite repassa /api, /oauth2, /login/oauth2 e /ws para :8080
+```
+
+As traduções usam as CLIs `codex` (ChatGPT, principal) e `claude` (reserva), logadas com os planos de assinatura, nunca com chaves de API (PLAN.md §28). Sem as CLIs, as mensagens continuam funcionando e as traduções esperam na fila.
+
+## Produção (uma VPS)
+
+```sh
+cd deploy
+cp .env.example .env        # domínio, senha do banco, OAuth
+docker compose up -d --build
+```
+
+Depois do primeiro deploy:
+
+1. Faça login nas CLIs dentro do container (uma vez; as credenciais ficam em volumes):
+   `docker compose exec backend codex login --device-auth` e `docker compose exec backend claude setup-token`.
+2. Promova sua conta a admin:
+   `docker compose exec postgres psql -U tenno -c "UPDATE users SET role='admin' WHERE email='voce@exemplo.com'"`.
+3. Acompanhe os provedores em **Settings → AI providers** (`/admin/ai`), inclusive para refazer o login pelo celular.

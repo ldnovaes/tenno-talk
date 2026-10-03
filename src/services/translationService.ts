@@ -1,7 +1,9 @@
+import { env } from "@/lib/env";
 import type { LanguageCode } from "@/types/language";
 import type { ContentTranslation, TranslationInsight } from "@/types/message";
 
 import { mockTranslationService } from "./mock/implementations/mockTranslationService";
+import { httpTranslationService } from "./http/httpTranslationService";
 
 export type TranslatableContent = { kind: "post" | "comment" | "story"; id: string };
 
@@ -21,4 +23,5 @@ export interface TranslationService {
   ): Promise<ContentTranslation>;
 }
 
-export const translationService: TranslationService = mockTranslationService;
+export const translationService: TranslationService =
+  env.dataSource === "http" ? httpTranslationService : mockTranslationService;

@@ -1244,7 +1244,7 @@ O detalhamento (checklist) está no [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ## 25. Arquitetura de backend
 
-**Stack:** Java 21 + Spring Boot 4 (Web MVC, Security, OAuth2 Client, WebSocket, Validation, Data JPA), PostgreSQL 16, Flyway, Maven. Tudo roda numa **única VPS** junto com o frontend (§32).
+**Stack:** Java 21 + Spring Boot 4.1 (Web MVC, Security, OAuth2 Client, WebSocket, Validation, JDBC), PostgreSQL 16, Flyway, Maven. O acesso a dados usa `JdbcClient` com **SQL explícito** em repositórios por módulo, sem JPA (decisão 11 do §34.1): as consultas de projeção (tradução por viewer, cursores, privacidade) ficam legíveis e testadas contra o Postgres real. Tudo roda numa **única VPS** junto com o frontend (§32).
 
 ```
 Navegador (SPA)
@@ -1271,7 +1271,25 @@ PostgreSQL (volume)                      /data/media (volume)
 - **Repositório:** frontend na raiz, backend em `backend/` e infraestrutura em `deploy/` (monorepo).
 - **Contrato da API:** REST + JSON. Os DTOs espelham `src/types` (camelCase, datas ISO-8601 em UTC). O OpenAPI é gerado pelo springdoc, e na Phase 8 os tipos do frontend são conferidos contra ele (openapi-typescript). Erros seguem o formato RFC 9457 (Problem Details), que o `toAppError` do frontend converte em `AppError`.
 - **Responsabilidades do backend:** autorização, tradução, proteção de credenciais, persistência, contexto da conversa, rate limiting e moderação futura.
-- **No frontend:** cada serviço ganha uma implementação HTTP (`httpChatService` etc., `fetch` com `credentials: "include"`), selecionada em `lib/env.ts`. Componentes e hooks não mudam.
+- **No frontend:** cada serviço ganha uma implementação HTTP em `src/services/http/` (`httpChatService` etc., `fetch` same-origin + header CSRF), selecionada por `VITE_DATA_SOURCE=http` em `lib/env.ts`. Componentes e hooks não mudam. Mídia local (`blob:`/`data:`) é enviada para `POST /api/media` antes da mensagem, do post, do story ou do avatar.
+
+### 25.1 Mapa da API
+
+| Área | Endpoints |
+|---|---|
+| Auth | `GET /api/auth/session` · `POST /api/auth/signup` · `POST /api/auth/signin` · `POST /api/auth/signout` · `POST /api/auth/password` · `GET /oauth2/authorization/{google\|facebook}` |
+| Eu | `GET /api/me` · `POST /api/me/terms` · `POST /api/me/onboarding` · `PUT /api/me/profile` · `PATCH /api/me/preferences` · `GET /api/me/blocked` · `DELETE /api/me` |
+| Pessoas | `GET /api/usernames/{u}/availability` · `GET /api/profiles/{username}` · `PUT\|DELETE /api/profiles/{id}/follow` · `PUT\|DELETE /api/profiles/{id}/block` · `GET /api/people/suggestions` · `GET /api/people/search` · `GET /api/discover` |
+| Chat | `GET /api/conversations` · `GET /api/conversations/{id}` · `GET\|POST /api/conversations/{id}/messages` · `POST /api/conversations/{id}/read` · `PUT /api/conversations/{id}/mute` · `POST /api/conversations/direct` · `POST /api/conversations/groups` · `POST /api/messages/{id}/reactions` · `POST /api/messages/{id}/forward` |
+| Tradução | `POST /api/messages/{id}/translation/retry` · `GET /api/messages/{id}/insight?lang=` · `POST /api/translations/{post\|comment\|story}/{id}?lang=` |
+| Feed | `GET /api/feed` · `GET /api/users/{id}/posts` · `GET\|POST /api/posts…` · `PUT\|DELETE /api/posts/{id}/like` · `GET\|POST /api/posts/{id}/comments` |
+| Stories | `GET /api/stories/tray` · `POST /api/stories` · `PUT /api/stories/{id}/view` · `POST /api/stories/{id}/reactions` · `POST /api/stories/{id}/replies` |
+| Notificações | `GET /api/notifications` · `GET /api/notifications/unread-count` · `POST /api/notifications/read-all` |
+| Mídia | `POST /api/media` (multipart `file`) · `GET /api/media/{id}` |
+| Admin | `GET /api/admin/ai` · `POST /api/admin/ai/{provider}/check` · `POST /api/admin/ai/{provider}/reauth` |
+| Realtime | `GET /ws` (WebSocket, mesma sessão) |
+
+IDs malformados respondem 404, como IDs inexistentes. O OpenAPI fica em `/api/openapi`.
 
 ## 26. Realtime
 
@@ -1404,7 +1422,8 @@ As flags de login e de status de cada CLI serão confirmadas na Phase 8.
 ## 29. Storage
 
 - **Disco da VPS**, volume `/data/media`, atrás da interface `MediaStorage` (`LocalDiskMediaStorage`). S3 ou MinIO podem ser adicionados depois, sem mudar o resto.
-- Upload multipart pelo backend (`POST /api/media`): validação do MIME real (Apache Tika), nome sanitizado, thumbnail de imagem e remoção de EXIF/geolocalização. Vídeo sem transcodificação por enquanto.
+- Upload multipart pelo backend (`POST /api/media`): validação do MIME real (Apache Tika), nome sanitizado e remoção de EXIF/geolocalização (JPEG e PNG são recodificados). Tipos com script (HTML, SVG, JS) são recusados, e downloads saem com `X-Content-Type-Options: nosniff`. Thumbnails e transcodificação de vídeo ficam para depois.
+- **Quem pode baixar:** o dono; membros da conversa onde o arquivo foi enviado; quem pode ver o post; quem pode ver o story enquanto ele está ativo; qualquer pessoa autenticada, se for avatar. Por isso o avatar só pode ser uma imagem **do próprio usuário** enviada por `POST /api/media` (`/api/media/{id}`). Uma URL externa ou o arquivo de outra pessoa é recusado; senão um arquivo privado poderia virar público.
 - Leitura por `GET /api/media/{id}`, com checagem de permissão (membro da conversa, visibilidade do post) e suporte a `Range` (vídeo).
 - **Sem limite de mídia no produto** (decisão). Ainda assim, um **teto técnico** configurável e alto (ex.: 500 MB por arquivo; o padrão do Spring é 1 MB) protege a VPS. Uso de disco monitorado (R15).
 
@@ -1415,11 +1434,12 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **Métodos:**
   - **Continue with Google** e **Continue with Facebook**: OAuth2 Authorization Code via `spring-boot-starter-oauth2-client`;
   - **email + senha**: argon2id, verificação de e-mail e redefinição de senha (exigem SMTP; ver §34).
-- **Sessão:** cookie `HttpOnly; Secure; SameSite=Lax` com sessão no servidor (Spring Session JDBC). SPA e API ficam no mesmo domínio (Caddy), então não há CORS e **nenhum token fica em `localStorage`**. CSRF via `CookieCsrfTokenRepository` (cookie `XSRF-TOKEN` + header `X-XSRF-TOKEN`).
+- **Sessão:** cookie `SESSION` `HttpOnly; Secure; SameSite=Lax` com sessão no servidor (Spring Session JDBC), declarado explicitamente em `SessionCookieConfig` (as propriedades `server.servlet.session.cookie.*` não chegavam ao cookie do Spring Session no Boot 4). `tenno.cookie-secure=false` só em desenvolvimento local. SPA e API ficam no mesmo domínio (Caddy), então não há CORS e **nenhum token fica em `localStorage`**. CSRF via `CookieCsrfTokenRepository` (cookie `XSRF-TOKEN` + header `X-XSRF-TOKEN`).
 - **Fluxo social:** SPA → `GET /oauth2/authorization/{google|facebook}` (redirect de página inteira) → provedor → `/login/oauth2/code/{provider}` → o backend cria ou vincula `users` + `oauth_accounts` → redireciona para `/onboarding/welcome` (conta nova) ou `/chats`.
 - **Vinculação:** o mesmo e-mail verificado em Google, Facebook e senha resulta na mesma conta. O Facebook pode não retornar e-mail; nesse caso, a conta nasce sem e-mail.
 - **Termos de Uso e Política de Privacidade (LGPD):** o aceite é obrigatório na criação da conta, qualquer que seja o método, e acontece no **primeiro passo do onboarding**, antes de qualquer dado de perfil ser salvo. Ele fica registrado em `terms_acceptances` com a versão; uma nova versão exige novo aceite.
-- **Frontend:** o `authService` real expõe `startOAuth(provider)`, `signInWithPassword`, `signUp`, `signOut` e `getSession` (`GET /api/me`). O `sessionStore` continua sendo a única interface para a UI.
+- **Frontend:** o `authService` real expõe `startOAuth(provider)`, `signInWithPassword`, `signUp`, `signOut` e `getSession` (`GET /api/auth/session`). Falha no login social volta para `/welcome?error=oauth`, que mostra o aviso.
+- **Primeiro admin:** `UPDATE users SET role = 'admin' WHERE email = '…'` no Postgres; a role vale a partir do próximo login. O `sessionStore` continua sendo a única interface para a UI.
 - **Produção:** o app do Facebook precisa de *App Review*, e o Google de tela de consentimento configurada (domínio verificado).
 
 ## 31. Segurança
@@ -1427,7 +1447,9 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **O frontend nunca é fonte de autorização.** Os guards de rota são só UX.
 - **Autorização no backend:** Spring Security + checagem de membership em todo acesso a conversa, mensagem e mídia (`ConversationAccessPolicy`). Sem RLS, então **todo endpoint tem teste de autorização**.
 - **Validação:** Bean Validation nos DTOs; tamanho máximo do texto da mensagem (ex.: 4.000 caracteres).
-- **Rate limit:** Bucket4j por usuário/IP em login, cadastro, envio, retry de tradução e upload. Bloqueio progressivo após falhas de login.
+- **Rate limit:** Bucket4j em memória (uma instância), por usuário autenticado ou por IP. Respostas 429 com `Retry-After` e `code: rate_limited`. Regras em `RateLimitRules` (por minuto): auth 10 · envio de mensagem/resposta a story 60 · upload 30 · tradução 60 · social (follow, block, like, comentário, reação) 120 · criação (post, story, conversa) 30 · admin 10. Leituras não têm limite. Bloqueio progressivo após falhas de login: depois.
+- **"Quem pode me mandar mensagem / comentar":** `everyone`, `followers` ou `nobody`. `followers` significa **pessoas que eu sigo** (rótulo "People I follow"). "Pessoas que me seguem" não protegeria nada, porque qualquer um pode seguir.
+- **Visibilidade:** perfil privado mostra posts e stories só a quem segue; bloqueio esconde conteúdo nos dois sentidos. A regra fica numa única função SQL (`Visibility.authorVisible`).
 - **Grupos:** no máximo 1 criado por pessoa (índice único parcial + checagem no serviço).
 - **Uploads:** MIME real, armazenamento fora da raiz web, servidos só por endpoint autorizado.
 - **Block e report:** estrutura no banco desde o início; UI em fase posterior.
@@ -1436,7 +1458,8 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
   - acesso aos dados e **exclusão da conta** são obrigatórios antes do lançamento público;
   - treinamento desativado nas contas das IAs.
 - **Segredos** (client secrets OAuth, credenciais das CLIs, senha do banco) só no servidor: `.env` fora do git e volumes protegidos.
-- **Borda:** Caddy com HTTPS automático, HSTS, CSP e headers de segurança. Nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário.
+- **Borda:** Caddy com HTTPS automático, HSTS, CSP (`script-src 'self'`; por isso o script de tema é o arquivo `public/theme-init.js`, e não inline), `X-Frame-Options: DENY` e demais headers.
+- **Testes de segurança:** `SecurityMatrixIT` descobre todos os endpoints do Spring MVC e verifica que cada um responde 401 sem sessão, 403 sem CSRF nas escritas e 403 nas rotas de admin para quem não é admin. Nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário.
 - **VPS:** acesso SSH só por chave, firewall (apenas 80/443/22), fail2ban, atualizações automáticas, Postgres sem porta exposta.
 - **Backups:** `pg_dump` diário + cópia de `/data/media` para fora da VPS, com restauração testada.
 
@@ -1446,16 +1469,18 @@ Uma VPS com **Docker Compose** (sugestão mínima: 2 vCPU, 4 GB de RAM, por caus
 
 ```yaml
 services:
-  caddy:     # 80/443, TLS Let's Encrypt; serve o build do Vite; proxy /api, /oauth2, /login/oauth2, /ws → backend
-  backend:   # Spring Boot (JRE 21) + Node.js + CLIs claude/codex; volumes: media, cli-credentials
+  web:       # Caddy com o build do Vite (deploy/Dockerfile.web): 80/443, TLS; proxy /api, /oauth2, /login/oauth2, /ws, /actuator/health → backend
+  backend:   # Spring Boot (JRE 21) + Node.js + CLIs codex/claude (backend/Dockerfile), usuário não-root; volumes: media, ai-codex, ai-claude
   postgres:  # 16; volume pgdata; sem porta exposta
 ```
+
+Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.web`, `deploy/.env.example`, `backend/Dockerfile`, `docker-compose.dev.yml` (só o Postgres, para desenvolvimento) e `.github/workflows/ci.yml`.
 
 - **Domínio único** (ex.: `tennotalk.app`): SPA e API na mesma origem.
 - **Frontend:** `vite build` → `dist/` servido pelo Caddy, com fallback de SPA (`try_files {path} /index.html`) e cache imutável para assets com hash.
 - **Backend:** imagem multi-stage (build Maven → JRE 21 + Node + CLIs). Migrations Flyway no startup.
 - **Configuração:** `.env` não versionado (banco, client ids/secrets OAuth, URL pública, SMTP).
-- **CI/CD (GitHub Actions):** lint, typecheck, test e build do frontend; testes do backend (Testcontainers + Postgres); build das imagens → GHCR → deploy via SSH (`docker compose pull && docker compose up -d`).
+- **CI (GitHub Actions):** lint, typecheck, test e build do frontend (mock e http); `./mvnw test` do backend, que roda unitários **e** integração (`*IT`, Testcontainers). CD (GHCR → deploy via SSH) na Phase 10.
 - **Ambientes:** local (`docker compose` de desenvolvimento) e produção. Staging é opcional por enquanto.
 - **Observabilidade:** logs JSON (`docker logs`), Spring Actuator (health, incluindo as CLIs de IA), monitor de uptime externo; Sentry é opcional.
 
@@ -1501,6 +1526,12 @@ services:
 | 8 | Mídia | **Sem limite de produto** por enquanto (só teto técnico de proteção) |
 | 9 | Infra | **Uma VPS** com backend + frontend (Docker Compose + Caddy) |
 | 10 | Criptografia ponta a ponta | Não se aplica: a tradução acontece no servidor (consequência das decisões 2 e 3; informada nos termos) |
+| 11 | Acesso a dados | `JdbcClient` + SQL explícito, sem JPA (Phase 8) |
+| 12 | Privacidade "followers" | Significa **pessoas que eu sigo**, para mensagens e comentários (§31) |
+| 13 | Feed | Posts de todos os autores visíveis ao viewer, do mais novo para o mais antigo (escala atual: duas pessoas); ranking/seguidos depois |
+| 14 | Stories | Duram **24 horas**; o tray mostra autores visíveis (eu → não vistos → vistos) |
+| 15 | Notificações | `follow`, `like`, `comment` e `story_reaction`, respeitando as preferências e nunca para a própria ação. Mensagens novas não geram notificação (o chat já tem contador de não lidas) |
+| 16 | Avatar | Só uma imagem do próprio usuário enviada ao backend (§29) |
 
 ### 34.2 Ainda em aberto
 
@@ -1510,7 +1541,7 @@ services:
 4. Provedor de e-mail transacional (SMTP) para verificação de e-mail e redefinição de senha.
 5. Regras de username (tamanho, caracteres, troca).
 6. Idiomas da interface no lançamento.
-7. Retenção de stories (24h?) e política de mídia antiga.
+7. Política de mídia antiga (stories expirados mantêm o arquivo por enquanto).
 8. Segurança social para quando o app abrir para mais pessoas: message requests, idade mínima, moderação.
 
 ## 35. Regras de desenvolvimento

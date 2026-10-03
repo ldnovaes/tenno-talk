@@ -52,6 +52,7 @@ export const en = {
     demoTitle: "Try a demo account",
     demoDescription: "See the same conversation from both sides.",
     demoAs: "Sign in as {{name}}",
+    oauthFailed: "We couldn't sign you in with that account. Try again or use another option.",
     legalNotice:
       "By continuing you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>.",
     signInTitle: "Sign in",
@@ -431,7 +432,7 @@ export const en = {
       whoCanMessage: "Who can message me",
       whoCanComment: "Who can comment",
       everyone: "Everyone",
-      followers: "People who follow me",
+      followers: "People I follow",
       nobody: "Nobody",
       blocked: "Blocked users",
       noBlocked: "You haven't blocked anyone.",
@@ -575,9 +576,36 @@ export const en = {
       empty: "No one found.",
     },
   },
-  placeholder: {
-    title: "Under construction",
-    description: "This screen is part of an upcoming phase.",
+  admin: {
+    notAllowed: "This page is for administrators.",
+    ai: {
+      title: "AI providers",
+      description:
+        "Translations use ChatGPT first and Claude when it fails. Nothing is lost while a provider is down: messages wait and are translated when it is back.",
+      primary: "Primary",
+      fallback: "Fallback",
+      states: {
+        ok: "Working",
+        needs_reauth: "Needs login",
+        reauth_pending: "Waiting for login",
+        cooling_down: "Usage limit reached",
+      },
+      backAt: "Back",
+      check: "Check now",
+      reauth: "Log in again",
+      challengeTitle: "Log in to {{provider}}",
+      challengeSteps:
+        "Open the link on any device, sign in to the subscription account and enter this code.",
+      challengeNoLink: "The login did not show a link. Its output:",
+      openLink: "Open login page",
+      queueTitle: "Translation queue",
+      queue: {
+        pending: "Pending",
+        running: "Running",
+        waiting_provider: "Waiting for a provider",
+        failed: "Failed",
+      },
+    },
   },
 } as const;
 

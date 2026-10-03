@@ -1,0 +1,14 @@
+# Local development: only PostgreSQL. Backend: cd backend && ./mvnw spring-boot:run. Frontend: VITE_DATA_SOURCE=http bun run dev
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tenno
+      POSTGRES_USER: tenno
+      POSTGRES_PASSWORD: tenno
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+
+volumes:
+  pgdata-dev:

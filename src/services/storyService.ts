@@ -1,7 +1,9 @@
+import { env } from "@/lib/env";
 import type { Story, StoryTrayItem } from "@/types/story";
 
 import type { MediaInput } from "./chatService";
 import { mockStoryService } from "./mock/implementations/mockStoryService";
+import { httpStoryService } from "./http/httpStoryService";
 
 export interface StoryService {
   /** People with active stories: the viewer first, then unseen, then seen. */
@@ -14,4 +16,5 @@ export interface StoryService {
   createStory(input: { media: MediaInput; text: string }): Promise<Story>;
 }
 
-export const storyService: StoryService = mockStoryService;
+export const storyService: StoryService =
+  env.dataSource === "http" ? httpStoryService : mockStoryService;

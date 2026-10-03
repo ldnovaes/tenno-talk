@@ -1,4 +1,6 @@
+import { env } from "@/lib/env";
 import { mockAuthService } from "./mock/implementations/mockAuthService";
+import { httpAuthService } from "./http/httpAuthService";
 
 export type OAuthProvider = "google" | "facebook";
 
@@ -25,4 +27,5 @@ export interface AuthService {
   changePassword(input: { current: string | null; next: string }): Promise<void>;
 }
 
-export const authService: AuthService = mockAuthService;
+export const authService: AuthService =
+  env.dataSource === "http" ? httpAuthService : mockAuthService;

@@ -1,9 +1,11 @@
+import { env } from "@/lib/env";
 import type { Page } from "@/types/api";
 import type { Conversation } from "@/types/conversation";
 import type { MediaKind } from "@/types/media";
 import type { Message } from "@/types/message";
 
 import { mockChatService } from "./mock/implementations/mockChatService";
+import { httpChatService } from "./http/httpChatService";
 
 /** Media prepared on the client before sending (uploaded to the backend in Phase 8). */
 export interface MediaInput {
@@ -41,4 +43,5 @@ export interface ChatService {
   createGroup(input: { title: string; memberIds: string[] }): Promise<Conversation>;
 }
 
-export const chatService: ChatService = mockChatService;
+export const chatService: ChatService =
+  env.dataSource === "http" ? httpChatService : mockChatService;

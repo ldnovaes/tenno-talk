@@ -1,0 +1,31 @@
+# One VPS, one origin (PLAN.md §32): the SPA and the API share the domain, so the session cookie
+# stays first-party and no CORS is needed. Caddy obtains and renews the TLS certificate.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' wss://{$DOMAIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com https://www.facebook.com"
+		-Server
+	}
+
+	@backend path /api/* /oauth2/* /login/oauth2/* /ws /actuator/health
+	handle @backend {
+		reverse_proxy backend:8080 {
+			# Uploads have no product limit (PLAN.md §34); stream them instead of buffering.
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}

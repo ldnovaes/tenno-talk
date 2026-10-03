@@ -1,0 +1,229 @@
+package com.tennotalk.users;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
+import com.tennotalk.support.IntegrationTest;
+import com.tennotalk.support.TestData;
+
+import static com.tennotalk.support.TestData.as;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.hasItem;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+class ProfileIT extends IntegrationTest {
+
+    private UUID newAccount() {
+        UUID id = UUID.randomUUID();
+        jdbc.sql("INSERT INTO users (id, email, native_language) VALUES (:id, :e, 'pt-BR')").param("id", id).param("e", id + "@x.com").update();
+        jdbc.sql("INSERT INTO user_preferences (user_id, receiving_language) VALUES (:id, 'pt-BR')").param("id", id).update();
+        return id;
+    }
+
+    private Map<String, Object> onboarding(String username) {
+        return Map.of("nativeLanguage", "pt-BR", "receivingLanguage", "en-US", "displayName", " Maria ", "username", username,
+                "bio", "", "country", "br");
+    }
+
+    @Test
+    void onboardingRequiresTheCurrentTerms() throws Exception {
+        UUID me = newAccount();
+        mvc.perform(withJson(post("/api/me/onboarding"), onboarding("maria")).with(as(me)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withJson(post("/api/me/terms"), Map.of("version", "2001-01-01")).with(as(me)))
+                .andExpect(status().isBadRequest());
+        mvc.perform(withJson(post("/api/me/terms"), Map.of("version", TestData.TERMS)).with(as(me)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.termsAcceptedVersion").value(TestData.TERMS));
+        mvc.perform(withJson(post("/api/me/onboarding"), onboarding("@Maria_S")).with(as(me)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("maria_s"))
+                .andExpect(jsonPath("$.displayName").value("Maria"))
+                .andExpect(jsonPath("$.country").value("BR"))
+                .andExpect(jsonPath("$.bio").isEmpty())
+                .andExpect(jsonPath("$.onboardingCompletedAt").isNotEmpty())
+                .andExpect(jsonPath("$.preferences.translation.receivingLanguage").value("en-US"));
+        String ip = jdbc.sql("SELECT ip FROM terms_acceptances WHERE user_id = :id").param("id", me).query(String.class).single();
+        assertThat(ip).isNotBlank();
+    }
+
+    @Test
+    void usernamesAreValidatedAndUnique() throws Exception {
+        data.user("cam", "vi-VN");
+        UUID me = newAccount();
+        mvc.perform(withJson(post("/api/me/terms"), Map.of("version", TestData.TERMS)).with(as(me))).andExpect(status().isOk());
+        mvc.perform(withJson(post("/api/me/onboarding"), onboarding("CAM")).with(as(me)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.fieldErrors.username").value("taken"));
+        mvc.perform(withJson(post("/api/me/onboarding"), onboarding("1abc")).with(as(me)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.username").value("format"));
+        mvc.perform(get("/api/usernames/cam/availability").with(as(me))).andExpect(jsonPath("$.available").value(false));
+        mvc.perform(get("/api/usernames/free_name/availability").with(as(me))).andExpect(jsonPath("$.available").value(true));
+        mvc.perform(get("/api/usernames/x/availability").with(as(me))).andExpect(jsonPath("$.available").value(false));
+    }
+
+    @Test
+    void unsupportedLanguagesAreRejected() throws Exception {
+        UUID me = data.user("lucas", "pt-BR");
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("translation", Map.of("receivingLanguage", "xx-XX"))).with(as(me)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void preferencesArePatchedPartially() throws Exception {
+        UUID me = data.user("lucas", "pt-BR");
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of(
+                        "translation", Map.of("displayMode", "both", "learningMode", true),
+                        "privacy", Map.of("whoCanMessage", "followers"))).with(as(me)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferences.translation.displayMode").value("both"))
+                .andExpect(jsonPath("$.preferences.translation.learningMode").value(true))
+                .andExpect(jsonPath("$.preferences.translation.receivingLanguage").value("pt-BR"))
+                .andExpect(jsonPath("$.preferences.privacy.whoCanMessage").value("followers"))
+                .andExpect(jsonPath("$.preferences.privacy.whoCanComment").value("everyone"));
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("translation", Map.of("displayMode", "weird"))).with(as(me)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.displayMode").exists());
+    }
+
+    @Test
+    void updatesTheProfileWithoutTheNativeLanguageAmongLearning() throws Exception {
+        UUID me = data.user("lucas", "pt-BR");
+        mvc.perform(withJson(put("/api/me/profile"), Map.of("displayName", "Lucas A.", "username", "lucas.a", "bio", "Oi",
+                        "country", "PT", "nativeLanguage", "pt-BR", "learningLanguages", List.of("vi-VN", "pt-PT", "vi-VN"))).with(as(me)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("lucas.a"))
+                .andExpect(jsonPath("$.learningLanguages", contains("vi-VN")));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions setAvatar(UUID me, String avatarUrl) throws Exception {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("displayName", "Lucas", "username", "lucas", "country", "BR",
+                "nativeLanguage", "pt-BR", "learningLanguages", List.of()));
+        body.put("avatarUrl", avatarUrl);
+        return mvc.perform(withJson(put("/api/me/profile"), body).with(as(me)));
+    }
+
+    @Test
+    void avatarsMustBeYourOwnUploadedPhoto() throws Exception {
+        UUID me = data.user("lucas", "pt-BR");
+        UUID other = data.user("cam", "vi-VN");
+        UUID mine = data.media(me, "image");
+        setAvatar(me, "/api/media/" + mine).andExpect(status().isOk()).andExpect(jsonPath("$.avatarUrl").value("/api/media/" + mine));
+
+        // Someone else's (private) photo would become public through the avatar rule.
+        setAvatar(me, "/api/media/" + data.media(other, "image"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.avatarUrl").exists());
+        setAvatar(me, "/api/media/" + data.media(me, "file")).andExpect(status().isBadRequest());
+        setAvatar(me, "https://tracker.example.com/pixel.png").andExpect(status().isBadRequest());
+        setAvatar(me, "javascript:alert(1)").andExpect(status().isBadRequest());
+        setAvatar(me, "/api/media/------------------------------------").andExpect(status().isBadRequest());
+        setAvatar(me, "/api/media/" + mine + "/../x").andExpect(status().isBadRequest());
+
+        setAvatar(me, null).andExpect(status().isOk()).andExpect(jsonPath("$.avatarUrl").doesNotExist());
+    }
+
+    @Test
+    void profilesShowCountsAndFollowState() throws Exception {
+        UUID lucas = data.user("lucas", "pt-BR");
+        UUID cam = data.user("cam", "vi-VN");
+        UUID minh = data.user("minh", "vi-VN");
+        data.follow(minh, cam);
+        mvc.perform(put("/api/profiles/" + cam + "/follow").with(as(lucas)).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isFollowing").value(true))
+                .andExpect(jsonPath("$.followersCount").value(2));
+        mvc.perform(put("/api/profiles/" + cam + "/follow").with(as(lucas)).with(csrf()))
+                .andExpect(jsonPath("$.followersCount").value(2));
+        mvc.perform(get("/api/profiles/CAM").with(as(lucas)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nativeLanguage").value("vi-VN"))
+                .andExpect(jsonPath("$.isOnline").value(false));
+        mvc.perform(delete("/api/profiles/" + cam + "/follow").with(as(lucas)).with(csrf()))
+                .andExpect(jsonPath("$.isFollowing").value(false))
+                .andExpect(jsonPath("$.followersCount").value(1));
+        mvc.perform(put("/api/profiles/" + lucas + "/follow").with(as(lucas)).with(csrf())).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/profiles/nobody").with(as(lucas))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/profiles/" + "x").with(as(lucas))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void blockingHidesPeopleBothWaysAndRemovesFollows() throws Exception {
+        UUID lucas = data.user("lucas", "pt-BR");
+        UUID cam = data.user("cam", "vi-VN");
+        data.follow(lucas, cam);
+        data.follow(cam, lucas);
+        mvc.perform(put("/api/profiles/" + cam + "/block").with(as(lucas)).with(csrf())).andExpect(status().isNoContent());
+        assertThat(jdbc.sql("SELECT count(*) FROM follows").query(Long.class).single()).isZero();
+        mvc.perform(get("/api/profiles/cam").with(as(lucas))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/profiles/lucas").with(as(cam))).andExpect(status().isNotFound());
+        mvc.perform(put("/api/profiles/" + lucas + "/follow").with(as(cam)).with(csrf())).andExpect(status().isNotFound());
+        mvc.perform(get("/api/me/blocked").with(as(lucas))).andExpect(jsonPath("$[0].username").value("cam"));
+        mvc.perform(delete("/api/profiles/" + cam + "/block").with(as(lucas)).with(csrf())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/me/blocked").with(as(lucas))).andExpect(jsonPath("$", hasSize(0)));
+        mvc.perform(put("/api/profiles/" + lucas + "/block").with(as(lucas)).with(csrf())).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void discoverPutsLanguagePartnersFirstAndPaginates() throws Exception {
+        UUID lucas = data.user("lucas", "pt-BR");
+        UUID cam = data.user("cam", "vi-VN");
+        data.setLearning(cam, List.of("pt-BR"));
+        for (int i = 0; i < 13; i++) data.user("person" + i, i % 2 == 0 ? "en-US" : "ja-JP");
+        UUID blocked = data.user("blocked", "en-US");
+        data.block(blocked, lucas);
+        jdbc.sql("INSERT INTO users (id, native_language) VALUES (gen_random_uuid(), 'en-US')").update();
+
+        var first = mvc.perform(get("/api/discover").with(as(lucas)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items", hasSize(12)))
+                .andExpect(jsonPath("$.items[0].username").value("cam"))
+                .andExpect(jsonPath("$.items[*].username", not(hasItem("lucas"))))
+                .andExpect(jsonPath("$.items[*].username", not(hasItem("blocked"))))
+                .andExpect(jsonPath("$.nextCursor").value("12"))
+                .andReturn();
+        assertThat(first.getResponse().getContentAsString()).doesNotContain("\"username\":\"\"");
+        mvc.perform(get("/api/discover").param("cursor", "12").with(as(lucas)))
+                .andExpect(jsonPath("$.items", hasSize(2)))
+                .andExpect(jsonPath("$.nextCursor").isEmpty());
+        mvc.perform(get("/api/discover").param("nativeLanguage", "ja").with(as(lucas)))
+                .andExpect(jsonPath("$.items", hasSize(6)));
+        mvc.perform(get("/api/discover").param("cursor", "abc").with(as(lucas))).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void searchAndSuggestionsSkipTheViewerAndBlockedPeople() throws Exception {
+        UUID lucas = data.user("lucas", "pt-BR");
+        data.user("cam", "vi-VN");
+        UUID omar = data.user("omar", "ar");
+        data.block(lucas, omar);
+        mvc.perform(get("/api/people/search").param("q", "@CA").with(as(lucas)))
+                .andExpect(jsonPath("$[*].username", contains("cam")));
+        mvc.perform(get("/api/people/suggestions").with(as(lucas)))
+                .andExpect(jsonPath("$[*].username", contains("cam")));
+    }
+
+    @Test
+    void deletingTheAccountRemovesTheUserAndSignsOut() throws Exception {
+        UUID lucas = data.user("lucas", "pt-BR");
+        UUID cam = data.user("cam", "vi-VN");
+        data.follow(cam, lucas);
+        mvc.perform(delete("/api/me").with(as(lucas)).with(csrf())).andExpect(status().isNoContent());
+        assertThat(jdbc.sql("SELECT count(*) FROM users WHERE id = :id").param("id", lucas).query(Long.class).single()).isZero();
+        mvc.perform(get("/api/profiles/cam").with(as(cam))).andExpect(jsonPath("$.followingCount").value(0));
+        mvc.perform(get("/api/me").with(as(lucas))).andExpect(status().isUnauthorized());
+    }
+}

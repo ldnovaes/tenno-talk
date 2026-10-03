@@ -38,7 +38,7 @@ describe("settings", () => {
     const user = userEvent.setup();
     renderApp("/settings/privacy");
     await user.click(await screen.findByRole("combobox", { name: "Who can message me" }));
-    await user.click(await screen.findByRole("option", { name: "People who follow me" }));
+    await user.click(await screen.findByRole("option", { name: "People I follow" }));
     await waitFor(() =>
       expect(mockDb.read().users["usr_lucas"]?.preferences.privacy.whoCanMessage).toBe("followers"),
     );

@@ -1,8 +1,10 @@
+import { env } from "@/lib/env";
 import type { Page } from "@/types/api";
 import type { Comment, Post } from "@/types/post";
 
 import type { MediaInput } from "./chatService";
 import { mockFeedService } from "./mock/implementations/mockFeedService";
+import { httpFeedService } from "./http/httpFeedService";
 
 export interface CreatePostInput {
   media: MediaInput[];
@@ -21,4 +23,5 @@ export interface FeedService {
   createPost(input: CreatePostInput, onProgress?: (progress: number) => void): Promise<Post>;
 }
 
-export const feedService: FeedService = mockFeedService;
+export const feedService: FeedService =
+  env.dataSource === "http" ? httpFeedService : mockFeedService;

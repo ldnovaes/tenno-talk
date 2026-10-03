@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { Bot, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
@@ -7,6 +7,7 @@ import { isSettingsSection, paths, type SettingsSection } from "@/app/router/pat
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/features/auth/hooks/useAuthActions";
+import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { SettingsNav } from "@/features/settings/components/SettingsNav";
 import { SettingsSectionView } from "@/features/settings/components/SettingsSectionView";
 import { usePanel } from "@/layouts/panelContext";
@@ -18,6 +19,7 @@ export default function SettingsPage() {
   const overlayNavigate = useOverlayNavigate();
   const panel = usePanel();
   const signOut = useSignOut();
+  const me = useCurrentUser();
 
   // Inside the desktop side panel, sections replace each other (no stacked history).
   const goTo = (next?: SettingsSection) =>
@@ -33,7 +35,13 @@ export default function SettingsPage() {
     <div className="flex min-h-full flex-col bg-background">
       <PageHeader title={t("settings.title")} onBack={panel ? panel.close : () => navigate(-1)} />
       <SettingsNav onSelect={goTo} />
-      <div className="mt-auto p-4">
+      <div className="mt-auto space-y-2 p-4">
+        {me.role === "admin" && (
+          <Button variant="outline" className="w-full" onClick={() => navigate(paths.adminAi())}>
+            <Bot className="size-4" aria-hidden />
+            {t("admin.ai.title")}
+          </Button>
+        )}
         <Button
           variant="outline"
           className="w-full text-destructive"

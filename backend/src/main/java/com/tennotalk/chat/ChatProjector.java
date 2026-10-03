@@ -1,0 +1,165 @@
+package com.tennotalk.chat;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
+import org.springframework.stereotype.Component;
+
+import com.tennotalk.chat.ChatDtos.ContentTranslationDto;
+import com.tennotalk.chat.ChatDtos.FileContent;
+import com.tennotalk.chat.ChatDtos.ImageContent;
+import com.tennotalk.chat.ChatDtos.MessageContentDto;
+import com.tennotalk.chat.ChatDtos.MessageDto;
+import com.tennotalk.chat.ChatDtos.MessageReferenceDto;
+import com.tennotalk.chat.ChatDtos.OriginalTextDto;
+import com.tennotalk.chat.ChatDtos.ReactionSummaryDto;
+import com.tennotalk.chat.ChatDtos.StoryReplyContent;
+import com.tennotalk.chat.ChatDtos.TextContent;
+import com.tennotalk.chat.ChatDtos.VideoContent;
+import com.tennotalk.common.Languages;
+import com.tennotalk.media.MediaRepository;
+import com.tennotalk.media.MediaRow;
+import com.tennotalk.translation.MessageTranslationRepository;
+
+/**
+ * Projects messages for ONE viewer (PLAN.md §12): the translation is the one into the
+ * viewer's receiving language (or, for own messages, what the other person received),
+ * and ticks come from the other members' cursors.
+ */
+@Component
+public class ChatProjector {
+
+    /** Conversation data needed to project its messages. */
+    public record Scope(String kind, List<MemberRow> members) {
+
+        MemberRow member(UUID userId) {
+            return members.stream().filter(m -> m.user().id().equals(userId)).findFirst().orElse(null);
+        }
+    }
+
+    private final ChatRepository chat;
+    private final MediaRepository media;
+    private final MessageTranslationRepository translations;
+
+    public ChatProjector(ChatRepository chat, MediaRepository media, MessageTranslationRepository translations) {
+        this.chat = chat;
+        this.media = media;
+        this.translations = translations;
+    }
+
+    /** Language this viewer should read the message in; null when there is nothing to show. */
+    public static String targetFor(MessageRow message, UUID viewer, Scope scope) {
+        if (!message.senderId().equals(viewer)) {
+            MemberRow me = scope.member(viewer);
+            return me == null ? null : me.receivingLanguage();
+        }
+        if ("group".equals(scope.kind())) return null;
+        return scope.members().stream()
+                .filter(m -> !m.user().id().equals(viewer))
+                .map(MemberRow::receivingLanguage)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public MessageDto one(UUID viewer, MessageRow message, Scope scope) {
+        return many(viewer, List.of(message), Map.of(message.conversationId(), scope)).getFirst();
+    }
+
+    public List<MessageDto> many(UUID viewer, List<MessageRow> messages, Map<UUID, Scope> scopes) {
+        if (messages.isEmpty()) return List.of();
+        Set<UUID> replyIds = new HashSet<>();
+        messages.forEach(m -> {
+            if (m.replyToId() != null) replyIds.add(m.replyToId());
+        });
+        Map<UUID, MessageRow> replied = chat.findMessages(replyIds);
+        Set<UUID> ids = new HashSet<>(replied.keySet());
+        messages.forEach(m -> ids.add(m.id()));
+        Map<UUID, List<MediaRow>> mediaByMessage = media.forMessages(ids);
+        Map<UUID, List<ChatRepository.ReactionRow>> reactions = chat.reactions(ids);
+        Map<String, MessageTranslationRepository.Row> translated = translations.forMessages(ids);
+
+        List<MessageDto> result = new ArrayList<>(messages.size());
+        for (MessageRow message : messages) {
+            Scope scope = Objects.requireNonNull(scopes.get(message.conversationId()), "scope");
+            MessageReferenceDto reply = null;
+            MessageRow quoted = message.replyToId() == null ? null : replied.get(message.replyToId());
+            if (quoted != null) {
+                reply = new MessageReferenceDto(quoted.id(), quoted.senderId(),
+                        preview(quoted, viewer, scope, translated, mediaByMessage));
+            }
+            result.add(new MessageDto(
+                    message.id(),
+                    message.clientId(),
+                    message.conversationId(),
+                    message.senderId(),
+                    content(message, mediaByMessage.getOrDefault(message.id(), List.of())),
+                    translation(message, targetFor(message, viewer, scope), translated),
+                    reply,
+                    summarize(reactions.getOrDefault(message.id(), List.of()), viewer),
+                    deliveryStatus(message, viewer, scope),
+                    message.createdAt()));
+        }
+        return result;
+    }
+
+    static ContentTranslationDto translation(MessageRow message, String target,
+            Map<String, MessageTranslationRepository.Row> translated) {
+        if (message.originalText() == null || target == null) return null;
+        if (Languages.same(message.originalLanguage(), target)) {
+            return new ContentTranslationDto(target, null, "not_needed", 0, message.createdAt());
+        }
+        MessageTranslationRepository.Row row = translated.get(MessageTranslationRepository.key(message.id(), target));
+        return row != null ? row.toDto() : new ContentTranslationDto(target, null, "pending", 0, message.createdAt());
+    }
+
+    static String deliveryStatus(MessageRow message, UUID viewer, Scope scope) {
+        if (!message.senderId().equals(viewer)) return "read";
+        List<DeliveryStatus.MemberCursor> others = scope.members().stream()
+                .filter(m -> !m.user().id().equals(viewer))
+                .map(m -> new DeliveryStatus.MemberCursor(m.lastDeliveredAt(), m.lastReadAt()))
+                .toList();
+        return DeliveryStatus.derive(message.createdAt(), others);
+    }
+
+    static MessageContentDto content(MessageRow message, List<MediaRow> attachments) {
+        OriginalTextDto text = message.originalText() == null ? null : new OriginalTextDto(message.originalText(), message.originalLanguage());
+        return switch (message.type()) {
+            case "image" -> new ImageContent(attachments.stream().map(MediaRow::toDto).toList(), text);
+            case "video" -> new VideoContent(attachments.isEmpty() ? null : attachments.getFirst().toDto(), text);
+            case "file" -> new FileContent(attachments.isEmpty() ? null : attachments.getFirst().toDto(),
+                    attachments.isEmpty() ? "" : attachments.getFirst().originalName());
+            case "story_reply" -> new StoryReplyContent(message.storyId(), text);
+            default -> new TextContent(text);
+        };
+    }
+
+    static List<ReactionSummaryDto> summarize(Collection<ChatRepository.ReactionRow> rows, UUID viewer) {
+        Map<String, int[]> counts = new LinkedHashMap<>();
+        Map<String, Boolean> mine = new LinkedHashMap<>();
+        for (ChatRepository.ReactionRow row : rows) {
+            counts.computeIfAbsent(row.emoji(), key -> new int[1])[0]++;
+            mine.merge(row.emoji(), row.userId().equals(viewer), Boolean::logicalOr);
+        }
+        return counts.entrySet().stream()
+                .map(entry -> new ReactionSummaryDto(entry.getKey(), entry.getValue()[0], mine.get(entry.getKey())))
+                .toList();
+    }
+
+    private static String preview(MessageRow message, UUID viewer, Scope scope,
+            Map<String, MessageTranslationRepository.Row> translated, Map<UUID, List<MediaRow>> mediaByMessage) {
+        if (message.originalText() == null) {
+            return mediaByMessage.getOrDefault(message.id(), List.of()).isEmpty() ? "" : "📷";
+        }
+        ContentTranslationDto translation = translation(message, targetFor(message, viewer, scope), translated);
+        boolean showTranslation = !message.senderId().equals(viewer) && translation != null
+                && "translated".equals(translation.status()) && translation.text() != null;
+        return showTranslation ? translation.text() : message.originalText();
+    }
+}

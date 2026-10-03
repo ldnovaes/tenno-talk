@@ -1,0 +1,12 @@
+# The SPA, built against the real backend and served by Caddy (with HTTPS).
+FROM oven/bun:1 AS build
+WORKDIR /src
+COPY package.json bun.lock bunfig.toml ./
+RUN bun install --frozen-lockfile
+COPY . .
+ENV VITE_DATA_SOURCE=http
+RUN bun run build
+
+FROM caddy:2-alpine
+COPY --from=build /src/dist /srv
+COPY deploy/Caddyfile /etc/caddy/Caddyfile

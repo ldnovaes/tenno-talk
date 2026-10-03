@@ -42,7 +42,7 @@ describe("onboarding", () => {
     expect(await screen.findByText("Use 1–40 characters.")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Name"), "Thảo Lê");
     await user.type(screen.getByLabelText("Username"), "thao.le");
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Country" }));
     await user.click(await screen.findByRole("option", { name: "Vietnam" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
@@ -80,7 +80,7 @@ describe("onboarding", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.type(await screen.findByLabelText("Name"), "Someone");
     await user.type(screen.getByLabelText("Username"), "cam");
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Country" }));
     await user.click(await screen.findByRole("option", { name: "Brazil" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("This username is already taken.")).toBeInTheDocument();
