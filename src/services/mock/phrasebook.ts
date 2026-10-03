@@ -496,6 +496,151 @@ export const PHRASES: Phrase[] = [
   },
 ];
 
+export const POST_PHRASES: Phrase[] = [
+  {
+    id: "post_cam_1",
+    text: {
+      "vi-VN": "Hoàng hôn ở Hồ Tây hôm nay đẹp quá 🌅",
+      "pt-BR": "O pôr do sol no Lago Oeste hoje estava lindo demais 🌅",
+      "en-US": "The sunset at West Lake today was so beautiful 🌅",
+    },
+  },
+  {
+    id: "post_cam_2",
+    text: {
+      "vi-VN": "Một ngày ở phố cổ Hội An 🏮",
+      "pt-BR": "Um dia na cidade antiga de Hội An 🏮",
+      "en-US": "A day in Hội An's old town 🏮",
+    },
+  },
+  {
+    id: "post_sofia_1",
+    text: {
+      "es-ES": "Ensayo general antes del concierto del sábado 🎻",
+      "pt-BR": "Ensaio geral antes do show de sábado 🎻",
+      "en-US": "Dress rehearsal before Saturday's concert 🎻",
+      "vi-VN": "Buổi tổng duyệt trước buổi hòa nhạc thứ Bảy 🎻",
+    },
+  },
+  {
+    id: "post_yuki_1",
+    text: {
+      "ja-JP": "新しいカフェを見つけました☕",
+      "pt-BR": "Encontrei um café novo ☕",
+      "en-US": "I found a new café ☕",
+      "vi-VN": "Mình vừa tìm được một quán cà phê mới ☕",
+    },
+  },
+  {
+    id: "post_lucas_1",
+    text: {
+      "pt-BR": "Fim de semana na praia em Ubatuba 🌊",
+      "vi-VN": "Cuối tuần ở biển Ubatuba 🌊",
+      "en-US": "Weekend at the beach in Ubatuba 🌊",
+    },
+  },
+  {
+    id: "post_emma_1",
+    text: {
+      "en-US": "First time trying to cook ramen at home!",
+      "pt-BR": "Primeira vez tentando fazer lámen em casa!",
+      "vi-VN": "Lần đầu thử nấu ramen ở nhà!",
+    },
+  },
+  {
+    id: "post_minh_1",
+    text: {
+      "vi-VN": "Bánh mì sáng nay ngon nhất Sài Gòn 🥖",
+      "pt-BR": "O bánh mì de hoje de manhã é o melhor de Saigon 🥖",
+      "en-US": "This morning's bánh mì is the best in Saigon 🥖",
+    },
+  },
+  {
+    id: "post_leo_1",
+    text: {
+      "fr-FR": "Lumière dorée sur les toits de Lyon.",
+      "pt-BR": "Luz dourada sobre os telhados de Lyon.",
+      "en-US": "Golden light over the rooftops of Lyon.",
+      "vi-VN": "Ánh nắng vàng trên những mái nhà ở Lyon.",
+    },
+  },
+  {
+    id: "post_lena_1",
+    text: {
+      "de-DE": "Sonntagsfahrt entlang der Spree 🚲",
+      "pt-BR": "Passeio de domingo ao longo do rio Spree 🚲",
+      "en-US": "Sunday ride along the Spree 🚲",
+      "vi-VN": "Đạp xe Chủ nhật dọc sông Spree 🚲",
+    },
+  },
+  {
+    id: "post_omar_1",
+    text: {
+      ar: "شروق الشمس فوق النيل",
+      "pt-BR": "Nascer do sol sobre o Nilo",
+      "en-US": "Sunrise over the Nile",
+      "vi-VN": "Bình minh trên sông Nile",
+    },
+  },
+  {
+    id: "post_mei_1",
+    text: {
+      "zh-CN": "新画的猫咪插画 🐱",
+      "pt-BR": "Nova ilustração de gatinho 🐱",
+      "en-US": "A new kitty illustration 🐱",
+      "vi-VN": "Bức minh họa mèo mới vẽ 🐱",
+    },
+  },
+  {
+    id: "post_jisoo_1",
+    text: {
+      "ko-KR": "오늘의 스케치 ✏️",
+      "pt-BR": "O esboço de hoje ✏️",
+      "en-US": "Today's sketch ✏️",
+      "vi-VN": "Bản phác thảo hôm nay ✏️",
+    },
+  },
+  {
+    id: "post_ana_1",
+    text: {
+      "pt-PT": "Pastéis de nata acabados de sair do forno.",
+      "vi-VN": "Bánh tart trứng vừa ra lò.",
+      "en-US": "Custard tarts fresh out of the oven.",
+    },
+  },
+  {
+    id: "comment_1",
+    text: {
+      "pt-BR": "Que lindo! Quero ir aí um dia.",
+      "vi-VN": "Đẹp quá! Một ngày nào đó anh muốn đến đó.",
+      "en-US": "So beautiful! I want to go there one day.",
+    },
+  },
+  {
+    id: "comment_2",
+    text: { "vi-VN": "Đẹp thật!", "pt-BR": "Lindo mesmo!", "en-US": "Really beautiful!" },
+  },
+  {
+    id: "comment_3",
+    text: {
+      "vi-VN": "Biển đẹp quá anh ơi!",
+      "pt-BR": "Que praia linda!",
+      "en-US": "What a beautiful beach!",
+    },
+  },
+  {
+    id: "comment_4",
+    text: {
+      "en-US": "Break a leg!",
+      "pt-BR": "Boa sorte!",
+      "es-ES": "¡Mucha suerte!",
+      "vi-VN": "Chúc may mắn!",
+    },
+  },
+];
+
+PHRASES.push(...POST_PHRASES);
+
 export function phraseById(id: string): Phrase {
   const phrase = PHRASES.find((p) => p.id === id);
   if (!phrase) throw new Error(`Unknown phrase ${id}`);

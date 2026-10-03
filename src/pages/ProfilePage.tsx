@@ -1,7 +1,7 @@
 import { ImagePlus, MoreHorizontal, Settings, UserX } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 
 import { OverlayLink } from "@/app/router/OverlayLink";
 import { useOverlayNavigate } from "@/app/router/overlay";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { useStartConversation } from "@/features/chat/hooks/useMessageMutations";
+import { PostsGrid } from "@/features/feed/components/PostsGrid";
 import { BlockUserDialog } from "@/features/profile/components/BlockUserDialog";
 import { ProfileHeader } from "@/features/profile/components/ProfileHeader";
 import { ProfileSkeleton } from "@/features/profile/components/ProfileSkeleton";
@@ -95,16 +96,21 @@ export default function ProfilePage() {
           />
           <ProfileTabs
             posts={
-              <EmptyState
-                icon={ImagePlus}
-                title={t("profile.emptyPosts")}
-                description={isOwn ? t("profile.emptyPostsOwn") : undefined}
-                action={
-                  isOwn ? (
-                    <Button asChild size="sm">
-                      <Link to={paths.create()}>{t("nav.create")}</Link>
-                    </Button>
-                  ) : undefined
+              <PostsGrid
+                userId={profile.data.id}
+                empty={
+                  <EmptyState
+                    icon={ImagePlus}
+                    title={t("profile.emptyPosts")}
+                    description={isOwn ? t("profile.emptyPostsOwn") : undefined}
+                    action={
+                      isOwn ? (
+                        <Button asChild size="sm">
+                          <OverlayLink to={paths.create()}>{t("nav.create")}</OverlayLink>
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 }
               />
             }

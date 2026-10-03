@@ -51,7 +51,7 @@ describe("profile", () => {
     renderApp("/u/lucas");
     expect(await screen.findByRole("button", { name: "Edit profile" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Message" })).not.toBeInTheDocument();
-    expect(screen.getByText("Share your first moment.")).toBeInTheDocument();
+    expect(await screen.findAllByRole("button", { name: "Open post" })).toHaveLength(1);
   });
 
   it("shows a not found state", async () => {

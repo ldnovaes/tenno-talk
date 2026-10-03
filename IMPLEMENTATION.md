@@ -264,23 +264,25 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 6 — Feed
 
-- [ ] `feedService` (interface + mock): `getFeed(cursor)`, `getPost`, `likePost`/`unlikePost`, `getComments`, `addComment`, `createPost` (com progresso simulado)
-- [ ] Seed de posts (imagens/vídeos, legendas em vários idiomas)
-- [ ] `FeedList` (infinite) + `FeedPostSkeleton` + empty state "No posts yet"
-- [ ] `PostCard`: header, `MediaCarousel` (embla, indicador de páginas), legenda, ações, contadores
-- [ ] `TranslatedCaption` com "See translation" / "See original" e auto-translate pela preferência (`useContentTranslation`)
-- [ ] Like otimista (com animação de coração no double-tap no mobile)
-- [ ] `CommentsSheet` (Drawer no mobile / Sheet no desktop) com comentários traduzíveis e envio
-- [ ] Share (copiar link / Web Share API no mobile)
-- [ ] `/create`: `MediaPicker` (até 10, imagem/vídeo), `CaptionEditor`, `PostPreview`, publicar com progresso; Dialog no desktop, página no mobile
-- [ ] Slots desabilitados para localização e marcação de pessoas
-- [ ] O post criado entra no topo do feed e no grid do perfil (atualização de cache)
+- [x] `feedService` (interface + mock): `getFeed(cursor)`, `getPost`, `likePost`/`unlikePost`, `getComments`, `addComment`, `createPost` (com progresso simulado)
+- [x] Seed de posts (imagens/vídeos, legendas em vários idiomas)
+- [x] `FeedList` (infinite) + `FeedPostSkeleton` + empty state "No posts yet"
+- [x] `PostCard`: header, `MediaCarousel` (embla, indicador de páginas), legenda, ações, contadores
+- [x] `TranslatedCaption` com "See translation" / "See original" e auto-translate pela preferência (`useContentTranslation`)
+- [x] Like otimista (com animação de coração no double-tap no mobile)
+- [x] `CommentsSheet` (Drawer no mobile / Sheet no desktop) com comentários traduzíveis e envio
+- [x] Share (copiar link / Web Share API no mobile)
+- [x] `/create`: `MediaPicker` (até 10, imagem/vídeo), `CaptionEditor`, `PostPreview`, publicar com progresso; Dialog no desktop, página no mobile
+- [x] Slots desabilitados para localização e marcação de pessoas
+- [x] O post criado entra no topo do feed e no grid do perfil (atualização de cache)
+
+> Notas: o rail do desktop ganhou o botão "Create" (antes só existia o "+" da bottom nav no mobile). Curtidas e comentários geram notificações no mock (consumidas na Phase 7). "Who can comment" e perfis privados são aplicados no servidor mock. O grid do perfil abre o post num dialog.
 
 **Done when**
-- [ ] O feed carrega páginas infinitamente sem layout shift
-- [ ] Criar um post o exibe imediatamente no feed e no perfil
-- [ ] A legenda em outro idioma respeita "auto-translate posts"; o original nunca é sobrescrito
-- [ ] Likes e comentários atualizam contadores de forma otimista
+- [x] O feed carrega páginas infinitamente sem layout shift
+- [x] Criar um post o exibe imediatamente no feed e no perfil
+- [x] A legenda em outro idioma respeita "auto-translate posts"; o original nunca é sobrescrito
+- [x] Likes e comentários atualizam contadores de forma otimista
 
 ---
 

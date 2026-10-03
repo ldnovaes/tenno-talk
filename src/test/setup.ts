@@ -62,6 +62,21 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
+/** Never intersects: infinite lists don't auto-load in tests (load more is explicit). */
+class IntersectionObserverStub {
+  readonly root = null;
+  readonly rootMargin = "0px";
+  readonly thresholds = [0];
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+}
+globalThis.IntersectionObserver ??=
+  IntersectionObserverStub as unknown as typeof IntersectionObserver;
+
 /** Deterministic mock backend for tests: no latency, no failures, no auto replies. */
 export const TEST_MOCK_CONFIG = {
   minLatencyMs: 0,

@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink } from "react-router";
 
@@ -47,6 +47,18 @@ export function NavigationRail({ me, badges }: NavigationRailProps) {
           <TooltipContent side="right">{t(`nav.${key}`)}</TooltipContent>
         </Tooltip>
       ))}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <OverlayLink
+            to={paths.create()}
+            aria-label={t("nav.create")}
+            className="mt-2 grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground transition-transform active:scale-95"
+          >
+            <Plus className="size-[22px]" aria-hidden />
+          </OverlayLink>
+        </TooltipTrigger>
+        <TooltipContent side="right">{t("nav.create")}</TooltipContent>
+      </Tooltip>
       <div className="mt-auto flex flex-col items-center gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
