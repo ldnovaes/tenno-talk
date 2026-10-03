@@ -1,4 +1,5 @@
 import { ArrowLeft, Bell, BellOff, MoreVertical, Phone, UserRound } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -24,6 +25,7 @@ import {
   isMuted,
   otherMember,
 } from "../../lib/conversationFilters";
+import { GroupInfoDialog } from "./GroupInfoDialog";
 import { PresenceSubtitle } from "./PresenceSubtitle";
 
 export function ConversationHeader({
@@ -46,7 +48,9 @@ export function ConversationHeader({
   const typing = useTypingUsers(conversation.id);
   const title = conversationTitle(conversation, viewerId);
   const muted = isMuted(conversation);
-  const openProfile = () => other && openOverlay(paths.profile(other.user.username));
+  const [groupInfo, setGroupInfo] = useState(false);
+  const openProfile = () =>
+    other ? openOverlay(paths.profile(other.user.username)) : setGroupInfo(true);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-2 md:px-4">
@@ -63,8 +67,7 @@ export function ConversationHeader({
       <button
         type="button"
         onClick={openProfile}
-        disabled={!other}
-        aria-label={other ? t("chat.header.openProfile", { name: title }) : title}
+        aria-label={other ? t("chat.header.openProfile", { name: title }) : t("groups.info")}
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-start"
       >
         <UserAvatar
@@ -116,6 +119,14 @@ export function ConversationHeader({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {conversation.kind === "group" && (
+        <GroupInfoDialog
+          conversation={conversation}
+          viewerId={viewerId}
+          open={groupInfo}
+          onOpenChange={setGroupInfo}
+        />
+      )}
     </header>
   );
 }

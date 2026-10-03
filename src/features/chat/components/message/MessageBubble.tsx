@@ -21,6 +21,7 @@ import { FileCard, ImageGrid, VideoPlayer } from "./content/MediaContent";
 import { MessageText } from "./MessageText";
 import { ReactionChips } from "./ReactionChips";
 import { ReplyQuote } from "./ReplyQuote";
+import { StoryReplyLabel } from "./StoryReplyLabel";
 
 interface MessageBubbleProps {
   message: Message;
@@ -41,8 +42,14 @@ function MessageContentView({
   const content = message.content;
   switch (content.type) {
     case "text":
-    case "story_reply":
       return <MessageText message={message} own={own} translation={translation} />;
+    case "story_reply":
+      return (
+        <>
+          <StoryReplyLabel />
+          <MessageText message={message} own={own} translation={translation} />
+        </>
+      );
     case "image":
       return (
         <>

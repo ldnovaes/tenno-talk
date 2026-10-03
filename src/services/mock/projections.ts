@@ -41,8 +41,9 @@ export function targetLanguageFor(
   viewerId: string,
 ): LanguageCode | null {
   if (message.senderId !== viewerId) return receivingLanguageOf(db, viewerId);
-  // Own message: show what the (first) other member receives.
+  // Own message: show what the other person receives (groups have many languages).
   const conversation = db.conversations[message.conversationId];
+  if (conversation?.kind === "group") return null;
   const other = conversation?.memberIds.find((id) => id !== viewerId);
   return other ? receivingLanguageOf(db, other) : null;
 }

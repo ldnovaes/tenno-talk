@@ -641,6 +641,60 @@ export const POST_PHRASES: Phrase[] = [
 
 PHRASES.push(...POST_PHRASES);
 
+export const STORY_PHRASES: Phrase[] = [
+  {
+    id: "story_cam_1",
+    text: {
+      "vi-VN": "Cà phê trứng buổi sáng ☕",
+      "pt-BR": "Café com ovo de manhã ☕",
+      "en-US": "Morning egg coffee ☕",
+    },
+  },
+  {
+    id: "story_cam_2",
+    text: {
+      "vi-VN": "Trời Hà Nội hôm nay mát quá",
+      "pt-BR": "O tempo em Hà Nội está tão fresquinho hoje",
+      "en-US": "Hà Nội is so cool today",
+    },
+  },
+  {
+    id: "story_sofia_1",
+    text: {
+      "es-ES": "¡Último ensayo!",
+      "pt-BR": "Último ensaio!",
+      "en-US": "Last rehearsal!",
+      "vi-VN": "Buổi tập cuối cùng!",
+    },
+  },
+  {
+    id: "story_minh_1",
+    text: {
+      "vi-VN": "Phở đêm Sài Gòn 🍜",
+      "pt-BR": "Phở de madrugada em Saigon 🍜",
+      "en-US": "Late-night phở in Saigon 🍜",
+    },
+  },
+  {
+    id: "story_emma_1",
+    text: {
+      "en-US": "Studying kanji tonight 📚",
+      "pt-BR": "Estudando kanji hoje à noite 📚",
+      "vi-VN": "Tối nay học kanji 📚",
+    },
+  },
+  {
+    id: "story_lucas_1",
+    text: {
+      "pt-BR": "Pão de queijo quentinho 🧀",
+      "vi-VN": "Bánh mì phô mai nóng hổi 🧀",
+      "en-US": "Warm cheese bread 🧀",
+    },
+  },
+];
+
+PHRASES.push(...STORY_PHRASES);
+
 export function phraseById(id: string): Phrase {
   const phrase = PHRASES.find((p) => p.id === id);
   if (!phrase) throw new Error(`Unknown phrase ${id}`);

@@ -289,31 +289,33 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 ## Phase 7 — Stories, notifications and groups
 
 ### Stories
-- [ ] `storyService` (interface + mock): `getTray()`, `getUserStories(userId)`, `markViewed`, `reactToStory`, `replyToStory`, `createStory` (upload + texto opcional)
-- [ ] `StoriesTray` real em Chats e Feed (anel visto/não visto, "+" para o próprio)
-- [ ] `StoryViewer` (overlay route `/stories/:userId`): fullscreen, `StoryProgress`, toque esquerda/direita, segurar para pausar, swipe down para fechar, setas/Esc, avanço automático entre usuários
-- [ ] `StoryOverlayText` com Original/Translated (respeita "auto-translate stories")
-- [ ] `StoryReplyInput` (cria mensagem `story_reply` na conversa direta) + reação rápida
-- [ ] Pré-carregamento do próximo item
+- [x] `storyService` (interface + mock): `getTray()`, `getUserStories(userId)`, `markViewed`, `reactToStory`, `replyToStory`, `createStory` (upload + texto opcional)
+- [x] `StoriesTray` real em Chats e Feed (anel visto/não visto, "+" para o próprio)
+- [x] `StoryViewer` (overlay route `/stories/:userId`): fullscreen, `StoryProgress`, toque esquerda/direita, segurar para pausar, swipe down para fechar, setas/Esc, avanço automático entre usuários
+- [x] `StoryOverlayText` com Original/Translated (respeita "auto-translate stories")
+- [x] `StoryReplyInput` (cria mensagem `story_reply` na conversa direta) + reação rápida
+- [x] Pré-carregamento do próximo item
 
 ### Notifications
-- [ ] `notificationService` (interface + mock): lista paginada, `markAllRead`, contador
-- [ ] `NotificationList` agrupada (Today / This week / Earlier) + `NotificationItem` por tipo + skeleton + empty
-- [ ] Badge no rail e no sino do header do Feed (mobile)
-- [ ] `notification.created` via realtime mock (ex.: o auto-responder curte um post)
+- [x] `notificationService` (interface + mock): lista paginada, `markAllRead`, contador
+- [x] `NotificationList` agrupada (Today / This week / Earlier) + `NotificationItem` por tipo + skeleton + empty
+- [x] Badge no rail e no sino do header do Feed (mobile)
+- [x] `notification.created` via realtime mock (ex.: o auto-responder curte um post)
 
 ### Groups
-- [ ] `chatService.createGroup` (mock) com regra de **no máximo 1 grupo criado por pessoa** (erro claro na UI ao tentar o segundo)
-- [ ] Fluxo de criar grupo (nome, avatar, adicionar membros)
-- [ ] Header e info do grupo (membros e idiomas de cada um)
-- [ ] Filtro **Groups** na lista de conversas
-- [ ] Avatar e nome do remetente nas mensagens de grupo; tradução por membro (o mock projeta o idioma de cada um)
+- [x] `chatService.createGroup` (mock) com regra de **no máximo 1 grupo criado por pessoa** (erro claro na UI ao tentar o segundo)
+- [x] Fluxo de criar grupo (nome, avatar, adicionar membros)
+- [x] Header e info do grupo (membros e idiomas de cada um)
+- [x] Filtro **Groups** na lista de conversas
+- [x] Avatar e nome do remetente nas mensagens de grupo; tradução por membro (o mock projeta o idioma de cada um)
+
+> Notas: bugs encontrados e corrigidos: tocar no texto do story ("See original") navegava para o próximo story; o anel de story não visto ficava escondido pelo anel branco do avatar. Os testes passaram a usar o `QueryClient` real do app (com os toasts globais de erro), o que revelou que o aviso de "um grupo por pessoa" não era testado de verdade. O visualizador usa uma cópia fixa da bandeja para não pular se ela for recarregada. Em grupos, as próprias mensagens não mostram tradução, porque cada membro recebe num idioma.
 
 **Done when**
-- [ ] O viewer é navegável por toque e teclado; o progresso pausa ao segurar
-- [ ] Responder a um story cria a mensagem na conversa correspondente
-- [ ] Os badges de notificação atualizam em tempo real (mock) e zeram ao abrir a lista
-- [ ] Criar um grupo funciona; tentar criar um segundo é bloqueado
+- [x] O viewer é navegável por toque e teclado; o progresso pausa ao segurar
+- [x] Responder a um story cria a mensagem na conversa correspondente
+- [x] Os badges de notificação atualizam em tempo real (mock) e zeram ao abrir a lista
+- [x] Criar um grupo funciona; tentar criar um segundo é bloqueado
 
 ---
 

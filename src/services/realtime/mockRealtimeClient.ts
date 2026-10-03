@@ -2,6 +2,7 @@ import { onServerEvent, type ServerEvent } from "@/services/mock/events";
 import { acknowledgeDelivery } from "@/services/mock/implementations/mockChatService";
 import { mockDb } from "@/services/mock/db";
 import { announcePresence } from "@/services/mock/presence";
+import { projectNotification } from "@/services/mock/notificationProjection";
 import { projectMessage } from "@/services/mock/projections";
 import { publish } from "@/services/mock/events";
 
@@ -167,8 +168,14 @@ class MockRealtimeClient implements RealtimeClient {
         if (event.online) this.dispatch("user.online", { userId: event.userId });
         else this.dispatch("user.offline", { userId: event.userId, lastSeenAt: event.at });
         return;
-      case "notification.created":
+      case "notification.created": {
+        if (event.recipientId !== viewerId) return;
+        const db = mockDb.read();
+        const record = db.notifications[event.notificationId];
+        const notification = record ? projectNotification(db, record) : null;
+        if (notification) this.dispatch("notification.created", { notification });
         return;
+      }
     }
   }
 }

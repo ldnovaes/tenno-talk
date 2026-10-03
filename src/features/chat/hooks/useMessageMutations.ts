@@ -92,3 +92,18 @@ export function useStartConversation() {
     },
   });
 }
+
+/** Creates a group (the server allows one per person, PLAN.md §34) and opens it. */
+export function useCreateGroup() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  return useMutation({
+    mutationFn: (input: { title: string; memberIds: string[] }) => chatService.createGroup(input),
+    onSuccess: (conversation) => {
+      queryClient.setQueryData<Conversation[]>(chatKeys.conversations(), (list) =>
+        list ? [conversation, ...list] : list,
+      );
+      navigate(paths.conversation(conversation.id));
+    },
+  });
+}

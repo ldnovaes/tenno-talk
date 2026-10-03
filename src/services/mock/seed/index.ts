@@ -1,6 +1,7 @@
 import type { MockDatabase } from "../schema";
 import { seedConversations } from "./conversations";
 import { seedPosts } from "./posts";
+import { seedNotifications, seedStories } from "./stories";
 import { seedUsers } from "./users";
 
 export function createSeed(now = Date.now()): MockDatabase {
@@ -20,7 +21,7 @@ export function createSeed(now = Date.now()): MockDatabase {
     messages,
     posts,
     comments,
-    stories: {},
-    notifications: {},
+    stories: seedStories(users, now),
+    notifications: seedNotifications(now),
   };
 }

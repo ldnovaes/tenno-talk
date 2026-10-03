@@ -59,8 +59,9 @@ describe("mockFeedService", () => {
   });
 
   it("does not notify yourself", async () => {
+    const before = Object.keys(mockDb.read().notifications).length;
     await mockFeedService.like("post_lucas_1");
-    expect(Object.values(mockDb.read().notifications)).toHaveLength(0);
+    expect(Object.keys(mockDb.read().notifications)).toHaveLength(before);
   });
 
   it("adds comments in the author's language and lists them in order", async () => {

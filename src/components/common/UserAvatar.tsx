@@ -39,9 +39,9 @@ export function UserAvatar({
     <span className={cn("relative inline-flex shrink-0", className)}>
       <span
         className={cn(
-          "rounded-full",
-          storyRing === "unseen" && "bg-primary p-[2px]",
-          storyRing === "seen" && "bg-border p-[2px]",
+          "inline-flex rounded-full",
+          storyRing === "unseen" && "bg-primary p-[4px]",
+          storyRing === "seen" && "bg-input p-[4px]",
         )}
       >
         <Avatar

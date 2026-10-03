@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router";
 
 import { i18n } from "@/app/i18n";
+import { createQueryClient } from "@/app/queryClient";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { AppRoutes } from "@/app/router/AppRoutes";
 import { ShellRoute } from "@/app/router/ShellRoute";
@@ -13,10 +14,14 @@ import { writeMockSession } from "@/services/mock/session";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-export function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: 0 } },
+/** The app's client (global error toasts, session expiry) without retries. */
+export function createTestQueryClient(): QueryClient {
+  const client = createQueryClient();
+  client.setDefaultOptions({
+    queries: { ...client.getDefaultOptions().queries, retry: false, gcTime: Infinity },
+    mutations: { retry: 0 },
   });
+  return client;
 }
 
 interface Options extends Omit<RenderOptions, "wrapper"> {
