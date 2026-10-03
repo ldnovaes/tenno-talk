@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import type { Message } from "@/types/message";
 
@@ -12,6 +12,7 @@ const NEAR_BOTTOM_PX = 120;
  */
 export function useStickToBottom(
   scrollRef: RefObject<HTMLDivElement | null>,
+  contentRef: RefObject<HTMLDivElement | null>,
   messages: readonly Message[],
   viewerId: string,
 ) {
@@ -68,6 +69,18 @@ export function useStickToBottom(
     }
     previous.current = { first, last, height: element.scrollHeight };
   }, [messages, scrollRef, viewerId]);
+
+  // Heights change without new messages (display mode, translations, images): stay pinned.
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      const element = scrollRef.current;
+      if (element && atBottomRef.current) element.scrollTop = element.scrollHeight;
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [contentRef, scrollRef]);
 
   return { isAtBottom, unseen, onScroll, scrollToBottom };
 }

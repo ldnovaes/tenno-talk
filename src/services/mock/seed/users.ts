@@ -1,4 +1,4 @@
-import { DEFAULT_PREFERENCES } from "../defaults";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import type { UserRecord } from "../schema";
 import { daysAgo, minutesAgo } from "./clock";
 

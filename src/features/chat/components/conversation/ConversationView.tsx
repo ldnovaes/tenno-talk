@@ -2,11 +2,14 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { LearningPanel } from "@/features/translation/components/LearningPanel";
+import { useTranslationPreferences } from "@/features/translation/hooks/useTranslationPreferences";
 import type { Conversation } from "@/types/conversation";
 import type { Message } from "@/types/message";
 
 import { useReactToMessage } from "../../hooks/useMessageMutations";
 import { useSendMessage } from "../../hooks/useSendMessage";
+import { originalOf } from "../../lib/messageText";
 import { displayTextFor } from "../../lib/previewText";
 import { useComposerStore } from "../../stores/composerStore";
 import { ForwardDialog } from "../actions/ForwardDialog";
@@ -24,6 +27,8 @@ export function ConversationView({
 }) {
   const { t } = useTranslation();
   const [forwarding, setForwarding] = useState<Message | null>(null);
+  const [learning, setLearning] = useState<Message | null>(null);
+  const { displayMode } = useTranslationPreferences();
   const setReplyTo = useComposerStore((state) => state.setReplyTo);
   const react = useReactToMessage();
   const { retry, discard } = useSendMessage(conversation.id);
@@ -42,9 +47,10 @@ export function ConversationView({
         setReplyTo(conversation.id, {
           messageId: message.id,
           senderId: message.senderId,
-          preview: displayTextFor(message, viewerId) ?? t("chat.preview.photo"),
+          preview: displayTextFor(message, viewerId, displayMode) ?? t("chat.preview.photo"),
         }),
       forward: setForwarding,
+      learn: setLearning,
       react: (message, emoji) => react.mutate({ message, emoji }),
       copy: (text) =>
         void navigator.clipboard
@@ -56,7 +62,7 @@ export function ConversationView({
     }),
     // react.mutate is stable; keep the context stable so memoized bubbles don't re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [viewerId, senderName, conversation.id, setReplyTo, retry, discard, t],
+    [viewerId, senderName, conversation.id, setReplyTo, retry, discard, t, displayMode],
   );
 
   return (
@@ -72,6 +78,12 @@ export function ConversationView({
         />
       </div>
       <ForwardDialog message={forwarding} viewerId={viewerId} onClose={() => setForwarding(null)} />
+      <LearningPanel
+        messageId={learning?.id ?? null}
+        original={learning ? originalOf(learning) : null}
+        targetLanguage={learning?.translation?.targetLanguage ?? null}
+        onClose={() => setLearning(null)}
+      />
     </MessageActionsContext.Provider>
   );
 }

@@ -1,24 +1,26 @@
+import { TranslatedText } from "@/features/translation/components/TranslatedText";
+import type { MessageTranslationState } from "@/features/translation/hooks/useMessageTranslation";
 import type { Message } from "@/types/message";
 
-import { originalOf } from "../../lib/messageText";
 import { MetaSpacer } from "./BubbleMeta";
 
-/** Phase 3 text rendering: translation when ready, original otherwise. Replaced by TranslatedText in Phase 4. */
-export function MessageText({ message, own }: { message: Message; own: boolean }) {
-  const original = originalOf(message);
-  if (!original) return null;
-  const translated =
-    !own && message.translation?.status === "translated" && message.translation.text
-      ? message.translation
-      : null;
+/** Message text through the translation layer (PLAN.md §14). */
+export function MessageText({
+  message,
+  own,
+  translation,
+}: {
+  message: Message;
+  own: boolean;
+  translation: MessageTranslationState;
+}) {
   return (
-    <p
-      className="whitespace-pre-wrap break-words text-[15px] leading-[1.4]"
-      lang={translated?.targetLanguage ?? original.language}
-      dir="auto"
-    >
-      {translated?.text ?? original.text}
-      <MetaSpacer own={own} />
-    </p>
+    <TranslatedText
+      state={translation}
+      since={message.createdAt}
+      trailing={
+        <MetaSpacer own={own} translated={translation.display?.showing === "translation"} />
+      }
+    />
   );
 }

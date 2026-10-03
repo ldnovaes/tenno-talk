@@ -6,6 +6,7 @@ import { NavLink } from "react-router";
 import { paths } from "@/app/router/paths";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import { UserAvatar } from "@/components/common/UserAvatar";
+import { useTranslationPreferences } from "@/features/translation/hooks/useTranslationPreferences";
 import { cn } from "@/lib/utils";
 import { usePresence, useTypingUsers } from "@/stores/presenceStore";
 import type { Conversation } from "@/types/conversation";
@@ -35,19 +36,28 @@ function ConversationListItemComponent({ conversation, viewerId }: ConversationL
   const title = conversationTitle(conversation, viewerId);
   const last = conversation.lastMessage;
   const muted = isMuted(conversation);
+  const { displayMode } = useTranslationPreferences();
   const preview = last
-    ? previewText(last, viewerId, {
-        you: (text) => t("chat.preview.you", { text }),
-        media: {
-          photo: t("chat.preview.photo"),
-          video: t("chat.preview.video"),
-          audio: t("chat.preview.audio"),
-          file: t("chat.preview.file"),
+    ? previewText(
+        last,
+        viewerId,
+        {
+          you: (text) => t("chat.preview.you", { text }),
+          media: {
+            photo: t("chat.preview.photo"),
+            video: t("chat.preview.video"),
+            audio: t("chat.preview.audio"),
+            file: t("chat.preview.file"),
+          },
         },
-      })
+        displayMode,
+      )
     : t("chat.preview.noMessages");
   const previewLanguage =
-    last && last.senderId !== viewerId && last.translation?.status === "translated"
+    last &&
+    last.senderId !== viewerId &&
+    displayMode !== "original" &&
+    last.translation?.status === "translated"
       ? last.translation.targetLanguage
       : undefined;
 

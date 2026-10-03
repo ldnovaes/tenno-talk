@@ -1,4 +1,6 @@
+import { resolveMessageDisplay } from "@/features/translation/lib/resolveMessageDisplay";
 import type { Message } from "@/types/message";
+import type { TranslationDisplayMode } from "@/types/preferences";
 
 import { mediaLabelOf, originalOf } from "./messageText";
 
@@ -7,20 +9,31 @@ export interface PreviewLabels {
   media: Record<"photo" | "video" | "audio" | "file", string>;
 }
 
-/** Text shown for a received message: the translation when ready, else the original. */
-export function displayTextFor(message: Message, viewerId: string): string | null {
+/** Text a message shows by default for this viewer and display mode (no per-message override). */
+export function displayTextFor(
+  message: Message,
+  viewerId: string,
+  mode: TranslationDisplayMode = "translation",
+): string | null {
   const original = originalOf(message);
   if (!original) return null;
-  const translation = message.translation;
-  if (message.senderId !== viewerId && translation?.status === "translated" && translation.text) {
-    return translation.text;
-  }
-  return original.text;
+  return resolveMessageDisplay({
+    original,
+    translation: message.translation,
+    isOwn: message.senderId === viewerId,
+    mode,
+    override: null,
+  }).primary.text;
 }
 
 /** Conversation list preview (PLAN.md §9.3). */
-export function previewText(message: Message, viewerId: string, labels: PreviewLabels): string {
-  const text = displayTextFor(message, viewerId);
+export function previewText(
+  message: Message,
+  viewerId: string,
+  labels: PreviewLabels,
+  mode: TranslationDisplayMode = "translation",
+): string {
+  const text = displayTextFor(message, viewerId, mode);
   const media = mediaLabelOf(message);
   const body =
     text && media

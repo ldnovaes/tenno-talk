@@ -186,31 +186,33 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 4 — Translation UX
 
-- [ ] `translationService` (interface + mock): `retryMessageTranslation`, `getTranslationInsight`, `translateContent`
-- [ ] `mockTranslator.ts` (dicionário pt-BR/vi-VN/en-US/es-ES, pseudo-tradução marcada, falha ~10%, "tradução melhorada" v2 em ~20%)
-- [ ] Mensagens recebidas chegam como `translating` e são atualizadas por `translation.updated`
-- [ ] `patchTranslation` no `messageCache` (nunca toca o original; aplica só `version >=`) + testes
-- [ ] `resolveMessageDisplay` + testes cobrindo toda a tabela do §14.3
-- [ ] `translationViewStore` (overrides por mensagem)
-- [ ] `useTranslationPreferences` (select de `me` + mutação otimista)
-- [ ] `useMessageTranslation`
-- [ ] `TranslatedText` (primária + secundária "Original" na mesma bolha, `lang`, `dir="auto"`, crossfade com `motion`, respeitando reduced motion)
-- [ ] `TranslationStatusHint` (shimmer em "translating"; "Retry translation" discreto em falha)
-- [ ] Ações "Show original" / "Show translation" no menu da mensagem
-- [ ] Mensagem própria: "Show translation" mostra o que o destinatário recebeu
-- [ ] Preview da lista de conversas respeitando o modo de exibição
-- [ ] Settings → seção Translation (display mode, auto-translate posts/stories, Learning Mode) funcional
-- [ ] Learning Mode: ação "Learn" + `LearningPanel` (Popover desktop / Drawer mobile) com Natural / Original / Literal via `useTranslationInsight`; slots para explicação/vocabulário/pronúncia
-- [ ] Manter a âncora de scroll quando uma tradução chega e o usuário está no fim
-- [ ] Teste de componente: `MessageBubble` nos 3 modos × (`not_needed`, `translating`, `translated`, `failed`)
+- [x] `translationService` (interface + mock): `retryMessageTranslation`, `getTranslationInsight`, `translateContent`
+- [x] `mockTranslator.ts` (dicionário pt-BR/vi-VN/en-US/es-ES, pseudo-tradução marcada, falha ~10%, "tradução melhorada" v2 em ~20%)
+- [x] Mensagens recebidas chegam como `translating` e são atualizadas por `translation.updated`
+- [x] `patchTranslation` no `messageCache` (nunca toca o original; aplica só `version >=`) + testes
+- [x] `resolveMessageDisplay` + testes cobrindo toda a tabela do §14.3
+- [x] `translationViewStore` (overrides por mensagem)
+- [x] `useTranslationPreferences` (select de `me` + mutação otimista)
+- [x] `useMessageTranslation`
+- [x] `TranslatedText` (primária + secundária "Original" na mesma bolha, `lang`, `dir="auto"`, crossfade com `motion`, respeitando reduced motion)
+- [x] `TranslationStatusHint` (shimmer em "translating"; "Retry translation" discreto em falha)
+- [x] Ações "Show original" / "Show translation" no menu da mensagem
+- [x] Mensagem própria: "Show translation" mostra o que o destinatário recebeu
+- [x] Preview da lista de conversas respeitando o modo de exibição
+- [x] Settings → seção Translation (display mode, auto-translate posts/stories, Learning Mode) funcional
+- [x] Learning Mode: ação "Learn" + `LearningPanel` (Popover desktop / Drawer mobile) com Natural / Original / Literal via `useTranslationInsight`; slots para explicação/vocabulário/pronúncia
+- [x] Manter a âncora de scroll quando uma tradução chega e o usuário está no fim
+- [x] Teste de componente: `MessageBubble` nos 3 modos × (`not_needed`, `translating`, `translated`, `failed`)
+
+> Notas: o `LearningPanel` abre como Dialog no desktop (em vez de Popover) e Drawer no mobile. Em "Original + Translation", um ícone `Languages` de 12px aparece no meta; nos outros modos, só em hover/foco. A lista de mensagens agora observa o tamanho do conteúdo para continuar presa ao fim quando as alturas mudam (troca de modo, tradução chegando, imagens). Os defaults de preferências foram para `lib/preferences.ts`, porque features não podem importar do mock.
 
 **Done when**
-- [ ] Trocar o display mode em Settings reflete imediatamente em todas as mensagens e previews
-- [ ] Show original / Show translation funciona por mensagem e sobrevive ao scroll
-- [ ] Uma tradução com falha mantém o original visível e "Retry translation" funciona
-- [ ] Uma tradução v2 substitui a v1 sem flicker; um evento atrasado de v1 é ignorado
-- [ ] Com Learning Mode desligado não há nenhum vestígio visual dele; ligado, o painel abre com os três blocos
-- [ ] Nenhuma bolha exibe etiqueta do tipo "AI TRANSLATION"
+- [x] Trocar o display mode em Settings reflete imediatamente em todas as mensagens e previews
+- [x] Show original / Show translation funciona por mensagem e sobrevive ao scroll
+- [x] Uma tradução com falha mantém o original visível e "Retry translation" funciona
+- [x] Uma tradução v2 substitui a v1 sem flicker; um evento atrasado de v1 é ignorado
+- [x] Com Learning Mode desligado não há nenhum vestígio visual dele; ligado, o painel abre com os três blocos
+- [x] Nenhuma bolha exibe etiqueta do tipo "AI TRANSLATION"
 
 ---
 

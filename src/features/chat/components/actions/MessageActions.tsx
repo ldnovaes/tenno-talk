@@ -26,6 +26,7 @@ import {
 import { useIsMobile } from "@/hooks/useBreakpoint";
 import { useLongPress } from "@/hooks/useLongPress";
 import { cn } from "@/lib/utils";
+import type { MessageTranslationState } from "@/features/translation/hooks/useMessageTranslation";
 import type { Message } from "@/types/message";
 
 import { useMessageActionsContext } from "./messageActionsContext";
@@ -36,19 +37,18 @@ import { useMessageActionItems } from "./useMessageActionItems";
  * Desktop: right-click menu + "⋯" button on hover/focus.
  * Mobile: long-press opens a drawer. PLAN.md §9.4.
  */
-export function MessageActions({
-  message,
-  own,
-  children,
-}: {
+interface MessageActionsProps {
   message: Message;
   own: boolean;
+  translation: MessageTranslationState;
   children: ReactNode;
-}) {
+}
+
+export function MessageActions({ message, own, translation, children }: MessageActionsProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const actions = useMessageActionsContext();
-  const items = useMessageActionItems(message);
+  const items = useMessageActionItems(message, translation);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const longPress = useLongPress(() => setDrawerOpen(true));
   const react = (emoji: string) => actions.react(message, emoji);

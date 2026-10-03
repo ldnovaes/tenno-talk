@@ -2,11 +2,17 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { UserAvatar } from "@/components/common/UserAvatar";
+import {
+  useMessageTranslation,
+  type MessageTranslationState,
+} from "@/features/translation/hooks/useMessageTranslation";
+import { useTranslationPreferences } from "@/features/translation/hooks/useTranslationPreferences";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";
 
 import type { BubblePosition } from "../../lib/groupMessages";
+import { originalOf } from "../../lib/messageText";
 import { MessageActions } from "../actions/MessageActions";
 import { useMessageActionsContext } from "../actions/messageActionsContext";
 import { BubbleMeta } from "./BubbleMeta";
@@ -23,19 +29,27 @@ interface MessageBubbleProps {
   sender: User | null;
 }
 
-function MessageContentView({ message, own }: { message: Message; own: boolean }) {
+function MessageContentView({
+  message,
+  own,
+  translation,
+}: {
+  message: Message;
+  own: boolean;
+  translation: MessageTranslationState;
+}) {
   const content = message.content;
   switch (content.type) {
     case "text":
     case "story_reply":
-      return <MessageText message={message} own={own} />;
+      return <MessageText message={message} own={own} translation={translation} />;
     case "image":
       return (
         <>
           <ImageGrid media={content.media} />
           {content.caption && (
             <div className="px-1.5 pt-1.5">
-              <MessageText message={message} own={own} />
+              <MessageText message={message} own={own} translation={translation} />
             </div>
           )}
         </>
@@ -46,7 +60,7 @@ function MessageContentView({ message, own }: { message: Message; own: boolean }
           <VideoPlayer media={content.media} />
           {content.caption && (
             <div className="px-1.5 pt-1.5">
-              <MessageText message={message} own={own} />
+              <MessageText message={message} own={own} translation={translation} />
             </div>
           )}
         </>
@@ -62,6 +76,9 @@ function MessageBubbleComponent({ message, position, sender }: MessageBubbleProp
   const { t } = useTranslation();
   const actions = useMessageActionsContext();
   const own = message.senderId === actions.viewerId;
+  const translation = useMessageTranslation(message, originalOf(message), actions.viewerId);
+  const { displayMode } = useTranslationPreferences();
+  const showingTranslation = translation.display?.showing === "translation";
   const isMedia = message.content.type === "image" || message.content.type === "video";
   const mediaOnly = isMedia && "caption" in message.content && message.content.caption === null;
   const failed = message.deliveryStatus === "failed";
@@ -85,7 +102,7 @@ function MessageBubbleComponent({ message, position, sender }: MessageBubbleProp
           own ? "items-end" : "items-start",
         )}
       >
-        <MessageActions message={message} own={own}>
+        <MessageActions message={message} own={own} translation={translation}>
           <div
             className={cn(
               "relative rounded-2xl text-foreground shadow-sm",
@@ -112,7 +129,7 @@ function MessageBubbleComponent({ message, position, sender }: MessageBubbleProp
                 }
               />
             )}
-            <MessageContentView message={message} own={own} />
+            <MessageContentView message={message} own={own} translation={translation} />
             <div className={cn(isMedia && "px-1.5")}>
               <ReactionChips
                 reactions={message.reactions}
@@ -124,6 +141,8 @@ function MessageBubbleComponent({ message, position, sender }: MessageBubbleProp
               message={message}
               own={own}
               overlay={mediaOnly && message.reactions.length === 0}
+              translated={showingTranslation}
+              alwaysShowTranslatedIcon={displayMode === "both"}
             />
           </div>
         </MessageActions>

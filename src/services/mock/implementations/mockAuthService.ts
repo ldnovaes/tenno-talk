@@ -9,7 +9,7 @@ import type {
 import type { AuthProvider } from "@/types/user";
 
 import { mockDb } from "../db";
-import { DEFAULT_PREFERENCES } from "../defaults";
+import { DEFAULT_PREFERENCES } from "@/lib/preferences";
 import { mockRequest } from "../latency";
 import type { UserRecord } from "../schema";
 import { clearMockSession, readMockSession, writeMockSession } from "../session";

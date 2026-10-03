@@ -31,8 +31,10 @@ export function MessageList({
   const messages = useMemo(() => flattenMessages(query.data), [query.data]);
   const sections = useMemo(() => groupMessages(messages, new Date()), [messages]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { isAtBottom, unseen, onScroll, scrollToBottom } = useStickToBottom(
     scrollRef,
+    contentRef,
     messages,
     viewerId,
   );
@@ -55,7 +57,7 @@ export function MessageList({
         onScroll={onScroll}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div className="flex min-h-full flex-col justify-end py-2">
+        <div ref={contentRef} className="flex min-h-full flex-col justify-end py-2">
           {query.hasNextPage && (
             <>
               <InfiniteScrollTrigger
