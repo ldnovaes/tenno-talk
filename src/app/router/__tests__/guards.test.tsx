@@ -37,13 +37,13 @@ describe("route guards", () => {
   it("redirects onboarded users away from the welcome screen", async () => {
     signInAs("usr_cam");
     renderApp("/welcome");
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 
   it("signs in with a demo account from the welcome screen", async () => {
     renderApp("/welcome");
     await userEvent.click(await screen.findByRole("button", { name: "Sign in as Cam" }));
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 
   it("signs out and clears the session", async () => {

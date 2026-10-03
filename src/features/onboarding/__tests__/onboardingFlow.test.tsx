@@ -53,7 +53,7 @@ describe("onboarding", () => {
     await user.click(follow);
     expect(await screen.findByRole("button", { name: "Following" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Start chatting" }));
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
 
     const saved = mockDb.read().users[userId];
     expect(saved).toMatchObject({

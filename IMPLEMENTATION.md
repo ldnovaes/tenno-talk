@@ -124,61 +124,63 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 ## Phase 3 — Chat
 
 ### Dados
-- [ ] Seed: usuários (≥ 12, vários idiomas, incluindo um RTL), conversas diretas (1:1), ~200 mensagens com IDs estáveis e traduções por idioma
-- [ ] `chatService` (interface + mock) conforme o §16.1, com a projeção da tradução para o viewer
-- [ ] `chatKeys` + hooks: `useConversations`, `useConversation`, `useMessages` (infinite), `useSendMessage`, `useMarkAsRead`, `useReactToMessage`
-- [ ] `messageCache.ts`: `upsertMessage`, `patchMessage`, `patchConversationPreview` + testes (dedupe por id/clientId, ordem, identidade preservada)
-- [ ] `groupMessages.ts` + testes (dias, janela de 5 min, posições)
-- [ ] `conversationFilters.ts` (All/Unread + busca) + testes
+- [x] Seed: usuários (≥ 12, vários idiomas, incluindo um RTL), conversas diretas (1:1), ~200 mensagens com IDs estáveis e traduções por idioma
+- [x] `chatService` (interface + mock) conforme o §16.1, com a projeção da tradução para o viewer
+- [x] `chatKeys` + hooks: `useConversations`, `useConversation`, `useMessages` (infinite), `useSendMessage`, `useMarkAsRead`, `useReactToMessage`
+- [x] `messageCache.ts`: `upsertMessage`, `patchMessage`, `patchConversationPreview` + testes (dedupe por id/clientId, ordem, identidade preservada)
+- [x] `groupMessages.ts` + testes (dias, janela de 5 min, posições)
+- [x] `conversationFilters.ts` (All/Unread + busca) + testes
 
 ### Realtime mock
-- [ ] `services/realtime/realtimeClient.ts` (interface + `RealtimeEventMap`)
-- [ ] `mockRealtimeClient.ts`
-- [ ] `useRealtimeBridge` no `AppShell` (mensagens → cache; presença/typing → `presenceStore`)
-- [ ] `stores/presenceStore.ts`
-- [ ] `autoResponder.ts` (delivered → read → typing → resposta no idioma do contato)
+- [x] `services/realtime/realtimeClient.ts` (interface + `RealtimeEventMap`)
+- [x] `mockRealtimeClient.ts`
+- [x] `useRealtimeBridge` no `AppShell` (mensagens → cache; presença/typing → `presenceStore`)
+- [x] `stores/presenceStore.ts`
+- [x] `autoResponder.ts` (delivered → read → typing → resposta no idioma do contato)
 
 ### Lista de conversas
-- [ ] `ConversationSearch`, `ConversationFilters`, `ConversationList`, `ConversationListItem` (avatar + online, nome, preview, hora, ticks, badge, mute, "typing…")
-- [ ] `ConversationListSkeleton` e empty states (sem conversas / sem não lidas)
-- [ ] Estado vazio da coluna central no desktop ("Select a chat")
-- [ ] Navegação por teclado (↑/↓, Enter) e `Ctrl/Cmd+K`
-- [ ] Placeholder do `StoriesTray` no topo (dados reais na Phase 7)
+- [x] `ConversationSearch`, `ConversationFilters`, `ConversationList`, `ConversationListItem` (avatar + online, nome, preview, hora, ticks, badge, mute, "typing…")
+- [x] `ConversationListSkeleton` e empty states (sem conversas / sem não lidas)
+- [x] Estado vazio da coluna central no desktop ("Select a chat")
+- [x] Navegação por teclado (↑/↓, Enter) e `Ctrl/Cmd+K`
+- [~] Placeholder do `StoriesTray` no topo — o slot `header` existe no `ConversationListPane`; o tray entra na Phase 7
 
 ### Conversa
-- [ ] `ConversationHeader` (voltar no mobile, avatar → perfil no SidePanel, status/typing, call desabilitado, menu)
-- [ ] `MessageList` (`role="log"`, divisores de dia, grupos, carregar antigas com preservação de scroll, auto-scroll só no fim, `ScrollToBottomButton` com contador)
-- [ ] `MessageBubble` + `BubbleShell` + `BubbleMeta` + `DeliveryTicks` + conteúdos (text, image, video, file; audio placeholder)
-- [ ] `TypingIndicator`
-- [ ] `MessageListSkeleton` e o empty state de conversa nova ("Say hi to …")
+- [x] `ConversationHeader` (voltar no mobile, avatar → perfil no SidePanel, status/typing, call desabilitado, menu)
+- [x] `MessageList` (`role="log"`, divisores de dia, grupos, carregar antigas com preservação de scroll, auto-scroll só no fim, `ScrollToBottomButton` com contador)
+- [x] `MessageBubble` + `BubbleShell` + `BubbleMeta` + `DeliveryTicks` + conteúdos (text, image, video, file; audio placeholder)
+- [x] `TypingIndicator`
+- [x] `MessageListSkeleton` e o empty state de conversa nova ("Say hi to …")
 
 ### Composer
-- [ ] `ComposerTextarea` (auto-resize até 6 linhas, Enter envia, Shift+Enter quebra linha)
-- [ ] `EmojiButton` com picker lazy (frimousse)
-- [ ] `AttachmentButton` (imagem/vídeo, preview local, envio mock com object URL)
-- [ ] Botão de voz desabilitado ("coming soon") ↔ botão send
-- [ ] `composerStore`: draft por conversa (persistido) e reply-target
-- [ ] `ReplyPreviewBar` (Esc cancela)
-- [ ] Emissão de typing (throttle 3s, stop após 5s / no envio)
+- [x] `ComposerTextarea` (auto-resize até 6 linhas, Enter envia, Shift+Enter quebra linha)
+- [x] `EmojiButton` com picker lazy (frimousse)
+- [x] `AttachmentButton` (imagem/vídeo, preview local, envio mock com object URL)
+- [x] Botão de voz desabilitado ("coming soon") ↔ botão send
+- [x] `composerStore`: draft por conversa (persistido) e reply-target
+- [x] `ReplyPreviewBar` (Esc cancela)
+- [x] Emissão de typing (throttle 3s, stop após 5s / no envio)
 
 ### Envio e ações
-- [ ] Envio otimista completo (§13.1) com falha → `failed` + retry com o mesmo `clientId` + discard (descarta o que não foi enviado)
-- [ ] `markAsRead` por visibilidade (debounce) zerando o `unreadCount`
-- [ ] `MessageActionsProvider` + `MessageActionsMenu` (context menu + botão "⋯" em hover/foco) + `MessageActionsDrawer` (long-press no mobile, `useLongPress`)
-- [ ] Reply (com `ReplyQuote` clicável que rola até a mensagem)
-- [ ] Reactions (picker rápido + chips, otimista)
-- [ ] Copy (texto exibido / original) com toast
-- [ ] Forward (dialog de seleção de conversas)
-- [ ] Sem Edit/Delete no menu (fora do escopo, PLAN.md §34)
-- [ ] `getOrCreateDirectConversation` (usado por "Message" no Discover/Perfil)
+- [x] Envio otimista completo (§13.1) com falha → `failed` + retry com o mesmo `clientId` + discard (descarta o que não foi enviado)
+- [x] `markAsRead` por visibilidade (debounce) zerando o `unreadCount`
+- [x] `MessageActionsProvider` + `MessageActionsMenu` (context menu + botão "⋯" em hover/foco) + `MessageActionsDrawer` (long-press no mobile, `useLongPress`)
+- [x] Reply (com `ReplyQuote` clicável que rola até a mensagem)
+- [x] Reactions (picker rápido + chips, otimista)
+- [x] Copy (texto exibido / original) com toast
+- [x] Forward (dialog de seleção de conversas)
+- [x] Sem Edit/Delete no menu (fora do escopo, PLAN.md §34)
+- [x] `getOrCreateDirectConversation` (usado por "Message" no Discover/Perfil)
+
+> Notas: a sessão do mock passou a ser por aba (`sessionStorage`) e os eventos do servidor mock trafegam entre abas via `BroadcastChannel`. Com isso, Lucas numa aba e Cam em outra conversam em tempo real, com tradução, ticks e "digitando…". O respondedor automático só responde por quem não está aberto em nenhuma aba. Reagir pelo menu agora usa itens do próprio menu, que fecham ao escolher (bug encontrado nos testes).
 
 **Done when**
-- [ ] Enviar uma mensagem mostra a bolha imediatamente e o status evolui sending → sent → delivered → read
-- [ ] O contato mock digita e responde no idioma dele; a conversa sobe na lista e o badge aparece quando a conversa não está aberta
-- [ ] Simular uma falha de envio mostra o retry; o retry não duplica a mensagem
-- [ ] Carregar mensagens antigas não faz o scroll saltar
-- [ ] No mobile, a conversa ocupa a tela inteira (sem bottom nav), o composer acompanha o teclado e o long-press abre as ações
-- [ ] Os testes de `groupMessages`, `upsertMessage` e `conversationFilters` passam
+- [x] Enviar uma mensagem mostra a bolha imediatamente e o status evolui sending → sent → delivered → read
+- [x] O contato mock digita e responde no idioma dele; a conversa sobe na lista e o badge aparece quando a conversa não está aberta
+- [x] Simular uma falha de envio mostra o retry; o retry não duplica a mensagem
+- [x] Carregar mensagens antigas não faz o scroll saltar
+- [x] No mobile, a conversa ocupa a tela inteira (sem bottom nav), o composer acompanha o teclado e o long-press abre as ações
+- [x] Os testes de `groupMessages`, `upsertMessage` e `conversationFilters` passam
 
 ---
 

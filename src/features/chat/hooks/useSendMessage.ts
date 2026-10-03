@@ -1,0 +1,108 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { useCurrentUser } from "@/features/auth/hooks/useMe";
+import { createClientId } from "@/lib/ids";
+import { chatService, type MediaInput, type SendMessageInput } from "@/services/chatService";
+import type { MediaAttachment } from "@/types/media";
+import type { Message, MessageContent, MessageReference } from "@/types/message";
+
+import { patchMessage, removeMessage, upsertMessage } from "../lib/messageCache";
+import { failedSends, useComposerStore } from "../stores/composerStore";
+
+function optimisticContent(input: SendMessageInput, language: string): MessageContent {
+  const text = input.text.trim();
+  const body = text ? { text, language } : null;
+  const toMedia = (media: MediaInput, index: number): MediaAttachment => ({
+    id: `${input.clientId}_${index}`,
+    kind: media.kind,
+    url: media.url,
+    thumbnailUrl: media.kind === "image" ? media.url : null,
+    width: media.width,
+    height: media.height,
+    durationMs: media.durationMs,
+    mimeType: media.mimeType,
+    sizeBytes: media.sizeBytes,
+    alt: null,
+  });
+  const images = input.media.filter((m) => m.kind === "image");
+  const video = input.media.find((m) => m.kind === "video");
+  const file = input.media.find((m) => m.kind === "file");
+  if (images.length > 0) return { type: "image", media: images.map(toMedia), caption: body };
+  if (video) return { type: "video", media: toMedia(video, 0), caption: body };
+  if (file) return { type: "file", media: toMedia(file, 0), fileName: file.fileName };
+  return { type: "text", body: body ?? { text: "", language } };
+}
+
+/**
+ * Optimistic send (PLAN.md §13.1): the bubble appears immediately as "sending",
+ * the server response replaces it by clientId, failures keep the text for retry.
+ */
+export function useSendMessage(conversationId: string) {
+  const queryClient = useQueryClient();
+  const me = useCurrentUser();
+  const clearComposer = useComposerStore((state) => state.clear);
+
+  const mutation = useMutation({
+    mutationFn: (input: SendMessageInput) => chatService.sendMessage(input),
+    onMutate: (input) => {
+      const replyTo = useComposerStore.getState().replyTo[conversationId] ?? null;
+      const optimistic: Message = {
+        id: `tmp_${input.clientId}`,
+        clientId: input.clientId,
+        conversationId,
+        senderId: me.id,
+        content: optimisticContent(input, me.nativeLanguage),
+        translation: null,
+        replyTo: replyTo && replyTo.messageId === input.replyToId ? replyTo : null,
+        reactions: [],
+        deliveryStatus: "sending",
+        createdAt: new Date().toISOString(),
+      };
+      upsertMessage(queryClient, optimistic);
+      clearComposer(conversationId);
+      failedSends.delete(input.clientId);
+    },
+    onSuccess: (message) => upsertMessage(queryClient, message),
+    onError: (_error, input) => {
+      failedSends.set(input.clientId, input);
+      patchMessage(
+        queryClient,
+        conversationId,
+        { id: `tmp_${input.clientId}`, clientId: input.clientId },
+        (m) => ({
+          ...m,
+          deliveryStatus: "failed",
+        }),
+      );
+    },
+    meta: { silent: true },
+  });
+
+  function send(text: string, media: MediaInput[], replyTo: MessageReference | null) {
+    mutation.mutate({
+      conversationId,
+      clientId: createClientId(),
+      text,
+      media,
+      replyToId: replyTo?.messageId ?? null,
+    });
+  }
+
+  /** Resends with the same clientId: the server deduplicates (idempotency). */
+  function retry(clientId: string) {
+    const input = failedSends.get(clientId);
+    if (!input) return;
+    patchMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId }, (m) => ({
+      ...m,
+      deliveryStatus: "sending",
+    }));
+    mutation.mutate(input);
+  }
+
+  function discard(clientId: string) {
+    failedSends.delete(clientId);
+    removeMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId });
+  }
+
+  return { send, retry, discard };
+}

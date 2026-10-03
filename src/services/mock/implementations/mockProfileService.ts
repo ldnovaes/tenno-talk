@@ -150,6 +150,25 @@ export const mockProfileService: ProfileService = {
     });
   },
 
+  searchPeople(query, limit) {
+    return mockRequest(() => {
+      const db = mockDb.read();
+      const viewer = viewerRecord(db);
+      const normalized = query.trim().toLowerCase().replace(/^@/, "");
+      return Object.values(db.users)
+        .filter((user) => user.id !== viewer.id && user.onboardingCompletedAt)
+        .filter((user) => !viewer.blockedUserIds.includes(user.id))
+        .filter(
+          (user) =>
+            !normalized ||
+            user.displayName.toLowerCase().includes(normalized) ||
+            user.username.includes(normalized),
+        )
+        .slice(0, limit)
+        .map((user) => toUserProfile(user, db, viewer.id));
+    });
+  },
+
   follow(userId) {
     return mockRequest(() =>
       mockDb.update((db) => {

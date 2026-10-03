@@ -11,6 +11,14 @@ export interface MockConfig {
   translationFailureRate: number;
   /** Probability [0..1] that a translation gets an improved v2 later. */
   improvedTranslationRate: number;
+  /** Delay before a translation is ready (v1). */
+  translationDelayMs: number;
+  /** Delay before the improved translation (v2). */
+  improvedTranslationDelayMs: number;
+  /** Simulated contacts answer when nobody is driving them in another tab. */
+  autoReply: boolean;
+  /** Base delay of the auto-responder (delivered → read → typing → reply). */
+  autoReplyDelayMs: number;
 }
 
 const CONFIG_KEY = "tenno.mock-config";
@@ -21,6 +29,10 @@ const DEFAULTS: MockConfig = {
   failureRate: 0,
   translationFailureRate: 0.1,
   improvedTranslationRate: 0.2,
+  translationDelayMs: 900,
+  improvedTranslationDelayMs: 4000,
+  autoReply: true,
+  autoReplyDelayMs: 1000,
 };
 
 let config: MockConfig = { ...DEFAULTS, ...(readJson<Partial<MockConfig>>(CONFIG_KEY) ?? {}) };

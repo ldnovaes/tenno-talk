@@ -8,6 +8,9 @@ export interface ConversationMember {
   role: "member" | "admin";
   receivingLanguage: LanguageCode;
   lastReadMessageId: string | null;
+  /** Initial presence; live updates come from the realtime client. */
+  isOnline: boolean;
+  lastSeenAt: ISODateString | null;
 }
 
 export interface Conversation {

@@ -52,6 +52,6 @@ describe("email + password", () => {
     await userEvent.clear(screen.getByLabelText("Password"));
     await userEvent.type(screen.getByLabelText("Password"), "demo1234");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 });

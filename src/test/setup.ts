@@ -1,12 +1,16 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 
 import "@/app/i18n";
 import { mockDb } from "@/services/mock/db";
+import { resetPresence } from "@/services/mock/presence";
 import { resetMockConfig, setMockConfig } from "@/services/mock/latency";
 import { useSessionStore } from "@/stores/sessionStore";
+
+// Lazy routes load on first use; give async queries more room than the 1s default.
+configure({ asyncUtilTimeout: 3000 });
 
 /** Viewport used by matchMedia in tests. Override with setViewportWidth(). */
 let viewportWidth = 375;
@@ -45,6 +49,7 @@ Object.defineProperty(window, "matchMedia", {
 
 Object.defineProperty(window, "scrollTo", { writable: true, value: () => {} });
 Element.prototype.scrollIntoView = function scrollIntoView() {};
+Element.prototype.scrollTo = function scrollTo() {};
 // Radix (Select, Slider…) relies on pointer capture APIs missing in jsdom.
 Element.prototype.hasPointerCapture = () => false;
 Element.prototype.setPointerCapture = () => {};
@@ -57,30 +62,32 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
+/** Deterministic mock backend for tests: no latency, no failures, no auto replies. */
+export const TEST_MOCK_CONFIG = {
+  minLatencyMs: 0,
+  maxLatencyMs: 0,
+  failureRate: 0,
+  translationFailureRate: 0,
+  improvedTranslationRate: 0,
+  translationDelayMs: 0,
+  improvedTranslationDelayMs: 0,
+  autoReply: false,
+  autoReplyDelayMs: 0,
+};
+
 beforeEach(() => {
   viewportWidth = 375;
   prefersDark = false;
   localStorage.clear();
   sessionStorage.clear();
   mockDb.reset();
+  resetPresence();
   useSessionStore.setState({ status: "unknown", userId: null });
-  setMockConfig({
-    minLatencyMs: 0,
-    maxLatencyMs: 0,
-    failureRate: 0,
-    translationFailureRate: 0,
-    improvedTranslationRate: 0,
-  });
+  setMockConfig(TEST_MOCK_CONFIG);
 });
 
 afterEach(() => {
   cleanup();
   resetMockConfig();
-  setMockConfig({
-    minLatencyMs: 0,
-    maxLatencyMs: 0,
-    failureRate: 0,
-    translationFailureRate: 0,
-    improvedTranslationRate: 0,
-  });
+  setMockConfig(TEST_MOCK_CONFIG);
 });

@@ -14,7 +14,7 @@ function renderAt(route: string) {
 describe("AppRoutes", () => {
   it("redirects / to /chats", async () => {
     renderAt("/");
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 
   it.each([
@@ -40,16 +40,16 @@ describe("AppRoutes", () => {
     expect(await screen.findByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Create" })).toBeInTheDocument();
     unmount();
-    renderAt("/chats/conv_1");
-    await screen.findByText("Conversation");
+    renderAt("/chats/conv_lucas_cam");
+    await screen.findByRole("textbox", { name: "Message" });
     expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
   });
 
   it("shows the rail and the two chat panes on desktop", async () => {
     setViewportWidth(1280);
-    renderAt("/chats/conv_1");
-    expect(await screen.findByText("Conversation")).toBeInTheDocument();
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    renderAt("/chats/conv_lucas_cam");
+    expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Discover" })).toBeInTheDocument();
   });
 
@@ -57,7 +57,8 @@ describe("AppRoutes", () => {
     setViewportWidth(1280);
     renderAt("/u/cam");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(await screen.findByText("ConversationList")).toBeInTheDocument();
+    // The background stays rendered (blurred, hidden from assistive tech while the panel is open).
+    expect(await screen.findByRole("heading", { name: "Chats", hidden: true })).toBeInTheDocument();
   });
 });
 

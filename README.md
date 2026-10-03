@@ -21,3 +21,12 @@ bun run build
 ```
 
 Por padrão o frontend usa a camada de mock (`VITE_DATA_SOURCE=mock`).
+
+### Demo entre duas pessoas (mock)
+
+1. Abra `http://localhost:5173/welcome` e entre como **Lucas** (pt-BR).
+2. Abra **outra aba** no mesmo endereço e entre como **Cam** (vi-VN).
+3. Conversem: cada um escreve no próprio idioma e lê no seu, em tempo real.
+
+A sessão do mock é por aba; os dados ficam no `localStorage` do navegador.
+Contatos que não estão abertos em nenhuma aba respondem automaticamente.

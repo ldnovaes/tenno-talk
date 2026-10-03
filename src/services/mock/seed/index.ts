@@ -1,9 +1,12 @@
 import type { MockDatabase } from "../schema";
+import { seedConversations } from "./conversations";
 import { seedUsers } from "./users";
 
 export function createSeed(now = Date.now()): MockDatabase {
+  const users = seedUsers(now);
+  const { conversations, messages } = seedConversations(users, now);
   return {
-    users: seedUsers(now),
+    users,
     follows: [
       { followerId: "usr_lucas", followeeId: "usr_cam", createdAt: new Date(now).toISOString() },
       { followerId: "usr_cam", followeeId: "usr_lucas", createdAt: new Date(now).toISOString() },
@@ -11,8 +14,8 @@ export function createSeed(now = Date.now()): MockDatabase {
       { followerId: "usr_lucas", followeeId: "usr_sofia", createdAt: new Date(now).toISOString() },
       { followerId: "usr_minh", followeeId: "usr_cam", createdAt: new Date(now).toISOString() },
     ],
-    conversations: {},
-    messages: {},
+    conversations,
+    messages,
     posts: {},
     comments: {},
     stories: {},

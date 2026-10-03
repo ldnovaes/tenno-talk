@@ -7,8 +7,10 @@ interface Persisted<T> {
 
 export interface MockStore<T> {
   read(): T;
-  /** Mutates the state in place and persists it. */
+  /** Mutates the state in place and persists it (read-modify-write across tabs). */
   update<R>(mutator: (state: T) => R): R;
+  /** Re-reads the persisted state (another tab changed it). */
+  reload(): void;
   reset(): void;
   subscribe(listener: () => void): () => void;
 }
@@ -42,9 +44,14 @@ export function createMockStore<T>(options: {
   return {
     read: () => state,
     update(mutator) {
+      if (persist) state = load();
       const result = mutator(state);
       save();
       return result;
+    },
+    reload() {
+      state = load();
+      listeners.forEach((listener) => listener());
     },
     reset() {
       if (persist) removeKey(options.key);

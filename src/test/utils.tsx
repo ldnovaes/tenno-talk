@@ -9,6 +9,7 @@ import { AppRoutes } from "@/app/router/AppRoutes";
 import { ShellRoute } from "@/app/router/ShellRoute";
 import { SessionGate } from "@/features/auth/components/SessionGate";
 import { writeMockSession } from "@/services/mock/session";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function createTestQueryClient() {
@@ -30,6 +31,7 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}) {
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+            <Toaster />
           </TooltipProvider>
         </QueryClientProvider>
       </I18nextProvider>

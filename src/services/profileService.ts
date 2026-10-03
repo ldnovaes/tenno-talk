@@ -40,6 +40,7 @@ export interface ProfileService {
   updatePreferences(patch: PreferencesPatch): Promise<CurrentUser>;
   getProfile(username: string): Promise<UserProfile>;
   getSuggestions(limit: number): Promise<UserProfile[]>;
+  searchPeople(query: string, limit: number): Promise<UserProfile[]>;
   follow(userId: string): Promise<UserProfile>;
   unfollow(userId: string): Promise<UserProfile>;
   getBlockedUsers(): Promise<UserProfile[]>;
