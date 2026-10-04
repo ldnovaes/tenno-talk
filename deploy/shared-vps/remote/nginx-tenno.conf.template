@@ -1,0 +1,112 @@
+# TENNO TALK on a VPS shared with other sites (nginx already in front of them).
+# Managed by tenno-talk/deploy/shared-vps (./tenno vps provision). Do not edit on the server.
+#
+# Rules that keep the neighbours safe:
+# - exact server_name: wins over any wildcard (*.eldialabs.com) on the same ports;
+# - "listen 443 ssl;" with no http2/default_server/backlog: those options belong to the whole
+#   :443 socket and would change every other site on it;
+# - every name here (map variable, snippet) is prefixed with "tenno".
+
+map $http_upgrade $tenno_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name __DOMAIN__;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot-webroot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name __DOMAIN__;
+
+    ssl_certificate /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    access_log /var/log/nginx/tenno-talk.access.log;
+    error_log /var/log/nginx/tenno-talk.error.log;
+
+    root /var/www/tenno-talk/current;
+    # Media has no product limit (PLAN.md §34): the backend enforces the technical ceiling.
+    client_max_body_size 500m;
+
+    include /etc/nginx/snippets/tenno-talk-headers.conf;
+
+    # The backend listens on 127.0.0.1 only. X-Forwarded-For is REPLACED (not appended): the
+    # per-IP rate limits must never trust a value sent by the client (PLAN.md §31).
+    location /api/ {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_read_timeout 120s;
+    }
+
+    # Uploads stream to the backend instead of being buffered on disk by nginx.
+    location = /api/media {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_request_buffering off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        proxy_read_timeout 600s;
+    }
+
+    location ~ ^/(oauth2|login/oauth2)/ {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+    }
+
+    location = /ws {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $tenno_connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+        # The client pings every 25s (PLAN.md §26).
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    location = /actuator/health {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+    }
+
+    # Hashed build files never change.
+    location /assets/ {
+        include /etc/nginx/snippets/tenno-talk-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # SPA: every route is index.html, never cached (a new deploy must load at once).
+    location / {
+        include /etc/nginx/snippets/tenno-talk-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

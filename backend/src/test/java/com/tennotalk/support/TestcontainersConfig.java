@@ -9,7 +9,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfig {
 
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine");
+    /** Production runs Postgres 14 (shared VPS) and 16 (dedicated stack): -Dtenno.postgres=14 tests the other one. */
+    static final PostgreSQLContainer POSTGRES =
+            new PostgreSQLContainer("postgres:" + System.getProperty("tenno.postgres", "16") + "-alpine");
 
     @Bean
     @ServiceConnection

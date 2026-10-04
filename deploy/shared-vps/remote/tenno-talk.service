@@ -1,0 +1,25 @@
+[Unit]
+Description=TENNO TALK - Backend
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=tenno
+Group=tenno
+WorkingDirectory=/opt/tenno-talk/current
+EnvironmentFile=/etc/tenno-talk/tenno.env
+# The AI CLIs (codex, claude) run from here, logged in with the plan subscriptions (PLAN.md §28).
+Environment=PATH=/opt/tenno-talk/cli/bin:/opt/tenno-talk/node/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/var/lib/tenno-talk
+# Shared VPS: an explicit memory ceiling so the neighbours keep theirs.
+ExecStart=/usr/bin/java -Xmx384m -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError -jar /opt/tenno-talk/current/app.jar
+Restart=on-failure
+RestartSec=5
+SyslogIdentifier=tenno-talk
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

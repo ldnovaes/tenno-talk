@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# TENNO TALK command line (same shape as ./eldialabs). See deploy/shared-vps/README.md.
+set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage: tenno <command> [args]
+
+Commands:
+  run deploy:prod [--skip-tests]   Tests, builds locally and deploys to the shared VPS
+                                   (health check + automatic rollback)
+  vps provision                    Prepares the VPS (idempotent): user, Node + AI CLIs,
+                                   database, service, certificate, nginx (neighbours checked)
+  vps ssh                          Shell on the VPS
+  vps status                       Service, health and release in production
+  vps logs                         Follows the backend log
+  vps backup                       Runs the backup now (database tenno + media)
+USAGE
+  exit 1
+}
+
+[ $# -ge 2 ] || usage
+GROUP="$1"; COMMAND="$2"; shift 2
+
+case "$GROUP:$COMMAND" in
+  run:deploy:prod)
+    for arg in "$@"; do
+      case "$arg" in
+        --skip-tests) export SKIP_TESTS=true ;;
+        *) echo "[tenno] Unknown flag: $arg" >&2; usage ;;
+      esac
+    done
+    exec "$ROOT_DIR/deploy/shared-vps/deploy.sh"
+    ;;
+  vps:provision)
+    source "$ROOT_DIR/deploy/shared-vps/lib.sh"
+    vps_ssh "rm -rf /root/tenno-provision && mkdir -p /root/tenno-provision"
+    vps_rsync "$ROOT_DIR/deploy/shared-vps/remote/" "/root/tenno-provision/"
+    vps_ssh "DOMAIN='$TENNO_DOMAIN' CERT_EMAIL='$TENNO_CERT_EMAIL' PORT='$TENNO_PORT' \
+      NEIGHBOR_HOSTS='$TENNO_NEIGHBOR_HOSTS' CERT_MODE='${TENNO_CERT_MODE:-letsencrypt}' \
+      bash /root/tenno-provision/provision.sh"
+    ;;
+  vps:ssh)
+    source "$ROOT_DIR/deploy/shared-vps/lib.sh"
+    exec ssh "${SSH_OPTS[@]}" "$TENNO_VPS_HOST"
+    ;;
+  vps:status)
+    source "$ROOT_DIR/deploy/shared-vps/lib.sh"
+    vps_ssh "systemctl is-active tenno-talk; readlink /opt/tenno-talk/current; \
+      curl -s http://127.0.0.1:$TENNO_PORT/actuator/health; echo"
+    ;;
+  vps:logs)
+    source "$ROOT_DIR/deploy/shared-vps/lib.sh"
+    exec ssh -t "${SSH_OPTS[@]}" "$TENNO_VPS_HOST" "journalctl -u tenno-talk -f -n 100"
+    ;;
+  vps:backup)
+    source "$ROOT_DIR/deploy/shared-vps/lib.sh"
+    vps_ssh "/opt/tenno-talk/bin/backup.sh"
+    ;;
+  *)
+    usage
+    ;;
+esac

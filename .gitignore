@@ -39,3 +39,6 @@ test-results
 .env
 .env.*
 !.env.example
+
+# Shared VPS address and settings (deploy/shared-vps/vps.env.example)
+deploy/shared-vps/vps.env
