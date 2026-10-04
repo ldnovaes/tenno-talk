@@ -39,3 +39,10 @@ cp deploy/shared-vps/vps.env.example deploy/shared-vps/vps.env   # endereço, do
 ## Ensaio
 
 Antes da primeira vez em produção, tudo foi ensaiado num container Ubuntu 22.04 com systemd, com a configuração real do nginx dos vizinhos e um PostgreSQL 14 (`TENNO_VPS_ENV=<arquivo> ./tenno ...` aponta para outra máquina).
+
+## Segurança do servidor (VPS da Eldia, 2026-10-04)
+
+Ajustes feitos no servidor compartilhado, cada um com desfazer automático em 5 minutos até ser verificado:
+
+- **Firewall (`ufw`)**: as regras do provisionamento da Eldia já existiam (22022, 80, 443, 8443, 41641/udp), mas o serviço que as carrega no boot estava desabilitado; depois de um reboot, o servidor ficou sem firewall e o backend da Eldia (8080) acessível direto da internet. Ativado e habilitado no boot. Verificado: SSH, sites, documentação via Tailscale, WhatsApp (Baileys → Java por loopback), exit node; 8080 bloqueada de fora.
+- **SSH só com chave** (root inclusive): `/etc/ssh/sshd_config.d/01-key-only.conf`, lido antes do `50-cloud-init.conf` da imagem. Para aceitar senha de novo: `rm /etc/ssh/sshd_config.d/01-key-only.conf && systemctl reload ssh`. Sem nenhuma chave: console web no painel da HostGator (não é afetado).
