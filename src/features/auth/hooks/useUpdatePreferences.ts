@@ -49,7 +49,7 @@ export function useUpdatePreferences() {
       return { previous, version };
     },
     onError: (_error, _patch, context) => {
-      if (context?.version === versions.get(account) && context.previous)
+      if (context && context.version === versions.get(account) && context.previous)
         queryClient.setQueryData(profileKeys.me(), context.previous);
     },
     onSuccess: (user, _patch, context) => {
