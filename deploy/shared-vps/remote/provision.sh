@@ -64,7 +64,9 @@ PATH="$APP/node/bin:$PATH" "$APP/cli/bin/claude" --version >/dev/null
 if [ ! -f "$ENV_FILE" ]; then
   log "Creating $ENV_FILE (new database password)"
   password="$(openssl rand -hex 24)"
-  umask 027
+  # Restrictive umask only for this file (a script-wide umask would leak into the shared
+  # certbot webroot and the nginx files created later).
+  ( umask 077
   cat > "$ENV_FILE" <<ENV
 # TENNO TALK runtime configuration (root:tenno 640). Not in git.
 DATABASE_URL=jdbc:postgresql://127.0.0.1:5432/tenno
@@ -82,6 +84,7 @@ GOOGLE_CLIENT_SECRET=
 FACEBOOK_CLIENT_ID=
 FACEBOOK_CLIENT_SECRET=
 ENV
+  )
   chown root:tenno "$ENV_FILE"
   chmod 640 "$ENV_FILE"
 fi
@@ -130,11 +133,17 @@ if [ ! -s "$live/fullchain.pem" ]; then
       -keyout "$live/privkey.pem" -out "$live/fullchain.pem" 2>/dev/null
   else
     # HTTP-01 through the webroot the neighbours' port-80 block already serves for this name.
+    # The webroot is shared: leave it exactly as found (certbot creates its own folders).
+    webroot=/var/www/certbot-webroot
+    created_well_known=false
+    [ -d "$webroot/.well-known" ] || created_well_known=true
+    install -d -m 755 "$webroot/.well-known" "$webroot/.well-known/acme-challenge"
     probe="tenno-probe-$RANDOM"
-    mkdir -p /var/www/certbot-webroot/.well-known/acme-challenge
-    echo ok > "/var/www/certbot-webroot/.well-known/acme-challenge/$probe"
+    echo ok > "$webroot/.well-known/acme-challenge/$probe"
+    chmod 644 "$webroot/.well-known/acme-challenge/$probe"
     got="$(curl -s -H "Host: $DOMAIN" "http://127.0.0.1/.well-known/acme-challenge/$probe" || true)"
-    rm -f "/var/www/certbot-webroot/.well-known/acme-challenge/$probe"
+    rm -f "$webroot/.well-known/acme-challenge/$probe"
+    if $created_well_known; then rm -rf "$webroot/.well-known"; fi
     [ "$got" = "ok" ] || { log "ERROR: http://$DOMAIN/.well-known/acme-challenge/ is not served from /var/www/certbot-webroot"; exit 1; }
     log "Requesting a Let's Encrypt certificate for $DOMAIN (certonly: nginx config untouched)"
     email_args=()
@@ -180,6 +189,7 @@ restore_nginx() {
 mkdir -p /etc/nginx/snippets
 render "$HERE/tenno-talk-headers.conf.template" > "$SNIPPET"
 render "$HERE/nginx-tenno.conf.template" > "$SITE"
+chmod 644 "$SNIPPET" "$SITE"
 ln -sfn "$SITE" /etc/nginx/sites-enabled/tenno-talk.conf
 
 # 1) Validate the whole configuration. Nothing has been applied yet: on failure, the running
