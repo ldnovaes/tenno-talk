@@ -458,3 +458,17 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [x] Metas de performance e acessibilidade atingidas
 - [x] Deploy reproduzível, com backup restaurado com sucesso pelo menos uma vez (pilha local; repetir na VPS)
 - [x] Checklist de segurança do PLAN.md §31 verificado (exceto o que depende da VPS e do texto jurídico)
+
+---
+
+## Produção: VPS compartilhada (2026-10-04)
+
+- [x] `./tenno` (mesmo formato do `./eldialabs`): `vps provision`, `run deploy:prod`, `vps status|logs|backup|ssh|ai-login`
+- [x] Ensaio completo num container Ubuntu 22.04 com o nginx real dos vizinhos e PostgreSQL 14 (provision idempotente, deploy, e2e da pilha, rollback, configuração inválida rejeitada sem reload)
+- [x] Suíte do backend no PostgreSQL 14 (405 testes)
+- [x] Provision na VPS real: certificado próprio, nginx sem alterar os 7 sites vizinhos (comparados antes/depois), banco isolado
+- [x] Primeiro deploy (`38c064b`) com todos os testes: https://tenno.eldialabs.com no ar, backend só em 127.0.0.1
+- [ ] Criar a conta de admin (cadastro no app + promoção no banco)
+- [ ] Login das IAs: `./tenno vps ai-login codex` e `./tenno vps ai-login claude` (ou pelo painel AI providers)
+- [ ] Copiar `/var/backups/tenno-talk` para fora da VPS
+

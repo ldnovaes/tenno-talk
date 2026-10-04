@@ -1505,6 +1505,17 @@ Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.we
 
 ---
 
+### 32.1 Produção atual: VPS compartilhada com a Eldia Labs (2026-10-04)
+
+A TENNO TALK está em **https://tenno.eldialabs.com**, na VPS da Eldia Labs, ao lado dos sites dela, com o modo `deploy/shared-vps` (`./tenno`, ver o README da pasta):
+
+- nginx da Eldia + **um arquivo próprio** (`server_name` exato, `listen 443 ssl;` sem opções de socket) e certificado próprio (`certbot certonly --webroot`, conta Let's Encrypt já existente no servidor). Os sites vizinhos são medidos antes e depois de cada mudança; qualquer diferença desfaz tudo.
+- PostgreSQL 14 da VPS (a suíte do backend roda contra o 14 no deploy): banco e usuário `tenno`, sem `CONNECT` nos bancos vizinhos.
+- Backend como `.jar` + systemd, só em `127.0.0.1:8090`, `-Xmx384m`. Node 22 e as CLIs de IA ficam em `/opt/tenno-talk`, sem pacote de sistema.
+- Build sempre local; deploy com health check e rollback automático (ensaiados num container Ubuntu 22.04 com a configuração real do nginx: configuração inválida rejeitada sem reload, backend quebrado revertido sozinho).
+
+A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENNO.
+
 # Parte III — Riscos e decisões
 
 ## 33. Riscos técnicos
