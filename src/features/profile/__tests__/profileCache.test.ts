@@ -47,6 +47,13 @@ describe("withFollowing", () => {
       withFollowing(profile("a", { isFollowing: true, followersCount: 0 }), false).followersCount,
     ).toBe(0);
   });
+
+  it("requests private profiles without increasing the follower count", () => {
+    const before = profile("private", { isPrivate: true });
+    const requested = withFollowing(before, true);
+    expect(requested).toMatchObject({ isFollowing: false, followRequestPending: true, followersCount: 3 });
+    expect(withFollowing(requested, false)).toMatchObject({ followRequestPending: false, followersCount: 3 });
+  });
 });
 
 describe("patchProfileInCaches", () => {

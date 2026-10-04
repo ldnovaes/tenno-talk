@@ -276,6 +276,27 @@ describe("mockChatService", () => {
       );
     });
 
+    it("enforces changed privacy and blocks on an existing conversation and forwards", async () => {
+      const original = await send("Before restriction", "before");
+      mockDb.update((db) => {
+        const linh = db.users["usr_linh"];
+        if (linh) linh.preferences.privacy.whoCanMessage = "nobody";
+      });
+      await expect(send("After restriction", "after")).rejects.toMatchObject({ code: "forbidden" });
+      await expect(
+        mockChatService.forward(original.id, ["conv_rafael_linh"]),
+      ).rejects.toMatchObject({ code: "forbidden" });
+      mockDb.update((db) => {
+        const linh = db.users["usr_linh"];
+        if (linh) linh.preferences.privacy.whoCanMessage = "everyone";
+        db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
+      });
+      await expect(send("Blocked outward", "blocked-out")).rejects.toMatchObject({ code: "forbidden" });
+      asLinh();
+      await expect(send("Blocked inward", "blocked-in")).rejects.toMatchObject({ code: "forbidden" });
+      expect(Object.values(mockDb.read().messages).filter((m) => m.clientId?.startsWith("blocked-"))).toHaveLength(0);
+    });
+
     it("refuses to message yourself", async () => {
       await expect(
         mockChatService.getOrCreateDirectConversation("usr_rafael"),
