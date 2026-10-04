@@ -17,7 +17,7 @@ const onboardingInput = {
 };
 
 describe("mockProfileService", () => {
-  beforeEach(() => writeMockSession("usr_lucas"));
+  beforeEach(() => writeMockSession("usr_rafael"));
 
   it("requires a session", async () => {
     clearMockSession();
@@ -26,7 +26,7 @@ describe("mockProfileService", () => {
 
   it("returns the current user with account data", async () => {
     const me = await mockProfileService.getMe();
-    expect(me).toMatchObject({ id: "usr_lucas", username: "lucas", role: "admin" });
+    expect(me).toMatchObject({ id: "usr_rafael", username: "rafael", role: "admin" });
     expect(me.preferences.translation.receivingLanguage).toBe("pt-BR");
     expect(me.followersCount).toBe(2);
     expect(me.followingCount).toBe(2);
@@ -70,7 +70,7 @@ describe("mockProfileService", () => {
     it("rejects a taken username", async () => {
       await mockProfileService.acceptTerms(env.termsVersion);
       await expect(
-        mockProfileService.completeOnboarding({ ...onboardingInput, username: "cam" }),
+        mockProfileService.completeOnboarding({ ...onboardingInput, username: "linh" }),
       ).rejects.toMatchObject({ code: "conflict", fieldErrors: { username: "taken" } });
     });
 
@@ -83,8 +83,8 @@ describe("mockProfileService", () => {
   });
 
   it("checks username availability", async () => {
-    expect(await mockProfileService.checkUsername("cam")).toEqual({ available: false });
-    expect(await mockProfileService.checkUsername("lucas")).toEqual({ available: true });
+    expect(await mockProfileService.checkUsername("linh")).toEqual({ available: false });
+    expect(await mockProfileService.checkUsername("rafael")).toEqual({ available: true });
     expect(await mockProfileService.checkUsername("brand_new")).toEqual({ available: true });
     expect(await mockProfileService.checkUsername("x")).toEqual({ available: false });
   });
@@ -108,7 +108,7 @@ describe("mockProfileService", () => {
   });
 
   it("does not follow yourself", async () => {
-    await expect(mockProfileService.follow("usr_lucas")).rejects.toMatchObject({
+    await expect(mockProfileService.follow("usr_rafael")).rejects.toMatchObject({
       code: "validation",
     });
   });
@@ -118,7 +118,7 @@ describe("mockProfileService", () => {
       code: "not_found",
     });
     const { userId } = await mockAuthService.signUp({ email: "x@y.com", password: "secret123" });
-    writeMockSession("usr_lucas");
+    writeMockSession("usr_rafael");
     mockDb.update((db) => {
       const user = db.users[userId];
       if (user) user.username = "half_done";
@@ -130,18 +130,18 @@ describe("mockProfileService", () => {
 
   it("suggests other onboarded people, online first, excluding blocked users", async () => {
     mockDb.update((db) => {
-      db.users["usr_lucas"]?.blockedUserIds.push("usr_cam");
+      db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
     });
     const suggestions = await mockProfileService.getSuggestions(20);
     const ids = suggestions.map((p) => p.id);
-    expect(ids).not.toContain("usr_lucas");
-    expect(ids).not.toContain("usr_cam");
+    expect(ids).not.toContain("usr_rafael");
+    expect(ids).not.toContain("usr_linh");
     expect(suggestions[0]?.isOnline).toBe(true);
   });
 
   it("lists and unblocks blocked users", async () => {
     mockDb.update((db) => {
-      db.users["usr_lucas"]?.blockedUserIds.push("usr_omar");
+      db.users["usr_rafael"]?.blockedUserIds.push("usr_omar");
     });
     expect((await mockProfileService.getBlockedUsers()).map((p) => p.id)).toEqual(["usr_omar"]);
     await mockProfileService.unblock("usr_omar");
@@ -150,14 +150,14 @@ describe("mockProfileService", () => {
 
   it("updates the profile", async () => {
     const me = await mockProfileService.updateProfile({
-      displayName: "Lucas A.",
-      username: "lucas.a",
+      displayName: "Rafael A.",
+      username: "rafael.a",
       bio: "Hi",
       country: "PT",
       avatarUrl: null,
       nativeLanguage: "pt-BR",
       learningLanguages: ["vi-VN"],
     });
-    expect(me).toMatchObject({ displayName: "Lucas A.", username: "lucas.a", country: "PT" });
+    expect(me).toMatchObject({ displayName: "Rafael A.", username: "rafael.a", country: "PT" });
   });
 });

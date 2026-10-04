@@ -79,7 +79,7 @@ describe("onboarding", () => {
     await screen.findByRole("heading", { name: "Receive messages in…" });
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.type(await screen.findByLabelText("Name"), "Someone");
-    await user.type(screen.getByLabelText("Username"), "cam");
+    await user.type(screen.getByLabelText("Username"), "linh");
     await user.click(screen.getByRole("combobox", { name: "Country" }));
     await user.click(await screen.findByRole("option", { name: "Brazil" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));

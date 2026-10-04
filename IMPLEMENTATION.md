@@ -93,7 +93,7 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [x] `stores/sessionStore.ts` (persistido): `status`, `userId`, `accessToken`
 - [x] `profileService.getMe()` mock + `useMe()` (query `me`)
 - [x] `SessionGate` (carrega `me`, mostra `AppSkeleton`) e guards reais
-- [x] `WelcomePage`: proposta, animação de exemplo, Continue with Google / Facebook / email, aviso "By continuing you agree…" com links e "Continue as demo" (Lucas pt-BR / Cam vi-VN, só em dev)
+- [x] `WelcomePage`: proposta, animação de exemplo, Continue with Google / Facebook / email, aviso "By continuing you agree…" com links e "Continue as demo" (Rafael pt-BR / Linh vi-VN, só em dev)
 - [x] `/signin` e `/signup` (email + senha, rhf + zod)
 - [x] `/terms` e `/privacy` (páginas de leitura com texto provisório e versão; o texto definitivo depende de PLAN.md §34.2)
 - [x] `OnboardingLayout` com progresso, voltar/continuar (fixos no mobile) e rota `/onboarding/:step`
@@ -172,7 +172,7 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [x] Sem Edit/Delete no menu (fora do escopo, PLAN.md §34)
 - [x] `getOrCreateDirectConversation` (usado por "Message" no Discover/Perfil)
 
-> Notas: a sessão do mock passou a ser por aba (`sessionStorage`) e os eventos do servidor mock trafegam entre abas via `BroadcastChannel`. Com isso, Lucas numa aba e Cam em outra conversam em tempo real, com tradução, ticks e "digitando…". O respondedor automático só responde por quem não está aberto em nenhuma aba. Reagir pelo menu agora usa itens do próprio menu, que fecham ao escolher (bug encontrado nos testes).
+> Notas: a sessão do mock passou a ser por aba (`sessionStorage`) e os eventos do servidor mock trafegam entre abas via `BroadcastChannel`. Com isso, Rafael numa aba e Linh em outra conversam em tempo real, com tradução, ticks e "digitando…". O respondedor automático só responde por quem não está aberto em nenhuma aba. Reagir pelo menu agora usa itens do próprio menu, que fecham ao escolher (bug encontrado nos testes).
 
 **Done when**
 - [x] Enviar uma mensagem mostra a bolha imediatamente e o status evolui sending → sent → delivered → read

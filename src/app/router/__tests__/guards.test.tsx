@@ -35,20 +35,20 @@ describe("route guards", () => {
   });
 
   it("redirects onboarded users away from the welcome screen", async () => {
-    signInAs("usr_cam");
+    signInAs("usr_linh");
     renderApp("/welcome");
     expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 
   it("signs in with a demo account from the welcome screen", async () => {
     renderApp("/welcome");
-    await userEvent.click(await screen.findByRole("button", { name: "Sign in as Cam" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Sign in as Linh" }));
     expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
   });
 
   it("signs out and clears the session", async () => {
     setViewportWidth(375);
-    signInAs("usr_cam");
+    signInAs("usr_linh");
     renderApp("/settings");
     await userEvent.click(await screen.findByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("heading", { name: /talk to anyone/i })).toBeInTheDocument();

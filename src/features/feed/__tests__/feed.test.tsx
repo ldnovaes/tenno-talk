@@ -13,13 +13,13 @@ function postNamed(name: string): HTMLElement {
 }
 
 describe("feed", () => {
-  beforeEach(() => signInAs("usr_lucas"));
+  beforeEach(() => signInAs("usr_rafael"));
 
   it("shows posts with captions translated automatically and the original on demand", async () => {
     const user = userEvent.setup();
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Cam Nguyen" });
-    const post = postNamed("Cam Nguyen");
+    await screen.findByRole("article", { name: "Post by Linh Pham" });
+    const post = postNamed("Linh Pham");
     expect(
       within(post).getByText("O pôr do sol no Lago Oeste hoje estava lindo demais 🌅"),
     ).toHaveAttribute("lang", "pt-BR");
@@ -32,13 +32,13 @@ describe("feed", () => {
 
   it("shows the original first when auto-translate is off", async () => {
     mockDb.update((db) => {
-      const lucas = db.users["usr_lucas"];
-      if (lucas) lucas.preferences.translation.autoTranslatePosts = false;
+      const rafael = db.users["usr_rafael"];
+      if (rafael) rafael.preferences.translation.autoTranslatePosts = false;
     });
     const user = userEvent.setup();
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Cam Nguyen" });
-    const post = postNamed("Cam Nguyen");
+    await screen.findByRole("article", { name: "Post by Linh Pham" });
+    const post = postNamed("Linh Pham");
     expect(within(post).getByText("Hoàng hôn ở Hồ Tây hôm nay đẹp quá 🌅")).toBeInTheDocument();
     await user.click(within(post).getByRole("button", { name: "See translation" }));
     expect(
@@ -58,7 +58,7 @@ describe("feed", () => {
     );
     expect(within(post).getByText("2 likes")).toBeInTheDocument();
     await waitFor(() =>
-      expect(mockDb.read().posts["post_sofia_1"]?.likedBy).toContain("usr_lucas"),
+      expect(mockDb.read().posts["post_sofia_1"]?.likedBy).toContain("usr_rafael"),
     );
   });
 
@@ -69,7 +69,7 @@ describe("feed", () => {
     const post = postNamed("Sofía Martínez");
     await user.dblClick(within(post).getByRole("group", { name: "Photo 1 of 1" }));
     await waitFor(() =>
-      expect(mockDb.read().posts["post_sofia_1"]?.likedBy).toContain("usr_lucas"),
+      expect(mockDb.read().posts["post_sofia_1"]?.likedBy).toContain("usr_rafael"),
     );
   });
 
@@ -77,9 +77,9 @@ describe("feed", () => {
     const user = userEvent.setup();
     setViewportWidth(1280);
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Cam Nguyen" });
+    await screen.findByRole("article", { name: "Post by Linh Pham" });
     await user.click(
-      within(postNamed("Cam Nguyen")).getByRole("button", { name: "View all 2 comments" }),
+      within(postNamed("Linh Pham")).getByRole("button", { name: "View all 2 comments" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "Comments" });
     expect(await within(dialog).findByText("Lindo mesmo!")).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe("feed", () => {
     const user = userEvent.setup();
     setViewportWidth(1280);
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Cam Nguyen" });
+    await screen.findByRole("article", { name: "Post by Linh Pham" });
     await user.click(screen.getByRole("link", { name: "Create" }));
     const dialog = await screen.findByRole("dialog", { name: "New post" });
     const file = new File([new Uint8Array([137, 80, 78, 71])], "praia.png", { type: "image/png" });
@@ -105,17 +105,17 @@ describe("feed", () => {
     await user.click(within(dialog).getByRole("button", { name: "Share" }));
     expect(await screen.findByText("Posted")).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getAllByRole("article")[0]).toHaveAccessibleName("Post by Lucas Almeida"),
+      expect(screen.getAllByRole("article")[0]).toHaveAccessibleName("Post by Rafael Souza"),
     );
     expect(screen.getByText("Pôr do sol em casa")).toBeInTheDocument();
   });
 
   it("shows the profile grid and opens a post", async () => {
     const user = userEvent.setup();
-    renderApp("/u/cam");
+    renderApp("/u/linh");
     const tiles = await screen.findAllByRole("button", { name: "Open post" });
     expect(tiles).toHaveLength(2);
     await user.click(tiles[0] as HTMLElement);
-    expect(await screen.findByRole("article", { name: "Post by Cam Nguyen" })).toBeInTheDocument();
+    expect(await screen.findByRole("article", { name: "Post by Linh Pham" })).toBeInTheDocument();
   });
 });

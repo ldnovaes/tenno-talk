@@ -11,13 +11,13 @@ import { useSendMessage } from "../hooks/useSendMessage";
 
 describe("useSendMessage", () => {
   it("keeps its callbacks stable while a send goes through (bubbles must not all re-render)", async () => {
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     const client = createTestQueryClient();
     client.setQueryData(profileKeys.me(), await profileService.getMe());
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(() => useSendMessage("conv_lucas_cam"), { wrapper });
+    const { result } = renderHook(() => useSendMessage("conv_rafael_linh"), { wrapper });
     const first = result.current;
     act(() => first.send("Oi", [], null));
     await waitFor(() => expect(client.isMutating()).toBe(0));

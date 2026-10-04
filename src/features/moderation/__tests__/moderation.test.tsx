@@ -6,7 +6,7 @@ import { mockReports } from "@/services/mock/mockReports";
 import { renderApp, signInAs } from "@/test/utils";
 import { setViewportWidth } from "@/test/setup";
 
-const CAM_PT = "Eu também estava com saudade de você.";
+const LINH_PT = "Eu também estava com saudade de você.";
 
 async function reportWith(reason: string) {
   const dialog = await screen.findByRole("dialog");
@@ -25,10 +25,10 @@ describe("reporting", () => {
   });
 
   it("reports someone else's message, never my own", async () => {
-    signInAs("usr_lucas");
-    renderApp("/chats/conv_lucas_cam");
+    signInAs("usr_rafael");
+    renderApp("/chats/conv_rafael_linh");
     const log = await screen.findByRole("log", { name: "Messages" });
-    const bubble = (await within(log).findByText(CAM_PT)).closest("[id^=message-]");
+    const bubble = (await within(log).findByText(LINH_PT)).closest("[id^=message-]");
     if (!(bubble instanceof HTMLElement)) throw new Error("bubble not found");
     await userEvent.click(within(bubble).getByRole("button", { name: "Message actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Report" }));
@@ -47,8 +47,8 @@ describe("reporting", () => {
   });
 
   it("reports a person from their profile and the admin resolves it", async () => {
-    signInAs("usr_lucas");
-    renderApp("/u/cam");
+    signInAs("usr_rafael");
+    renderApp("/u/linh");
     await userEvent.click(await screen.findByRole("button", { name: "Profile menu" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Report" }));
     expect(screen.getByRole("heading", { name: "Report this person" })).toBeInTheDocument();
@@ -64,7 +64,7 @@ describe("admin reports", () => {
     mockReports.push({
       id: "rep_1",
       targetKind: "user",
-      targetId: "usr_cam",
+      targetId: "usr_linh",
       reason: "spam",
       status: "open",
       createdAt: new Date().toISOString(),
@@ -74,7 +74,7 @@ describe("admin reports", () => {
   });
 
   it("lists open reports and moves them out when reviewed", async () => {
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/admin/reports");
     expect(await screen.findByRole("heading", { name: "Spam or scam" })).toBeInTheDocument();
     expect(screen.getByText(/Reported by @sofia/)).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe("admin reports", () => {
   });
 
   it("is closed to non-admins", async () => {
-    signInAs("usr_cam");
+    signInAs("usr_linh");
     renderApp("/admin/reports");
     expect(await screen.findByText("This page is for administrators.")).toBeInTheDocument();
   });
@@ -108,7 +108,7 @@ describe("data export", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("downloads the account data without the password", async () => {
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/settings/account");
     await userEvent.click(await screen.findByRole("button", { name: "Download my data" }));
     await waitFor(() => expect(created).toHaveLength(1));
@@ -120,7 +120,7 @@ describe("data export", () => {
       reader.readAsText(blob);
     });
     const data = JSON.parse(text) as { account: { username: string }; messagesSent: unknown[] };
-    expect(data.account.username).toBe("lucas");
+    expect(data.account.username).toBe("rafael");
     expect(data.messagesSent.length).toBeGreaterThan(0);
     expect(data.account).not.toHaveProperty("password");
     expect(text).not.toContain("demo1234");

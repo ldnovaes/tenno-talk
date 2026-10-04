@@ -22,14 +22,14 @@ async function createGroup(
 
 describe("groups", () => {
   beforeEach(() => {
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     setViewportWidth(1280);
   });
 
   it("creates a group, shows members and their languages, and adds the Groups filter", async () => {
     const user = userEvent.setup();
     renderApp("/chats");
-    await createGroup(user, "Intercâmbio", ["Cam Nguyen", "Sofía Martínez"]);
+    await createGroup(user, "Intercâmbio", ["Linh Pham", "Sofía Martínez"]);
     expect(await screen.findByText("3 members")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Group info" }));
     const info = await screen.findByRole("dialog", { name: "Intercâmbio" });
@@ -42,7 +42,7 @@ describe("groups", () => {
   it("blocks a second group with a clear message", async () => {
     const user = userEvent.setup();
     renderApp("/chats");
-    await createGroup(user, "Primeiro", ["Cam Nguyen", "Emma Johnson"]);
+    await createGroup(user, "Primeiro", ["Linh Pham", "Emma Johnson"]);
     await screen.findByText("3 members");
     await createGroup(user, "Segundo", ["Minh Tran", "Yuki Tanaka"]);
     expect(await screen.findByText("You can create only one group.")).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("groups", () => {
   it("shows sender names and translations in group messages", async () => {
     const user = userEvent.setup();
     renderApp("/chats");
-    await createGroup(user, "Trio", ["Cam Nguyen", "Sofía Martínez"]);
+    await createGroup(user, "Trio", ["Linh Pham", "Sofía Martínez"]);
     const input = await screen.findByRole("textbox", { name: "Message" });
     await user.type(input, "Obrigado!{Enter}");
     const log = screen.getByRole("log", { name: "Messages" });

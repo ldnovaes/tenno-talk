@@ -9,7 +9,7 @@ import { renderApp, signInAs } from "@/test/utils";
 
 describe("notifications", () => {
   beforeEach(() => {
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     setViewportWidth(1280);
   });
 
@@ -29,7 +29,7 @@ describe("notifications", () => {
     await waitFor(() =>
       expect(
         Object.values(mockDb.read().notifications).every(
-          (n) => n.recipientId !== "usr_lucas" || n.readAt,
+          (n) => n.recipientId !== "usr_rafael" || n.readAt,
         ),
       ).toBe(true),
     );
@@ -39,7 +39,7 @@ describe("notifications", () => {
     const user = userEvent.setup();
     mockDb.update((db) => {
       db.follows = db.follows.filter(
-        (f) => !(f.followerId === "usr_lucas" && f.followeeId === "usr_sofia"),
+        (f) => !(f.followerId === "usr_rafael" && f.followeeId === "usr_sofia"),
       );
     });
     renderApp("/notifications");
@@ -48,7 +48,7 @@ describe("notifications", () => {
       expect(
         mockDb
           .read()
-          .follows.some((f) => f.followerId === "usr_lucas" && f.followeeId === "usr_sofia"),
+          .follows.some((f) => f.followerId === "usr_rafael" && f.followeeId === "usr_sofia"),
       ).toBe(true),
     );
   });
@@ -71,10 +71,10 @@ describe("notifications", () => {
       mockDb.update((db) => {
         db.notifications["ntf_live"] = {
           id: "ntf_live",
-          recipientId: "usr_lucas",
+          recipientId: "usr_rafael",
           actorId: "usr_emma",
           type: "like",
-          postId: "post_lucas_1",
+          postId: "post_rafael_1",
           commentId: null,
           storyId: null,
           emoji: null,
@@ -87,7 +87,7 @@ describe("notifications", () => {
       publish({
         kind: "notification.created",
         notificationId: "ntf_live",
-        recipientId: "usr_lucas",
+        recipientId: "usr_rafael",
       });
     });
     await waitFor(() => expect(within(link).getByText("6")).toBeInTheDocument());

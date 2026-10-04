@@ -74,7 +74,7 @@ export const en = {
     },
     demoBubbleOriginal: "Estou com saudade de você.",
     demoBubbleTranslated: "Em nhớ anh.",
-    demoBubbleCaption: "Lucas writes in Portuguese · Cam reads in Vietnamese",
+    demoBubbleCaption: "Rafael writes in Portuguese · Linh reads in Vietnamese",
   },
   onboarding: {
     stepOf: "Step {{current}} of {{total}}",

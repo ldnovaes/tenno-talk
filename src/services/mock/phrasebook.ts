@@ -12,7 +12,7 @@ export interface Phrase {
 }
 
 export const PHRASES: Phrase[] = [
-  // Lucas ↔ Cam (pt-BR ↔ vi-VN), seeded conversation.
+  // Rafael ↔ Linh (pt-BR ↔ vi-VN), seeded conversation.
   {
     id: "lc_hi",
     text: {
@@ -25,9 +25,9 @@ export const PHRASES: Phrase[] = [
   {
     id: "lc_fine",
     text: {
-      "pt-BR": "Oi, Cam! Estou bem, e você?",
-      "vi-VN": "Chào Cam! Anh khỏe, còn em?",
-      "en-US": "Hi, Cam! I'm good, and you?",
+      "pt-BR": "Oi, Linh! Estou bem, e você?",
+      "vi-VN": "Chào Linh! Anh khỏe, còn em?",
+      "en-US": "Hi, Linh! I'm good, and you?",
     },
   },
   {
@@ -219,13 +219,13 @@ export const PHRASES: Phrase[] = [
       "en-US": "Sounds delicious! Cook it for me one day?",
     },
   },
-  // Lucas ↔ Sofía (pt-BR ↔ es-ES)
+  // Rafael ↔ Sofía (pt-BR ↔ es-ES)
   {
     id: "ls_1",
     text: {
-      "es-ES": "¡Hola Lucas! ¿Qué tal tu semana?",
-      "pt-BR": "Oi Lucas! Como foi sua semana?",
-      "en-US": "Hi Lucas! How was your week?",
+      "es-ES": "¡Hola Rafael! ¿Qué tal tu semana?",
+      "pt-BR": "Oi Rafael! Como foi sua semana?",
+      "en-US": "Hi Rafael! How was your week?",
     },
   },
   {
@@ -256,7 +256,7 @@ export const PHRASES: Phrase[] = [
     id: "ls_5",
     text: { "es-ES": "¡Claro que sí! 🎶", "pt-BR": "Claro que sim! 🎶", "en-US": "Of course! 🎶" },
   },
-  // Lucas ↔ Emma (pt-BR ↔ en-US)
+  // Rafael ↔ Emma (pt-BR ↔ en-US)
   {
     id: "le_1",
     text: {
@@ -278,13 +278,13 @@ export const PHRASES: Phrase[] = [
       "pt-BR": "Valeu! Vou ouvir hoje à noite.",
     },
   },
-  // Minh → Lucas (vi-VN → pt-BR)
+  // Minh → Rafael (vi-VN → pt-BR)
   {
     id: "lm_1",
     text: {
-      "vi-VN": "Chào anh Lucas, em là bạn của Cam.",
-      "pt-BR": "Oi Lucas, sou amigo da Cam.",
-      "en-US": "Hi Lucas, I'm Cam's friend.",
+      "vi-VN": "Chào anh Rafael, em là bạn của Linh.",
+      "pt-BR": "Oi Rafael, sou amigo da Linh.",
+      "en-US": "Hi Rafael, I'm Linh's friend.",
     },
   },
   {
@@ -295,7 +295,7 @@ export const PHRASES: Phrase[] = [
       "en-US": "Do you want to have phở with us?",
     },
   },
-  // Yuki ↔ Lucas (ja-JP ↔ pt-BR)
+  // Yuki ↔ Rafael (ja-JP ↔ pt-BR)
   {
     id: "ly_1",
     text: {
@@ -312,13 +312,13 @@ export const PHRASES: Phrase[] = [
       "en-US": "Nice! Which one is your favorite?",
     },
   },
-  // Omar ↔ Lucas (ar ↔ pt-BR, RTL)
+  // Omar ↔ Rafael (ar ↔ pt-BR, RTL)
   {
     id: "lo_1",
     text: {
       ar: "مرحبا لوكاس! كيف حالك؟",
-      "pt-BR": "Olá Lucas! Como você está?",
-      "en-US": "Hello Lucas! How are you?",
+      "pt-BR": "Olá Rafael! Como você está?",
+      "en-US": "Hello Rafael! How are you?",
     },
   },
   {
@@ -329,13 +329,13 @@ export const PHRASES: Phrase[] = [
       "en-US": "All great, Omar! And you?",
     },
   },
-  // Ji-soo ↔ Cam (ko-KR ↔ vi-VN)
+  // Ji-soo ↔ Linh (ko-KR ↔ vi-VN)
   {
     id: "cj_1",
     text: {
-      "ko-KR": "안녕하세요 Cam! 베트남어를 배우고 있어요.",
-      "vi-VN": "Xin chào Cam! Mình đang học tiếng Việt.",
-      "en-US": "Hi Cam! I'm learning Vietnamese.",
+      "ko-KR": "안녕하세요 Linh! 베트남어를 배우고 있어요.",
+      "vi-VN": "Xin chào Linh! Mình đang học tiếng Việt.",
+      "en-US": "Hi Linh! I'm learning Vietnamese.",
     },
   },
   {
@@ -498,7 +498,7 @@ export const PHRASES: Phrase[] = [
 
 export const POST_PHRASES: Phrase[] = [
   {
-    id: "post_cam_1",
+    id: "post_linh_1",
     text: {
       "vi-VN": "Hoàng hôn ở Hồ Tây hôm nay đẹp quá 🌅",
       "pt-BR": "O pôr do sol no Lago Oeste hoje estava lindo demais 🌅",
@@ -506,7 +506,7 @@ export const POST_PHRASES: Phrase[] = [
     },
   },
   {
-    id: "post_cam_2",
+    id: "post_linh_2",
     text: {
       "vi-VN": "Một ngày ở phố cổ Hội An 🏮",
       "pt-BR": "Um dia na cidade antiga de Hội An 🏮",
@@ -532,7 +532,7 @@ export const POST_PHRASES: Phrase[] = [
     },
   },
   {
-    id: "post_lucas_1",
+    id: "post_rafael_1",
     text: {
       "pt-BR": "Fim de semana na praia em Ubatuba 🌊",
       "vi-VN": "Cuối tuần ở biển Ubatuba 🌊",
@@ -643,7 +643,7 @@ PHRASES.push(...POST_PHRASES);
 
 export const STORY_PHRASES: Phrase[] = [
   {
-    id: "story_cam_1",
+    id: "story_linh_1",
     text: {
       "vi-VN": "Cà phê trứng buổi sáng ☕",
       "pt-BR": "Café com ovo de manhã ☕",
@@ -651,7 +651,7 @@ export const STORY_PHRASES: Phrase[] = [
     },
   },
   {
-    id: "story_cam_2",
+    id: "story_linh_2",
     text: {
       "vi-VN": "Trời Hà Nội hôm nay mát quá",
       "pt-BR": "O tempo em Hà Nội está tão fresquinho hoje",
@@ -684,7 +684,7 @@ export const STORY_PHRASES: Phrase[] = [
     },
   },
   {
-    id: "story_lucas_1",
+    id: "story_rafael_1",
     text: {
       "pt-BR": "Pão de queijo quentinho 🧀",
       "vi-VN": "Bánh mì phô mai nóng hổi 🧀",

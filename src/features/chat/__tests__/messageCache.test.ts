@@ -138,7 +138,7 @@ describe("applyReceipt", () => {
   it("upgrades own messages up to the cursor only", () => {
     const a = makeMessage({ deliveryStatus: "sent" });
     const b = makeMessage({ deliveryStatus: "sent" });
-    const theirs = makeMessage({ senderId: "cam", deliveryStatus: "read" });
+    const theirs = makeMessage({ senderId: "linh", deliveryStatus: "read" });
     const c = makeMessage({ deliveryStatus: "sent" });
     const result = flattenMessages(applyReceipt(data([a, b, theirs, c]), "me", b.id, "read"));
     expect(result.map((m) => m.deliveryStatus)).toEqual(["read", "read", "read", "sent"]);
@@ -174,7 +174,7 @@ describe("conversation previews", () => {
   it("moves the conversation to the top and counts unread", () => {
     const first = makeConversation({ id: "c1", updatedAt: "2026-10-03T09:00:00.000Z" });
     const second = makeConversation({ id: "c2", updatedAt: "2026-10-03T09:30:00.000Z" });
-    const message = makeMessage({ conversationId: "c1", senderId: "cam" });
+    const message = makeMessage({ conversationId: "c1", senderId: "linh" });
     const result = withConversationPreview([second, first], message, { incrementUnread: true });
     expect(result.map((c) => c.id)).toEqual(["c1", "c2"]);
     expect(result[0]?.unreadCount).toBe(1);
@@ -182,7 +182,7 @@ describe("conversation previews", () => {
   });
 
   it("does not double count the same message and ignores older ones", () => {
-    const message = makeMessage({ conversationId: "c1", senderId: "cam" });
+    const message = makeMessage({ conversationId: "c1", senderId: "linh" });
     const once = withConversationPreview([makeConversation()], message, { incrementUnread: true });
     const twice = withConversationPreview(once, message, { incrementUnread: true });
     expect(twice[0]?.unreadCount).toBe(1);

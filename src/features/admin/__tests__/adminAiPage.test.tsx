@@ -6,7 +6,7 @@ import { renderApp, signInAs } from "@/test/utils";
 
 describe("AI providers page", () => {
   it("shows both providers in priority order and the queue to admins", async () => {
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/admin/ai");
     const names = await screen.findAllByRole("heading", { level: 2 });
     expect(names.map((heading) => heading.textContent)).toEqual([
@@ -21,7 +21,7 @@ describe("AI providers page", () => {
   });
 
   it("is closed to everyone else", async () => {
-    signInAs("usr_cam");
+    signInAs("usr_linh");
     renderApp("/admin/ai");
     expect(await screen.findByText("This page is for administrators.")).toBeInTheDocument();
     expect(screen.queryByText("ChatGPT")).not.toBeInTheDocument();
@@ -29,7 +29,7 @@ describe("AI providers page", () => {
 
   it("is reachable from settings by admins only", async () => {
     const user = userEvent.setup();
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/settings");
     await user.click(await screen.findByRole("button", { name: "AI providers" }));
     expect(await screen.findByRole("heading", { name: "ChatGPT" })).toBeInTheDocument();

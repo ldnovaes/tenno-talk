@@ -46,12 +46,12 @@ class OAuthAccountIT extends IntegrationTest {
 
     @Test
     void aVerifiedEmailLinksToTheExistingPasswordAccount() throws Exception {
-        mvc.perform(withJson(post("/api/auth/signup"), Map.of("email", "lucas@example.com", "password", "secret123")))
+        mvc.perform(withJson(post("/api/auth/signup"), Map.of("email", "rafael@example.com", "password", "secret123")))
                 .andExpect(status().isCreated());
-        UUID existing = jdbc.sql("SELECT id FROM users WHERE email = 'lucas@example.com'").query(UUID.class).single();
+        UUID existing = jdbc.sql("SELECT id FROM users WHERE email = 'rafael@example.com'").query(UUID.class).single();
 
-        UUID viaGoogle = accounts.resolve(new ProviderIdentity("google", "g-9", "LUCAS@example.com", true), "pt-BR");
-        UUID viaFacebook = accounts.resolve(new ProviderIdentity("facebook", "f-9", "lucas@example.com", true), "pt-BR");
+        UUID viaGoogle = accounts.resolve(new ProviderIdentity("google", "g-9", "RAFAEL@example.com", true), "pt-BR");
+        UUID viaFacebook = accounts.resolve(new ProviderIdentity("facebook", "f-9", "rafael@example.com", true), "pt-BR");
         assertThat(viaGoogle).isEqualTo(existing);
         assertThat(viaFacebook).isEqualTo(existing);
         assertThat(jdbc.sql("SELECT count(*) FROM oauth_accounts WHERE user_id = :u").param("u", existing).query(Long.class).single())

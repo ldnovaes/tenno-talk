@@ -10,25 +10,25 @@ type SeedUser = Pick<
 
 const SEED_USERS: SeedUser[] = [
   {
-    id: "usr_lucas",
-    username: "lucas",
-    displayName: "Lucas Almeida",
+    id: "usr_rafael",
+    username: "rafael",
+    displayName: "Rafael Souza",
     bio: "Designer em São Paulo. Aprendendo vietnamita aos poucos ☕",
     country: "BR",
     nativeLanguage: "pt-BR",
     learningLanguages: ["vi-VN", "en-US"],
-    email: "lucas@demo.tenno.talk",
+    email: "rafael@demo.tenno.talk",
     role: "admin",
   },
   {
-    id: "usr_cam",
-    username: "cam",
-    displayName: "Cam Nguyen",
+    id: "usr_linh",
+    username: "linh",
+    displayName: "Linh Pham",
     bio: "Love coffee, photography and long walks in Hà Nội.",
     country: "VN",
     nativeLanguage: "vi-VN",
     learningLanguages: ["pt-BR", "en-US"],
-    email: "cam@demo.tenno.talk",
+    email: "linh@demo.tenno.talk",
   },
   {
     id: "usr_sofia",
@@ -131,7 +131,7 @@ const SEED_USERS: SeedUser[] = [
   },
 ];
 
-const ONLINE = new Set(["usr_cam", "usr_sofia", "usr_minh", "usr_emma"]);
+const ONLINE = new Set(["usr_linh", "usr_sofia", "usr_minh", "usr_emma"]);
 
 export function seedUsers(now = Date.now()): Record<string, UserRecord> {
   const users: Record<string, UserRecord> = {};
@@ -162,4 +162,4 @@ export function seedUsers(now = Date.now()): Record<string, UserRecord> {
   return users;
 }
 
-export const DEMO_ACCOUNT_IDS = ["usr_lucas", "usr_cam"] as const;
+export const DEMO_ACCOUNT_IDS = ["usr_rafael", "usr_linh"] as const;

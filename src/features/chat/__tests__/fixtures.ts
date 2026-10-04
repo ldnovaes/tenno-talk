@@ -37,7 +37,7 @@ export function makeConversation(overrides: Partial<Conversation> = {}): Convers
         lastSeenAt: null,
       },
       {
-        user: { id: "cam", username: "cam", displayName: "Cam Nguyen", avatarUrl: null },
+        user: { id: "linh", username: "linh", displayName: "Linh Pham", avatarUrl: null },
         role: "member",
         receivingLanguage: "vi-VN",
         lastReadMessageId: null,

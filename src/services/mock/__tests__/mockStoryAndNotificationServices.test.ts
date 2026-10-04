@@ -8,28 +8,28 @@ import { writeMockSession } from "@/services/mock/session";
 import { mockRealtimeClient } from "@/services/realtime/mockRealtimeClient";
 
 describe("mockStoryService", () => {
-  beforeEach(() => writeMockSession("usr_lucas"));
+  beforeEach(() => writeMockSession("usr_rafael"));
 
   it("lists the viewer first, then unseen, then seen", async () => {
     const tray = await mockStoryService.getTray();
-    expect(tray[0]?.user.id).toBe("usr_lucas");
+    expect(tray[0]?.user.id).toBe("usr_rafael");
     const others = tray.slice(1);
     const firstSeen = others.findIndex((item) => !item.hasUnseen);
     expect(others.slice(firstSeen).every((item) => !item.hasUnseen)).toBe(true);
     expect(others.find((item) => item.user.id === "usr_minh")?.hasUnseen).toBe(false);
-    expect(tray.find((item) => item.user.id === "usr_cam")?.stories.map((s) => s.id)).toEqual([
-      "story_cam_1",
-      "story_cam_2",
+    expect(tray.find((item) => item.user.id === "usr_linh")?.stories.map((s) => s.id)).toEqual([
+      "story_linh_1",
+      "story_linh_2",
     ]);
   });
 
   it("translates the overlay text for the viewer", async () => {
-    const cam = (await mockStoryService.getTray()).find((item) => item.user.id === "usr_cam");
-    expect(cam?.stories[0]?.overlayText).toEqual({
+    const linh = (await mockStoryService.getTray()).find((item) => item.user.id === "usr_linh");
+    expect(linh?.stories[0]?.overlayText).toEqual({
       text: "Cà phê trứng buổi sáng ☕",
       language: "vi-VN",
     });
-    expect(cam?.stories[0]?.overlayTranslation?.text).toBe("Café com ovo de manhã ☕");
+    expect(linh?.stories[0]?.overlayTranslation?.text).toBe("Café com ovo de manhã ☕");
   });
 
   it("marks stories as viewed", async () => {
@@ -42,7 +42,7 @@ describe("mockStoryService", () => {
     mockDb.update((db) => {
       const emma = db.stories["story_emma_1"];
       if (emma) emma.expiresAt = new Date(Date.now() - 1000).toISOString();
-      db.users["usr_sofia"]?.blockedUserIds.push("usr_lucas");
+      db.users["usr_sofia"]?.blockedUserIds.push("usr_rafael");
     });
     const ids = (await mockStoryService.getTray()).map((item) => item.user.id);
     expect(ids).not.toContain("usr_emma");
@@ -53,22 +53,22 @@ describe("mockStoryService", () => {
   });
 
   it("reacts and notifies the author", async () => {
-    await mockStoryService.react("story_cam_1", "❤️");
+    await mockStoryService.react("story_linh_1", "❤️");
     const notification = Object.values(mockDb.read().notifications).find(
       (n) =>
-        n.recipientId === "usr_cam" && n.type === "story_reaction" && n.storyId === "story_cam_1",
+        n.recipientId === "usr_linh" && n.type === "story_reaction" && n.storyId === "story_linh_1",
     );
-    expect(notification).toMatchObject({ actorId: "usr_lucas", emoji: "❤️" });
+    expect(notification).toMatchObject({ actorId: "usr_rafael", emoji: "❤️" });
   });
 
   it("replies with a direct message that references the story", async () => {
-    const { conversationId } = await mockStoryService.reply("story_cam_1", "Que delícia!");
-    expect(conversationId).toBe("conv_lucas_cam");
+    const { conversationId } = await mockStoryService.reply("story_linh_1", "Que delícia!");
+    expect(conversationId).toBe("conv_rafael_linh");
     const message = Object.values(mockDb.read().messages).find(
-      (m) => m.content.type === "story_reply" && m.content.storyId === "story_cam_1",
+      (m) => m.content.type === "story_reply" && m.content.storyId === "story_linh_1",
     );
-    expect(message?.senderId).toBe("usr_lucas");
-    await expect(mockStoryService.reply("story_lucas_1", "eu")).rejects.toMatchObject({
+    expect(message?.senderId).toBe("usr_rafael");
+    await expect(mockStoryService.reply("story_rafael_1", "eu")).rejects.toMatchObject({
       code: "validation",
     });
   });
@@ -96,7 +96,7 @@ describe("mockStoryService", () => {
 });
 
 describe("mockNotificationService", () => {
-  beforeEach(() => writeMockSession("usr_lucas"));
+  beforeEach(() => writeMockSession("usr_rafael"));
 
   it("lists the viewer's notifications newest first", async () => {
     const list = await mockNotificationService.list();
@@ -121,23 +121,23 @@ describe("mockNotificationService", () => {
 
   it("hides notifications from blocked people", async () => {
     mockDb.update((db) => {
-      db.users["usr_lucas"]?.blockedUserIds.push("usr_cam");
+      db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
     });
     const list = await mockNotificationService.list();
-    expect(list.some((n) => n.actor.id === "usr_cam")).toBe(false);
+    expect(list.some((n) => n.actor.id === "usr_linh")).toBe(false);
   });
 
   it("pushes new notifications only to their recipient", async () => {
-    mockRealtimeClient.connect({ userId: "usr_lucas" });
+    mockRealtimeClient.connect({ userId: "usr_rafael" });
     const received = vi.fn();
     const stop = mockRealtimeClient.subscribe("notification.created", received);
     writeMockSession("usr_emma");
-    await mockFeedService.like("post_lucas_1");
-    await mockFeedService.like("post_cam_1");
+    await mockFeedService.like("post_rafael_1");
+    await mockFeedService.like("post_linh_1");
     expect(received).toHaveBeenCalledTimes(1);
     expect(received.mock.calls[0]?.[0].notification).toMatchObject({
       type: "like",
-      postId: "post_lucas_1",
+      postId: "post_rafael_1",
     });
     stop();
     mockRealtimeClient.disconnect();

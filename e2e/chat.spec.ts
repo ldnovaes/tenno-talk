@@ -5,27 +5,27 @@ import { bubbleWith, openChatWith, prepare, send, signInAsDemo, twoPeople } from
 test("two people chat in real time, each reading in their own language", async ({
   browser,
 }, info) => {
-  const { context, lucas, cam } = await twoPeople(browser, info.project.use);
-  await openChatWith(lucas, /Cam/);
-  await openChatWith(cam, /Lucas/);
-  const lucasLog = lucas.getByRole("log", { name: "Messages" });
-  const camLog = cam.getByRole("log", { name: "Messages" });
+  const { context, rafael, linh } = await twoPeople(browser, info.project.use);
+  await openChatWith(rafael, /Linh/);
+  await openChatWith(linh, /Rafael/);
+  const rafaelLog = rafael.getByRole("log", { name: "Messages" });
+  const linhLog = linh.getByRole("log", { name: "Messages" });
 
-  await expect(lucasLog.locator("[id^=message-]").first()).toBeVisible();
-  await expect(camLog.locator("[id^=message-]").first()).toBeVisible();
+  await expect(rafaelLog.locator("[id^=message-]").first()).toBeVisible();
+  await expect(linhLog.locator("[id^=message-]").first()).toBeVisible();
 
-  // Lucas writes Portuguese; Cam reads Vietnamese.
-  await send(lucas, "Tudo bem?");
-  await expect(lucasLog.getByText("Tudo bem?")).toBeVisible();
-  await expect(camLog.getByText("Bạn khỏe không?")).toBeVisible();
-  await expect(camLog.getByText("Tudo bem?")).toHaveCount(0);
+  // Rafael writes Portuguese; Linh reads Vietnamese.
+  await send(rafael, "Tudo bem?");
+  await expect(rafaelLog.getByText("Tudo bem?")).toBeVisible();
+  await expect(linhLog.getByText("Bạn khỏe không?")).toBeVisible();
+  await expect(linhLog.getByText("Tudo bem?")).toHaveCount(0);
 
-  // Cam answers in Vietnamese; Lucas reads Portuguese.
-  await send(cam, "Chào buổi sáng");
-  await expect(lucasLog.getByText("Bom dia")).toBeVisible();
+  // Linh answers in Vietnamese; Rafael reads Portuguese.
+  await send(linh, "Chào buổi sáng");
+  await expect(rafaelLog.getByText("Bom dia")).toBeVisible();
 
-  // Lucas has the chat open, so Cam sees it was read.
-  await expect(camLog.getByRole("img", { name: "Read" }).last()).toBeVisible();
+  // Rafael has the chat open, so Linh sees it was read.
+  await expect(linhLog.getByRole("img", { name: "Read" }).last()).toBeVisible();
   await context.close();
 });
 
@@ -35,8 +35,8 @@ test("the original is one tap away", async ({ page, context }, info) => {
     "the touch path (long press → drawer) is covered by unit tests",
   );
   await prepare(context);
-  await signInAsDemo(page, "Lucas");
-  await openChatWith(page, /Cam/);
+  await signInAsDemo(page, "Rafael");
+  await openChatWith(page, /Linh/);
   const log = page.getByRole("log", { name: "Messages" });
   const bubble = await bubbleWith(log, "Eu também estava com saudade de você.");
   await bubble.hover();

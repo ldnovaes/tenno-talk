@@ -4,7 +4,7 @@ import { normalizeUsername, validateUsername } from "@/lib/username";
 
 describe("username rules", () => {
   it("normalizes @, case and spaces", () => {
-    expect(normalizeUsername("  @Cam_Nguyen ")).toBe("cam_nguyen");
+    expect(normalizeUsername("  @Linh_Pham ")).toBe("linh_pham");
   });
 
   it.each([
@@ -19,7 +19,7 @@ describe("username rules", () => {
     expect(validateUsername(value)).toBe(problem);
   });
 
-  it.each(["cam", "lucas.a", "mai_92", "Abc"])("accepts %s", (value) => {
+  it.each(["linh", "rafael.a", "mai_92", "Abc"])("accepts %s", (value) => {
     expect(validateUsername(value)).toBeNull();
   });
 });

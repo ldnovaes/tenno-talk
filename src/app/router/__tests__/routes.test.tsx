@@ -7,7 +7,7 @@ import { setViewportWidth } from "@/test/setup";
 import { renderApp, signInAs } from "@/test/utils";
 
 function renderAt(route: string) {
-  signInAs("usr_lucas");
+  signInAs("usr_rafael");
   return renderApp(route);
 }
 
@@ -23,7 +23,7 @@ describe("AppRoutes", () => {
     ["/notifications", "Notifications"],
     ["/settings", "Settings"],
     ["/settings/appearance", "Appearance"],
-    ["/u/cam", "@cam"],
+    ["/u/linh", "@linh"],
   ])("renders %s", async (route, name) => {
     renderAt(route);
     expect(await screen.findByRole("heading", { name })).toBeInTheDocument();
@@ -40,14 +40,14 @@ describe("AppRoutes", () => {
     expect(await screen.findByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Create" })).toBeInTheDocument();
     unmount();
-    renderAt("/chats/conv_lucas_cam");
+    renderAt("/chats/conv_rafael_linh");
     await screen.findByRole("textbox", { name: "Message" });
     expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
   });
 
   it("shows the rail and the two chat panes on desktop", async () => {
     setViewportWidth(1280);
-    renderAt("/chats/conv_lucas_cam");
+    renderAt("/chats/conv_rafael_linh");
     expect(await screen.findByRole("textbox", { name: "Message" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Discover" })).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe("AppRoutes", () => {
 
   it("opens profile as a side panel above the chats on desktop deep link", async () => {
     setViewportWidth(1280);
-    renderAt("/u/cam");
+    renderAt("/u/linh");
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     // The background stays rendered (blurred, hidden from assistive tech while the panel is open).
     expect(await screen.findByRole("heading", { name: "Chats", hidden: true })).toBeInTheDocument();
@@ -64,12 +64,12 @@ describe("AppRoutes", () => {
 
 describe("route helpers", () => {
   it("detects overlay paths", () => {
-    expect(isOverlayPath("/u/cam")).toBe(true);
-    expect(isOverlayPath("/u/cam/edit")).toBe(true);
+    expect(isOverlayPath("/u/linh")).toBe(true);
+    expect(isOverlayPath("/u/linh/edit")).toBe(true);
     expect(isOverlayPath("/settings")).toBe(true);
     expect(isOverlayPath("/settings/privacy")).toBe(true);
     expect(isOverlayPath("/create")).toBe(true);
-    expect(isOverlayPath("/stories/usr_cam")).toBe(true);
+    expect(isOverlayPath("/stories/usr_linh")).toBe(true);
     expect(isOverlayPath("/chats")).toBe(false);
     expect(isOverlayPath("/discover")).toBe(false);
   });
@@ -93,14 +93,14 @@ describe("route helpers", () => {
 describe("overlay deep links", () => {
   it("waits for the current user before rendering the panel content", async () => {
     setViewportWidth(1280);
-    signInAs("usr_lucas");
-    renderApp("/u/cam");
-    expect(await screen.findByRole("heading", { name: "Cam Nguyen" })).toBeInTheDocument();
+    signInAs("usr_rafael");
+    renderApp("/u/linh");
+    expect(await screen.findByRole("heading", { name: "Linh Pham" })).toBeInTheDocument();
   });
 
   it("does not render overlays for anonymous users", async () => {
     setViewportWidth(1280);
-    renderApp("/u/cam");
+    renderApp("/u/linh");
     expect(await screen.findByRole("heading", { name: /talk to anyone/i })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

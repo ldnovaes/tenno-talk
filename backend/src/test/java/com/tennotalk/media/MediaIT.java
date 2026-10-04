@@ -31,14 +31,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MediaIT extends IntegrationTest {
 
-    private UUID lucas;
-    private UUID cam;
+    private UUID rafael;
+    private UUID linh;
     private UUID ana;
 
     @BeforeEach
     void people() {
-        lucas = data.user("lucas", "pt-BR");
-        cam = data.user("cam", "vi-VN");
+        rafael = data.user("rafael", "pt-BR");
+        linh = data.user("linh", "vi-VN");
         ana = data.user("ana", "es-ES");
     }
 
@@ -79,7 +79,7 @@ class MediaIT extends IntegrationTest {
 
     @Test
     void uploadsAnImageWithItsSize() throws Exception {
-        JsonNode media = api.ok(upload(lucas, "beach.png", "image/png", image("png", 4, 3)));
+        JsonNode media = api.ok(upload(rafael, "beach.png", "image/png", image("png", 4, 3)));
         assertThat(media.get("kind").asString()).isEqualTo("image");
         assertThat(media.get("url").asString()).isEqualTo("/api/media/" + media.get("id").asString());
         assertThat(media.get("width").asInt()).isEqualTo(4);
@@ -88,7 +88,7 @@ class MediaIT extends IntegrationTest {
 
     @Test
     void theTypeComesFromTheBytesNotFromTheClient() throws Exception {
-        JsonNode media = api.ok(upload(lucas, "photo.bin", "text/plain", image("png", 2, 2)));
+        JsonNode media = api.ok(upload(rafael, "photo.bin", "text/plain", image("png", 2, 2)));
         assertThat(media.get("kind").asString()).isEqualTo("image");
         assertThat(media.get("mimeType").asString()).isEqualTo("image/png");
     }
@@ -96,14 +96,14 @@ class MediaIT extends IntegrationTest {
     @Test
     void htmlDisguisedAsAnImageIsRejected() throws Exception {
         byte[] html = "<!DOCTYPE html><html><body><script>alert(1)</script></body></html>".getBytes(StandardCharsets.UTF_8);
-        upload(lucas, "cat.png", "image/png", html).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation"));
+        upload(rafael, "cat.png", "image/png", html).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation"));
     }
 
     @Test
     void svgIsRejectedBecauseItCanCarryScripts() throws Exception {
         byte[] svg = "<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>"
                 .getBytes(StandardCharsets.UTF_8);
-        upload(lucas, "logo.svg", "image/svg+xml", svg).andExpect(status().isBadRequest());
+        upload(rafael, "logo.svg", "image/svg+xml", svg).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -111,22 +111,22 @@ class MediaIT extends IntegrationTest {
         byte[] png = image("png", 4, 4);
         byte[] damaged = java.util.Arrays.copyOf(png, png.length);
         for (int i = 40; i < damaged.length - 12; i++) damaged[i] = (byte) 0x5A;
-        upload(lucas, "broken.png", "image/png", damaged)
+        upload(rafael, "broken.png", "image/png", damaged)
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation"));
         assertThat(jdbc.sql("SELECT count(*) FROM media").query(Long.class).single()).isZero();
     }
 
     @Test
     void emptyFilesAreRejected() throws Exception {
-        upload(lucas, "empty.png", "image/png", new byte[0]).andExpect(status().isBadRequest());
+        upload(rafael, "empty.png", "image/png", new byte[0]).andExpect(status().isBadRequest());
     }
 
     @Test
     void otherFilesAreStoredAsFiles() throws Exception {
         byte[] pdf = "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF".getBytes(StandardCharsets.ISO_8859_1);
-        JsonNode media = api.ok(upload(lucas, "notes.pdf", "application/pdf", pdf));
+        JsonNode media = api.ok(upload(rafael, "notes.pdf", "application/pdf", pdf));
         assertThat(media.get("kind").asString()).isEqualTo("file");
-        download(lucas, media.get("id").asString())
+        download(rafael, media.get("id").asString())
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment")));
     }
@@ -135,8 +135,8 @@ class MediaIT extends IntegrationTest {
     void photosLoseTheirExifLocation() throws Exception {
         byte[] original = jpegWithExif();
         assertThat(new String(original, StandardCharsets.ISO_8859_1)).contains("SECRET-LOCATION");
-        String id = uploadOk(lucas, "trip.jpg", original);
-        byte[] stored = download(lucas, id).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        String id = uploadOk(rafael, "trip.jpg", original);
+        byte[] stored = download(rafael, id).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
         assertThat(new String(stored, StandardCharsets.ISO_8859_1)).doesNotContain("SECRET-LOCATION").doesNotContain("Exif");
         assertThat(ImageIO.read(new java.io.ByteArrayInputStream(stored)).getWidth()).isEqualTo(8);
     }
@@ -144,8 +144,8 @@ class MediaIT extends IntegrationTest {
     @Test
     void fileNamesCannotEscapeOrInjectHeaders() throws Exception {
         byte[] pdf = "%PDF-1.4\n%%EOF".getBytes(StandardCharsets.ISO_8859_1);
-        String id = api.ok(upload(lucas, "../../etc/pass\"wd\r\n.pdf", "application/pdf", pdf)).get("id").asString();
-        String disposition = download(lucas, id).andReturn().getResponse().getHeader("Content-Disposition");
+        String id = api.ok(upload(rafael, "../../etc/pass\"wd\r\n.pdf", "application/pdf", pdf)).get("id").asString();
+        String disposition = download(rafael, id).andReturn().getResponse().getHeader("Content-Disposition");
         assertThat(disposition).doesNotContain("..").doesNotContain("/").doesNotContain("\r").doesNotContain("\n");
         String path = jdbc.sql("SELECT storage_path FROM media WHERE id = :id").param("id", UUID.fromString(id)).query(String.class).single();
         assertThat(path).doesNotContain("..").endsWith(id + ".bin");
@@ -155,8 +155,8 @@ class MediaIT extends IntegrationTest {
 
     @Test
     void downloadsAreInlineForMediaAndNeverSniffed() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
-        download(lucas, id)
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        download(rafael, id)
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "image/png"))
                 .andExpect(header().string("X-Content-Type-Options", "nosniff"))
@@ -166,59 +166,59 @@ class MediaIT extends IntegrationTest {
 
     @Test
     void rangeRequestsAllowVideoSeeking() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
-        mvc.perform(get("/api/media/" + id).header("Range", "bytes=0-3").with(as(lucas)))
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        mvc.perform(get("/api/media/" + id).header("Range", "bytes=0-3").with(as(rafael)))
                 .andExpect(status().isPartialContent())
                 .andExpect(header().string("Content-Length", "4"));
     }
 
     @Test
     void strangersCannotDownloadPrivateFiles() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
-        download(cam, id).andExpect(status().isNotFound());
-        download(cam, UUID.randomUUID().toString()).andExpect(status().isNotFound());
-        download(cam, "nope").andExpect(status().isNotFound());
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        download(linh, id).andExpect(status().isNotFound());
+        download(linh, UUID.randomUUID().toString()).andExpect(status().isNotFound());
+        download(linh, "nope").andExpect(status().isNotFound());
     }
 
     @Test
     void conversationMembersCanDownloadWhatWasSent() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
-        UUID conversation = steps.direct(lucas, cam);
-        api.postOk(lucas, "/api/conversations/" + conversation + "/messages",
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        UUID conversation = steps.direct(rafael, linh);
+        api.postOk(rafael, "/api/conversations/" + conversation + "/messages",
                 Map.of("clientId", "m-1", "mediaIds", List.of(id)));
-        download(cam, id).andExpect(status().isOk());
+        download(linh, id).andExpect(status().isOk());
         download(ana, id).andExpect(status().isNotFound());
     }
 
     @Test
     void postMediaFollowsThePostsVisibility() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
-        api.postOk(lucas, "/api/posts", Map.of("mediaIds", List.of(id)));
-        download(cam, id).andExpect(status().isOk());
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        api.postOk(rafael, "/api/posts", Map.of("mediaIds", List.of(id)));
+        download(linh, id).andExpect(status().isOk());
 
-        data.setPreference(lucas, "profile_visibility", "private");
-        download(cam, id).andExpect(status().isNotFound());
-        data.follow(cam, lucas);
-        download(cam, id).andExpect(status().isOk());
-        data.block(lucas, cam);
-        download(cam, id).andExpect(status().isNotFound());
+        data.setPreference(rafael, "profile_visibility", "private");
+        download(linh, id).andExpect(status().isNotFound());
+        data.follow(linh, rafael);
+        download(linh, id).andExpect(status().isOk());
+        data.block(rafael, linh);
+        download(linh, id).andExpect(status().isNotFound());
     }
 
     @Test
     void storyMediaIsVisibleOnlyWhileTheStoryLives() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
-        String story = api.postOk(lucas, "/api/stories", Map.of("mediaId", id)).get("id").asString();
-        download(cam, id).andExpect(status().isOk());
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        String story = api.postOk(rafael, "/api/stories", Map.of("mediaId", id)).get("id").asString();
+        download(linh, id).andExpect(status().isOk());
         jdbc.sql("UPDATE stories SET expires_at = :at WHERE id = :id")
                 .param("at", Timestamp.from(Instant.now().minusSeconds(5))).param("id", UUID.fromString(story)).update();
-        download(cam, id).andExpect(status().isNotFound());
-        download(lucas, id).andExpect(status().isOk());
+        download(linh, id).andExpect(status().isNotFound());
+        download(rafael, id).andExpect(status().isOk());
     }
 
     @Test
     void avatarsArePublic() throws Exception {
-        String id = uploadOk(lucas, "me.png", image("png", 2, 2));
-        jdbc.sql("UPDATE users SET avatar_url = :url WHERE id = :id").param("url", "/api/media/" + id).param("id", lucas).update();
+        String id = uploadOk(rafael, "me.png", image("png", 2, 2));
+        jdbc.sql("UPDATE users SET avatar_url = :url WHERE id = :id").param("url", "/api/media/" + id).param("id", rafael).update();
         download(ana, id).andExpect(status().isOk());
     }
 
@@ -227,10 +227,10 @@ class MediaIT extends IntegrationTest {
 
     @Test
     void deletingTheAccountRemovesItsFilesFromDisk() throws Exception {
-        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
         String path = jdbc.sql("SELECT storage_path FROM media WHERE id = :id").param("id", UUID.fromString(id)).query(String.class).single();
         assertThat(java.nio.file.Files.exists(storage.resolve(path))).isTrue();
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/me").with(as(lucas)).with(csrf()))
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/me").with(as(rafael)).with(csrf()))
                 .andExpect(status().isNoContent());
         assertThat(java.nio.file.Files.exists(storage.resolve(path))).isFalse();
     }
@@ -240,7 +240,7 @@ class MediaIT extends IntegrationTest {
         byte[] png = image("png", 2, 2);
         mvc.perform(multipart("/api/media").file(new MockMultipartFile("file", "a.png", "image/png", png)).with(csrf()))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(multipart("/api/media").file(new MockMultipartFile("file", "a.png", "image/png", png)).with(as(lucas)))
+        mvc.perform(multipart("/api/media").file(new MockMultipartFile("file", "a.png", "image/png", png)).with(as(rafael)))
                 .andExpect(status().isForbidden());
     }
 }

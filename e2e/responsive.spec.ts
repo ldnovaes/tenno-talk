@@ -6,11 +6,11 @@ test.beforeEach(async ({ context }) => prepare(context));
 
 test("mobile: one screen at a time with a bottom bar", async ({ page }, info) => {
   test.skip(info.project.name !== "mobile", "mobile layout");
-  await signInAsDemo(page, "Lucas");
+  await signInAsDemo(page, "Rafael");
   const bottomNav = page.getByRole("navigation", { name: "Main navigation" });
   await expect(bottomNav).toBeVisible();
 
-  await openChatWith(page, /Cam/);
+  await openChatWith(page, /Linh/);
   await expect(page.getByRole("log", { name: "Messages" })).toBeVisible();
   // The conversation takes the whole screen.
   await expect(bottomNav).toBeHidden();
@@ -28,8 +28,8 @@ test("desktop: chats and conversation side by side, profile in a side panel", as
   page,
 }, info) => {
   test.skip(info.project.name !== "desktop", "desktop layout");
-  await signInAsDemo(page, "Lucas");
-  await openChatWith(page, /Cam/);
+  await signInAsDemo(page, "Rafael");
+  await openChatWith(page, /Linh/);
   await expect(page.getByRole("log", { name: "Messages" })).toBeVisible();
   await expect(page.getByRole("list", { name: "Chats" })).toBeVisible();
 

@@ -25,7 +25,7 @@ export async function prepare(context: BrowserContext) {
 }
 
 /** Demo accounts (mock): the session is per tab, so each tab is one person. */
-export async function signInAsDemo(page: Page, name: "Lucas" | "Cam") {
+export async function signInAsDemo(page: Page, name: "Rafael" | "Linh") {
   await page.goto("/welcome");
   await page.getByRole("button", { name: `Sign in as ${name}` }).click();
   await expect(page).toHaveURL(/\/chats/);
@@ -44,11 +44,11 @@ export async function twoPeople(browser: Browser, project: TestInfo["project"]["
   );
   const context = await browser.newContext(device);
   await prepare(context);
-  const lucas = await context.newPage();
-  const cam = await context.newPage();
-  await signInAsDemo(lucas, "Lucas");
-  await signInAsDemo(cam, "Cam");
-  return { context, lucas, cam };
+  const rafael = await context.newPage();
+  const linh = await context.newPage();
+  await signInAsDemo(rafael, "Rafael");
+  await signInAsDemo(linh, "Linh");
+  return { context, rafael, linh };
 }
 
 export function openChatWith(page: Page, name: RegExp) {

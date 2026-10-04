@@ -6,32 +6,32 @@ import { mockChatService } from "@/services/mock/implementations/mockChatService
 import { setMockConfig } from "@/services/mock/latency";
 import { writeMockSession } from "@/services/mock/session";
 
-const asLucas = () => writeMockSession("usr_lucas");
-const asCam = () => writeMockSession("usr_cam");
+const asRafael = () => writeMockSession("usr_rafael");
+const asLinh = () => writeMockSession("usr_linh");
 
 const send = (
   text: string,
   clientId: string = crypto.randomUUID(),
-  conversationId = "conv_lucas_cam",
+  conversationId = "conv_rafael_linh",
 ) => mockChatService.sendMessage({ conversationId, clientId, text, media: [], replyToId: null });
 
 describe("mockChatService", () => {
-  beforeEach(asLucas);
+  beforeEach(asRafael);
 
   describe("conversations", () => {
     it("lists only the viewer's conversations, newest first, with unread counts", async () => {
       const list = await mockChatService.getConversations();
-      expect(list.map((c) => c.id)).not.toContain("conv_cam_jisoo");
+      expect(list.map((c) => c.id)).not.toContain("conv_linh_jisoo");
       const dates = list.map((c) => c.updatedAt);
       expect([...dates].sort().reverse()).toEqual(dates);
-      expect(list.find((c) => c.id === "conv_lucas_minh")?.unreadCount).toBe(2);
-      expect(list.find((c) => c.id === "conv_lucas_sofia")?.unreadCount).toBe(1);
-      expect(list.find((c) => c.id === "conv_lucas_cam")?.unreadCount).toBe(0);
+      expect(list.find((c) => c.id === "conv_rafael_minh")?.unreadCount).toBe(2);
+      expect(list.find((c) => c.id === "conv_rafael_sofia")?.unreadCount).toBe(1);
+      expect(list.find((c) => c.id === "conv_rafael_linh")?.unreadCount).toBe(0);
     });
 
     it("projects the last message translated into the viewer's language", async () => {
       const list = await mockChatService.getConversations();
-      const minh = list.find((c) => c.id === "conv_lucas_minh");
+      const minh = list.find((c) => c.id === "conv_rafael_minh");
       expect(minh?.lastMessage?.translation).toMatchObject({
         targetLanguage: "pt-BR",
         status: "translated",
@@ -40,7 +40,7 @@ describe("mockChatService", () => {
     });
 
     it("forbids conversations of other people", async () => {
-      await expect(mockChatService.getConversation("conv_cam_jisoo")).rejects.toMatchObject({
+      await expect(mockChatService.getConversation("conv_linh_jisoo")).rejects.toMatchObject({
         code: "forbidden",
       });
       await expect(mockChatService.getConversation("nope")).rejects.toMatchObject({
@@ -51,12 +51,12 @@ describe("mockChatService", () => {
 
   describe("messages", () => {
     it("paginates backwards in pages of 30 with chronological items", async () => {
-      const first = await mockChatService.getMessages("conv_lucas_cam", null);
+      const first = await mockChatService.getMessages("conv_rafael_linh", null);
       expect(first.items).toHaveLength(30);
       expect(first.nextCursor).not.toBeNull();
       const created = first.items.map((m) => m.createdAt);
       expect([...created].sort()).toEqual(created);
-      const second = await mockChatService.getMessages("conv_lucas_cam", first.nextCursor);
+      const second = await mockChatService.getMessages("conv_rafael_linh", first.nextCursor);
       expect(second.items.length).toBeGreaterThan(0);
       expect(second.nextCursor).toBeNull();
       const lastOfSecond = second.items.at(-1);
@@ -69,18 +69,18 @@ describe("mockChatService", () => {
     });
 
     it("shows each side its own language (same message, two projections)", async () => {
-      const lucasView = (await mockChatService.getMessages("conv_lucas_cam", null)).items.at(-2);
-      asCam();
-      const camView = (await mockChatService.getMessages("conv_lucas_cam", null)).items.at(-2);
-      expect(lucasView?.id).toBe(camView?.id);
-      expect(lucasView?.translation?.text).toBe("Pode ser! Sábado às 8 da noite, então.");
-      // Cam is the sender here: her translation shows what Lucas received.
-      expect(camView?.translation?.targetLanguage).toBe("pt-BR");
-      expect(camView?.content).toEqual(lucasView?.content);
+      const rafaelView = (await mockChatService.getMessages("conv_rafael_linh", null)).items.at(-2);
+      asLinh();
+      const linhView = (await mockChatService.getMessages("conv_rafael_linh", null)).items.at(-2);
+      expect(rafaelView?.id).toBe(linhView?.id);
+      expect(rafaelView?.translation?.text).toBe("Pode ser! Sábado às 8 da noite, então.");
+      // Linh is the sender here: her translation shows what Rafael received.
+      expect(linhView?.translation?.targetLanguage).toBe("pt-BR");
+      expect(linhView?.content).toEqual(rafaelView?.content);
     });
 
     it("derives ticks from the other member's cursors", async () => {
-      const items = (await mockChatService.getMessages("conv_lucas_yuki", null)).items;
+      const items = (await mockChatService.getMessages("conv_rafael_yuki", null)).items;
       expect(items.at(-1)?.deliveryStatus).toBe("delivered");
     });
   });
@@ -93,7 +93,7 @@ describe("mockChatService", () => {
         body: { text: "Eu te amo", language: "pt-BR" },
       });
       expect(message.deliveryStatus).toBe("sent");
-      expect(message.senderId).toBe("usr_lucas");
+      expect(message.senderId).toBe("usr_rafael");
     });
 
     it("is idempotent by clientId (safe retries)", async () => {
@@ -110,11 +110,11 @@ describe("mockChatService", () => {
       await expect(send("   ")).rejects.toMatchObject({ code: "validation" });
       await expect(
         mockChatService.sendMessage({
-          conversationId: "conv_lucas_cam",
+          conversationId: "conv_rafael_linh",
           clientId: "x",
           text: "hi",
           media: [],
-          replyToId: "msg_lucas_sofia_000",
+          replyToId: "msg_rafael_sofia_000",
         }),
       ).rejects.toMatchObject({ code: "validation" });
     });
@@ -152,7 +152,7 @@ describe("mockChatService", () => {
     });
 
     it("does not translate between the same language", async () => {
-      asCam();
+      asLinh();
       const conversation = await mockChatService.getOrCreateDirectConversation("usr_minh");
       const message = await send("Đi chứ!", crypto.randomUUID(), conversation.id);
       expect(message.translation).toMatchObject({ status: "not_needed", text: null });
@@ -160,7 +160,7 @@ describe("mockChatService", () => {
 
     it("sends images with a caption", async () => {
       const message = await mockChatService.sendMessage({
-        conversationId: "conv_lucas_cam",
+        conversationId: "conv_rafael_linh",
         clientId: "img",
         text: "Olha isso",
         media: [
@@ -184,25 +184,25 @@ describe("mockChatService", () => {
 
   describe("receipts and reactions", () => {
     it("marks as read and moves the cursor forward only", async () => {
-      const page = await mockChatService.getMessages("conv_lucas_minh", null);
+      const page = await mockChatService.getMessages("conv_rafael_minh", null);
       const last = page.items.at(-1);
       if (!last) throw new Error("no messages");
-      await mockChatService.markAsRead("conv_lucas_minh", last.id);
+      await mockChatService.markAsRead("conv_rafael_minh", last.id);
       const list = await mockChatService.getConversations();
-      expect(list.find((c) => c.id === "conv_lucas_minh")?.unreadCount).toBe(0);
+      expect(list.find((c) => c.id === "conv_rafael_minh")?.unreadCount).toBe(0);
       const firstId = page.items[0]?.id ?? "";
-      await mockChatService.markAsRead("conv_lucas_minh", firstId);
-      expect(mockDb.read().conversations["conv_lucas_minh"]?.lastReadMessageId["usr_lucas"]).toBe(
+      await mockChatService.markAsRead("conv_rafael_minh", firstId);
+      expect(mockDb.read().conversations["conv_rafael_minh"]?.lastReadMessageId["usr_rafael"]).toBe(
         last.id,
       );
     });
 
     it("turns sent into read once the other side reads", async () => {
       const message = await send("Tudo bem?");
-      asCam();
-      await mockChatService.markAsRead("conv_lucas_cam", message.id);
-      asLucas();
-      const page = await mockChatService.getMessages("conv_lucas_cam", null);
+      asLinh();
+      await mockChatService.markAsRead("conv_rafael_linh", message.id);
+      asRafael();
+      const page = await mockChatService.getMessages("conv_rafael_linh", null);
       expect(page.items.find((m) => m.id === message.id)?.deliveryStatus).toBe("read");
     });
 
@@ -216,35 +216,35 @@ describe("mockChatService", () => {
 
     it("forwards the original content to other conversations", async () => {
       const message = await send("Encaminha");
-      await mockChatService.forward(message.id, ["conv_lucas_sofia", "conv_lucas_emma"]);
+      await mockChatService.forward(message.id, ["conv_rafael_sofia", "conv_rafael_emma"]);
       const forwarded = Object.values(mockDb.read().messages).filter(
         (m) => m.content.type === "text" && m.content.body.text === "Encaminha",
       );
       expect(forwarded.map((m) => m.conversationId).sort()).toEqual([
-        "conv_lucas_cam",
-        "conv_lucas_emma",
-        "conv_lucas_sofia",
+        "conv_rafael_emma",
+        "conv_rafael_linh",
+        "conv_rafael_sofia",
       ]);
     });
 
     it("mutes a conversation for the viewer only", async () => {
-      const muted = await mockChatService.setMuted("conv_lucas_cam", true);
+      const muted = await mockChatService.setMuted("conv_rafael_linh", true);
       expect(muted.mutedUntil).not.toBeNull();
-      asCam();
-      expect((await mockChatService.getConversation("conv_lucas_cam")).mutedUntil).toBeNull();
+      asLinh();
+      expect((await mockChatService.getConversation("conv_rafael_linh")).mutedUntil).toBeNull();
     });
   });
 
   describe("starting conversations", () => {
     it("reuses an existing direct conversation", async () => {
-      const conversation = await mockChatService.getOrCreateDirectConversation("usr_cam");
-      expect(conversation.id).toBe("conv_lucas_cam");
+      const conversation = await mockChatService.getOrCreateDirectConversation("usr_linh");
+      expect(conversation.id).toBe("conv_rafael_linh");
     });
 
     it("creates a new direct conversation", async () => {
       const conversation = await mockChatService.getOrCreateDirectConversation("usr_mei");
       expect(conversation.kind).toBe("direct");
-      expect(conversation.members.map((m) => m.user.id).sort()).toEqual(["usr_lucas", "usr_mei"]);
+      expect(conversation.members.map((m) => m.user.id).sort()).toEqual(["usr_mei", "usr_rafael"]);
     });
 
     it("respects 'who can message me' and blocks", async () => {
@@ -253,7 +253,7 @@ describe("mockChatService", () => {
         const leo = db.users["usr_leo"];
         if (mei) mei.preferences.privacy.whoCanMessage = "nobody";
         if (leo) leo.preferences.privacy.whoCanMessage = "followers";
-        db.users["usr_arjun"]?.blockedUserIds.push("usr_lucas");
+        db.users["usr_arjun"]?.blockedUserIds.push("usr_rafael");
       });
       await expect(mockChatService.getOrCreateDirectConversation("usr_mei")).rejects.toMatchObject({
         code: "forbidden",
@@ -267,7 +267,7 @@ describe("mockChatService", () => {
       mockDb.update((db) => {
         db.follows.push({
           followerId: "usr_leo",
-          followeeId: "usr_lucas",
+          followeeId: "usr_rafael",
           createdAt: new Date().toISOString(),
         });
       });
@@ -278,7 +278,7 @@ describe("mockChatService", () => {
 
     it("refuses to message yourself", async () => {
       await expect(
-        mockChatService.getOrCreateDirectConversation("usr_lucas"),
+        mockChatService.getOrCreateDirectConversation("usr_rafael"),
       ).rejects.toMatchObject({ code: "validation" });
     });
   });
@@ -287,26 +287,26 @@ describe("mockChatService", () => {
     it("lets each person create only one group", async () => {
       const group = await mockChatService.createGroup({
         title: " Viagem ",
-        memberIds: ["usr_cam", "usr_sofia"],
+        memberIds: ["usr_linh", "usr_sofia"],
       });
-      expect(group).toMatchObject({ kind: "group", title: "Viagem", createdBy: "usr_lucas" });
+      expect(group).toMatchObject({ kind: "group", title: "Viagem", createdBy: "usr_rafael" });
       await expect(
-        mockChatService.createGroup({ title: "Outro", memberIds: ["usr_cam", "usr_emma"] }),
+        mockChatService.createGroup({ title: "Outro", memberIds: ["usr_linh", "usr_emma"] }),
       ).rejects.toMatchObject({ code: "conflict" });
-      asCam();
+      asLinh();
       await expect(
-        mockChatService.createGroup({ title: "Cam's", memberIds: ["usr_lucas", "usr_minh"] }),
-      ).resolves.toMatchObject({ createdBy: "usr_cam" });
+        mockChatService.createGroup({ title: "Linh's", memberIds: ["usr_rafael", "usr_minh"] }),
+      ).resolves.toMatchObject({ createdBy: "usr_linh" });
     });
 
     it("requires a name and at least two other people", async () => {
       await expect(
-        mockChatService.createGroup({ title: " ", memberIds: ["usr_cam", "usr_emma"] }),
+        mockChatService.createGroup({ title: " ", memberIds: ["usr_linh", "usr_emma"] }),
       ).rejects.toMatchObject({
         code: "validation",
       });
       await expect(
-        mockChatService.createGroup({ title: "Duo", memberIds: ["usr_cam"] }),
+        mockChatService.createGroup({ title: "Duo", memberIds: ["usr_linh"] }),
       ).rejects.toMatchObject({
         code: "validation",
       });
@@ -315,7 +315,7 @@ describe("mockChatService", () => {
     it("translates group messages into every member language", async () => {
       const group = await mockChatService.createGroup({
         title: "Trio",
-        memberIds: ["usr_cam", "usr_sofia"],
+        memberIds: ["usr_linh", "usr_sofia"],
       });
       const message = await send("Obrigado!", crypto.randomUUID(), group.id);
       await waitFor(() => {

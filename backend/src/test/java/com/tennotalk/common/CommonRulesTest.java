@@ -33,14 +33,14 @@ class CommonRulesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"cam", "lucas.a", "mai_92", "@Cam_Nguyen"})
+    @ValueSource(strings = {"linh", "rafael.a", "mai_92", "@Linh_Pham"})
     void validUsernames(String value) {
         assertThat(Usernames.problem(value)).isEmpty();
     }
 
     @Test
     void usernamesAreNormalized() {
-        assertThat(Usernames.normalize("  @Cam_Nguyen ")).isEqualTo("cam_nguyen");
+        assertThat(Usernames.normalize("  @Linh_Pham ")).isEqualTo("linh_pham");
         assertThat(Usernames.normalize(null)).isEmpty();
     }
 

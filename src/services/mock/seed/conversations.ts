@@ -15,8 +15,8 @@ interface Line {
 
 const DAY = 24 * 60;
 
-/** Lucas ↔ Cam: older history (pagination) + the last three days. */
-function lucasCamLines(): Line[] {
+/** Rafael ↔ Linh: older history (pagination) + the last three days. */
+function rafaelLinhLines(): Line[] {
   const history = [
     "lc_old_1",
     "lc_old_2",
@@ -31,7 +31,7 @@ function lucasCamLines(): Line[] {
   for (let round = 0; round < 3; round++) {
     history.forEach((phrase, index) => {
       lines.push({
-        from: index % 2 === 0 ? "usr_lucas" : "usr_cam",
+        from: index % 2 === 0 ? "usr_rafael" : "usr_linh",
         phrase,
         at: (9 - round * 2) * DAY + (60 - index * 5),
       });
@@ -39,30 +39,30 @@ function lucasCamLines(): Line[] {
   }
   return [
     ...lines,
-    { from: "usr_cam", phrase: "lc_hi", at: 2 * DAY + 300 },
-    { from: "usr_lucas", phrase: "lc_fine", at: 2 * DAY + 295 },
-    { from: "usr_cam", phrase: "lc_coffee", at: 2 * DAY + 290 },
+    { from: "usr_linh", phrase: "lc_hi", at: 2 * DAY + 300 },
+    { from: "usr_rafael", phrase: "lc_fine", at: 2 * DAY + 295 },
+    { from: "usr_linh", phrase: "lc_coffee", at: 2 * DAY + 290 },
     {
-      from: "usr_cam",
+      from: "usr_linh",
       phrase: "lc_old_2",
       at: 2 * DAY + 289,
       image: { hueA: 205, hueB: 40, alt: "Hoan Kiem Lake at sunset" },
     },
-    { from: "usr_lucas", phrase: "lc_best_coffee", at: 2 * DAY + 280 },
-    { from: "usr_cam", phrase: "lc_take_you", at: 2 * DAY + 278 },
-    { from: "usr_lucas", phrase: "lc_deal", at: 2 * DAY + 277 },
-    { from: "usr_lucas", phrase: "lc_morning", at: DAY + 600 },
-    { from: "usr_cam", phrase: "lc_slept", at: DAY + 590 },
-    { from: "usr_lucas", phrase: "lc_tiring", at: DAY + 120 },
-    { from: "usr_cam", phrase: "lc_rest", at: DAY + 115 },
-    { from: "usr_lucas", phrase: "lc_night", at: DAY + 110 },
-    { from: "usr_cam", phrase: "lc_night_reply", at: DAY + 108 },
-    { from: "usr_lucas", phrase: "lc_miss", at: 95 },
-    { from: "usr_cam", phrase: "lc_miss_too", at: 93 },
-    { from: "usr_cam", phrase: "lc_weekend", at: 92 },
-    { from: "usr_lucas", phrase: "lc_video", at: 40 },
-    { from: "usr_cam", phrase: "lc_saturday", at: 38 },
-    { from: "usr_lucas", phrase: "lc_cant_wait", at: 12 },
+    { from: "usr_rafael", phrase: "lc_best_coffee", at: 2 * DAY + 280 },
+    { from: "usr_linh", phrase: "lc_take_you", at: 2 * DAY + 278 },
+    { from: "usr_rafael", phrase: "lc_deal", at: 2 * DAY + 277 },
+    { from: "usr_rafael", phrase: "lc_morning", at: DAY + 600 },
+    { from: "usr_linh", phrase: "lc_slept", at: DAY + 590 },
+    { from: "usr_rafael", phrase: "lc_tiring", at: DAY + 120 },
+    { from: "usr_linh", phrase: "lc_rest", at: DAY + 115 },
+    { from: "usr_rafael", phrase: "lc_night", at: DAY + 110 },
+    { from: "usr_linh", phrase: "lc_night_reply", at: DAY + 108 },
+    { from: "usr_rafael", phrase: "lc_miss", at: 95 },
+    { from: "usr_linh", phrase: "lc_miss_too", at: 93 },
+    { from: "usr_linh", phrase: "lc_weekend", at: 92 },
+    { from: "usr_rafael", phrase: "lc_video", at: 40 },
+    { from: "usr_linh", phrase: "lc_saturday", at: 38 },
+    { from: "usr_rafael", phrase: "lc_cant_wait", at: 12 },
   ];
 }
 
@@ -76,68 +76,68 @@ interface SeedConversation {
 
 const SEED_CONVERSATIONS: SeedConversation[] = [
   {
-    id: "conv_lucas_cam",
-    members: ["usr_lucas", "usr_cam"],
-    lines: lucasCamLines(),
-    readUpTo: { usr_lucas: Infinity, usr_cam: Infinity },
+    id: "conv_rafael_linh",
+    members: ["usr_rafael", "usr_linh"],
+    lines: rafaelLinhLines(),
+    readUpTo: { usr_rafael: Infinity, usr_linh: Infinity },
   },
   {
-    id: "conv_lucas_sofia",
-    members: ["usr_lucas", "usr_sofia"],
+    id: "conv_rafael_sofia",
+    members: ["usr_rafael", "usr_sofia"],
     lines: [
       { from: "usr_sofia", phrase: "ls_1", at: 5 * 60 },
-      { from: "usr_lucas", phrase: "ls_2", at: 4 * 60 + 50 },
+      { from: "usr_rafael", phrase: "ls_2", at: 4 * 60 + 50 },
       { from: "usr_sofia", phrase: "ls_3", at: 4 * 60 + 40 },
-      { from: "usr_lucas", phrase: "ls_4", at: 4 * 60 + 30 },
+      { from: "usr_rafael", phrase: "ls_4", at: 4 * 60 + 30 },
       { from: "usr_sofia", phrase: "ls_5", at: 3 * 60 },
     ],
-    readUpTo: { usr_lucas: 3, usr_sofia: Infinity },
+    readUpTo: { usr_rafael: 3, usr_sofia: Infinity },
   },
   {
-    id: "conv_lucas_minh",
-    members: ["usr_lucas", "usr_minh"],
+    id: "conv_rafael_minh",
+    members: ["usr_rafael", "usr_minh"],
     lines: [
       { from: "usr_minh", phrase: "lm_1", at: 70 },
       { from: "usr_minh", phrase: "lm_2", at: 69 },
     ],
-    readUpTo: { usr_lucas: -1, usr_minh: Infinity },
+    readUpTo: { usr_rafael: -1, usr_minh: Infinity },
   },
   {
-    id: "conv_lucas_emma",
-    members: ["usr_lucas", "usr_emma"],
+    id: "conv_rafael_emma",
+    members: ["usr_rafael", "usr_emma"],
     lines: [
       { from: "usr_emma", phrase: "le_1", at: DAY + 30 },
-      { from: "usr_lucas", phrase: "le_2", at: DAY + 20 },
+      { from: "usr_rafael", phrase: "le_2", at: DAY + 20 },
       { from: "usr_emma", phrase: "le_3", at: DAY + 10 },
     ],
-    readUpTo: { usr_lucas: Infinity, usr_emma: Infinity },
+    readUpTo: { usr_rafael: Infinity, usr_emma: Infinity },
   },
   {
-    id: "conv_lucas_yuki",
-    members: ["usr_lucas", "usr_yuki"],
+    id: "conv_rafael_yuki",
+    members: ["usr_rafael", "usr_yuki"],
     lines: [
       { from: "usr_yuki", phrase: "ly_1", at: 3 * DAY },
-      { from: "usr_lucas", phrase: "ly_2", at: 3 * DAY - 15 },
+      { from: "usr_rafael", phrase: "ly_2", at: 3 * DAY - 15 },
     ],
-    readUpTo: { usr_lucas: Infinity, usr_yuki: 0 },
+    readUpTo: { usr_rafael: Infinity, usr_yuki: 0 },
   },
   {
-    id: "conv_lucas_omar",
-    members: ["usr_lucas", "usr_omar"],
+    id: "conv_rafael_omar",
+    members: ["usr_rafael", "usr_omar"],
     lines: [
       { from: "usr_omar", phrase: "lo_1", at: 5 * DAY },
-      { from: "usr_lucas", phrase: "lo_2", at: 5 * DAY - 30 },
+      { from: "usr_rafael", phrase: "lo_2", at: 5 * DAY - 30 },
     ],
-    readUpTo: { usr_lucas: Infinity, usr_omar: Infinity },
+    readUpTo: { usr_rafael: Infinity, usr_omar: Infinity },
   },
   {
-    id: "conv_cam_jisoo",
-    members: ["usr_cam", "usr_jisoo"],
+    id: "conv_linh_jisoo",
+    members: ["usr_linh", "usr_jisoo"],
     lines: [
       { from: "usr_jisoo", phrase: "cj_1", at: 6 * 60 },
-      { from: "usr_cam", phrase: "cj_2", at: 5 * 60 },
+      { from: "usr_linh", phrase: "cj_2", at: 5 * 60 },
     ],
-    readUpTo: { usr_cam: Infinity, usr_jisoo: 0 },
+    readUpTo: { usr_linh: Infinity, usr_jisoo: 0 },
   },
 ];
 
@@ -195,7 +195,7 @@ function buildMessage(
     translations,
     literals,
     replyToId: null,
-    reactions: line.phrase === "lc_miss_too" ? [{ userId: "usr_lucas", emoji: "❤️" }] : [],
+    reactions: line.phrase === "lc_miss_too" ? [{ userId: "usr_rafael", emoji: "❤️" }] : [],
     statusOverride: null,
     createdAt,
   };

@@ -48,8 +48,8 @@ class RealtimeWebSocketIT extends IntegrationTest {
     @Autowired
     TranslationWorker worker;
 
-    private UUID lucas;
-    private UUID cam;
+    private UUID rafael;
+    private UUID linh;
     private UUID conversation;
     private final java.util.List<Client> clients = new java.util.ArrayList<>();
 
@@ -85,10 +85,10 @@ class RealtimeWebSocketIT extends IntegrationTest {
 
     @BeforeEach
     void people() {
-        lucas = data.user("lucas", "pt-BR");
-        cam = data.user("cam", "vi-VN");
-        data.password(lucas, passwords.encode("secret123"));
-        data.password(cam, passwords.encode("secret123"));
+        rafael = data.user("rafael", "pt-BR");
+        linh = data.user("linh", "vi-VN");
+        data.password(rafael, passwords.encode("secret123"));
+        data.password(linh, passwords.encode("secret123"));
     }
 
     @AfterEach
@@ -127,7 +127,7 @@ class RealtimeWebSocketIT extends IntegrationTest {
 
     @Test
     void foreignOriginsAreRejected() throws Exception {
-        String session = sessionOf("lucas");
+        String session = sessionOf("rafael");
         assertThatThrownBy(() -> connect(session, "https://evil.example.com")).hasStackTraceContaining("403");
     }
 
@@ -138,35 +138,35 @@ class RealtimeWebSocketIT extends IntegrationTest {
 
     @Test
     void newMessagesArriveAndTheSenderSeesThemDelivered() throws Exception {
-        conversation = steps.direct(lucas, cam);
-        Client lucasDevice = connect("lucas");
-        Client camDevice = connect("cam");
+        conversation = steps.direct(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        Client linhDevice = connect("linh");
 
-        JsonNode sent = steps.send(lucas, conversation, "Oi, tudo bem?");
+        JsonNode sent = steps.send(rafael, conversation, "Oi, tudo bem?");
 
-        JsonNode created = camDevice.next("message.created").get("message");
+        JsonNode created = linhDevice.next("message.created").get("message");
         assertThat(created.get("id").asString()).isEqualTo(sent.get("id").asString());
         assertThat(created.at("/content/body/text").asString()).isEqualTo("Oi, tudo bem?");
         assertThat(created.at("/translation/status").asString()).isEqualTo("pending");
 
-        assertThat(lucasDevice.next("message.created").at("/message/clientId").asString()).isEqualTo(sent.get("clientId").asString());
-        JsonNode delivered = lucasDevice.next("message.delivered");
-        assertThat(delivered.get("recipientId").asString()).isEqualTo(cam.toString());
+        assertThat(rafaelDevice.next("message.created").at("/message/clientId").asString()).isEqualTo(sent.get("clientId").asString());
+        JsonNode delivered = rafaelDevice.next("message.delivered");
+        assertThat(delivered.get("recipientId").asString()).isEqualTo(linh.toString());
         assertThat(delivered.get("upToMessageId").asString()).isEqualTo(sent.get("id").asString());
     }
 
     @Test
     void translationsArriveWhenTheWorkerFinishes() throws Exception {
-        conversation = steps.direct(lucas, cam);
-        Client camDevice = connect("cam");
-        JsonNode sent = steps.send(lucas, conversation, "Bom dia");
-        camDevice.next("message.created");
+        conversation = steps.direct(rafael, linh);
+        Client linhDevice = connect("linh");
+        JsonNode sent = steps.send(rafael, conversation, "Bom dia");
+        linhDevice.next("message.created");
 
         worker.runOnce();
 
-        JsonNode translating = camDevice.next("translation.updated");
+        JsonNode translating = linhDevice.next("translation.updated");
         assertThat(translating.at("/translation/status").asString()).isEqualTo("translating");
-        JsonNode update = camDevice.next("translation.updated", p -> p.at("/translation/status").asString().equals("translated"));
+        JsonNode update = linhDevice.next("translation.updated", p -> p.at("/translation/status").asString().equals("translated"));
         assertThat(update.get("messageId").asString()).isEqualTo(sent.get("id").asString());
         assertThat(update.at("/translation/text").asString()).isEqualTo("[Vietnamese (Vietnam)] Bom dia");
         assertThat(update.at("/translation/version").asInt()).isOne();
@@ -174,95 +174,95 @@ class RealtimeWebSocketIT extends IntegrationTest {
 
     @Test
     void readReceiptsReachTheSender() throws Exception {
-        conversation = steps.direct(lucas, cam);
-        Client lucasDevice = connect("lucas");
-        JsonNode sent = steps.send(lucas, conversation, "Oi");
-        api.post(cam, "/api/conversations/" + conversation + "/read", Map.of("messageId", sent.get("id").asString()))
+        conversation = steps.direct(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        JsonNode sent = steps.send(rafael, conversation, "Oi");
+        api.post(linh, "/api/conversations/" + conversation + "/read", Map.of("messageId", sent.get("id").asString()))
                 .andExpect(status().isNoContent());
-        JsonNode read = lucasDevice.next("message.read");
-        assertThat(read.get("readerId").asString()).isEqualTo(cam.toString());
+        JsonNode read = rafaelDevice.next("message.read");
+        assertThat(read.get("readerId").asString()).isEqualTo(linh.toString());
     }
 
     @Test
     void typingIsRelayedToTheOtherMembersOnly() throws Exception {
-        conversation = steps.direct(lucas, cam);
-        Client lucasDevice = connect("lucas");
-        Client camDevice = connect("cam");
-        camDevice.sendRaw(json.writeValueAsString(Map.of("type", "typing", "conversationId", conversation, "isTyping", true)));
+        conversation = steps.direct(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        Client linhDevice = connect("linh");
+        linhDevice.sendRaw(json.writeValueAsString(Map.of("type", "typing", "conversationId", conversation, "isTyping", true)));
 
-        JsonNode typing = lucasDevice.next("typing.started");
-        assertThat(typing.get("userId").asString()).isEqualTo(cam.toString());
+        JsonNode typing = rafaelDevice.next("typing.started");
+        assertThat(typing.get("userId").asString()).isEqualTo(linh.toString());
         assertThat(typing.get("conversationId").asString()).isEqualTo(conversation.toString());
 
-        camDevice.sendRaw(json.writeValueAsString(Map.of("type", "typing", "conversationId", conversation, "isTyping", false)));
-        lucasDevice.next("typing.stopped");
-        assertThat(camDevice.frames.stream().map(f -> f.get("type").asString())).doesNotContain("typing.started");
+        linhDevice.sendRaw(json.writeValueAsString(Map.of("type", "typing", "conversationId", conversation, "isTyping", false)));
+        rafaelDevice.next("typing.stopped");
+        assertThat(linhDevice.frames.stream().map(f -> f.get("type").asString())).doesNotContain("typing.started");
     }
 
     @Test
     void outsidersCannotFakeTypingInOtherConversations() throws Exception {
-        conversation = steps.direct(lucas, cam);
+        conversation = steps.direct(rafael, linh);
         UUID ana = data.user("ana", "es-ES");
         data.password(ana, passwords.encode("secret123"));
-        Client lucasDevice = connect("lucas");
+        Client rafaelDevice = connect("rafael");
         Client anaDevice = connect("ana");
         anaDevice.sendRaw(json.writeValueAsString(Map.of("type", "typing", "conversationId", conversation, "isTyping", true)));
         Thread.sleep(300);
-        assertThat(lucasDevice.frames.stream().map(f -> f.get("type").asString())).doesNotContain("typing.started");
+        assertThat(rafaelDevice.frames.stream().map(f -> f.get("type").asString())).doesNotContain("typing.started");
     }
 
     @Test
     void pingsAreAnsweredForTheHeartbeat() throws Exception {
-        Client camDevice = connect("cam");
-        camDevice.sendRaw("{\"type\":\"ping\"}");
-        assertThat(camDevice.next("pong").isObject()).isTrue();
+        Client linhDevice = connect("linh");
+        linhDevice.sendRaw("{\"type\":\"ping\"}");
+        assertThat(linhDevice.next("pong").isObject()).isTrue();
     }
 
     @Test
     void garbageFramesAreIgnored() throws Exception {
-        Client camDevice = connect("cam");
-        camDevice.sendRaw("not json");
-        camDevice.sendRaw("{\"type\":\"unknown\"}");
+        Client linhDevice = connect("linh");
+        linhDevice.sendRaw("not json");
+        linhDevice.sendRaw("{\"type\":\"unknown\"}");
         Thread.sleep(200);
-        assertThat(camDevice.session.isOpen()).isTrue();
+        assertThat(linhDevice.session.isOpen()).isTrue();
     }
 
     @Test
     void contactsSeeYouComeOnlineAndLeave() throws Exception {
-        conversation = steps.direct(lucas, cam);
-        Client lucasDevice = connect("lucas");
-        Client camDevice = connect("cam");
-        assertThat(lucasDevice.next("user.online").get("userId").asString()).isEqualTo(cam.toString());
+        conversation = steps.direct(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        Client linhDevice = connect("linh");
+        assertThat(rafaelDevice.next("user.online").get("userId").asString()).isEqualTo(linh.toString());
 
-        camDevice.session.close(CloseStatus.NORMAL);
-        JsonNode offline = lucasDevice.next("user.offline");
-        assertThat(offline.get("userId").asString()).isEqualTo(cam.toString());
+        linhDevice.session.close(CloseStatus.NORMAL);
+        JsonNode offline = rafaelDevice.next("user.offline");
+        assertThat(offline.get("userId").asString()).isEqualTo(linh.toString());
         assertThat(offline.get("lastSeenAt").asString()).isNotBlank();
     }
 
     @Test
     void onlineStatusShowsInProfiles() throws Exception {
-        steps.direct(lucas, cam);
-        connect("cam");
+        steps.direct(rafael, linh);
+        connect("linh");
         await().atMost(Duration.ofSeconds(5)).until(() ->
-                api.getOk(lucas, "/api/profiles/cam").get("isOnline").asBoolean());
+                api.getOk(rafael, "/api/profiles/linh").get("isOnline").asBoolean());
     }
 
     @Test
     void notificationsArePushedLive() throws Exception {
-        Client lucasDevice = connect("lucas");
-        api.put(cam, "/api/profiles/" + lucas + "/follow").andExpect(status().isOk());
-        JsonNode pushed = lucasDevice.next("notification.created").get("notification");
+        Client rafaelDevice = connect("rafael");
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+        JsonNode pushed = rafaelDevice.next("notification.created").get("notification");
         assertThat(pushed.get("type").asString()).isEqualTo("follow");
-        assertThat(pushed.at("/actor/username").asString()).isEqualTo("cam");
+        assertThat(pushed.at("/actor/username").asString()).isEqualTo("linh");
     }
 
     @Test
     void everyDeviceOfAUserReceivesEvents() throws Exception {
-        conversation = steps.direct(lucas, cam);
-        Client phone = connect("cam");
-        Client laptop = connect("cam");
-        steps.send(lucas, conversation, "Oi");
+        conversation = steps.direct(rafael, linh);
+        Client phone = connect("linh");
+        Client laptop = connect("linh");
+        steps.send(rafael, conversation, "Oi");
         phone.next("message.created");
         laptop.next("message.created");
     }

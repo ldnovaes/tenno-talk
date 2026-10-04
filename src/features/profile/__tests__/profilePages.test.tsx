@@ -7,12 +7,12 @@ import { setViewportWidth } from "@/test/setup";
 import { renderApp, signInAs } from "@/test/utils";
 
 describe("profile", () => {
-  beforeEach(() => signInAs("usr_lucas"));
+  beforeEach(() => signInAs("usr_rafael"));
 
   it("shows another person's profile with languages and stats", async () => {
-    renderApp("/u/cam");
-    expect(await screen.findByRole("heading", { name: "Cam Nguyen" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "@cam" })).toBeInTheDocument();
+    renderApp("/u/linh");
+    expect(await screen.findByRole("heading", { name: "Linh Pham" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "@linh" })).toBeInTheDocument();
     expect(screen.getByText("Tiếng Việt")).toHaveAttribute("lang", "vi-VN");
     expect(screen.getByText("Vietnam")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Following" })).toHaveAttribute(
@@ -35,20 +35,20 @@ describe("profile", () => {
       expect(
         mockDb
           .read()
-          .follows.some((f) => f.followerId === "usr_lucas" && f.followeeId === "usr_emma"),
+          .follows.some((f) => f.followerId === "usr_rafael" && f.followeeId === "usr_emma"),
       ).toBe(true),
     );
   });
 
   it("opens the conversation from Message", async () => {
     const user = userEvent.setup();
-    renderApp("/u/cam");
+    renderApp("/u/linh");
     await user.click(await screen.findByRole("button", { name: "Message" }));
     expect(await screen.findByRole("log", { name: "Messages" })).toBeInTheDocument();
   });
 
   it("shows the own profile with Edit profile", async () => {
-    renderApp("/u/lucas");
+    renderApp("/u/rafael");
     expect(await screen.findByRole("button", { name: "Edit profile" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Message" })).not.toBeInTheDocument();
     expect(await screen.findAllByRole("button", { name: "Open post" })).toHaveLength(1);
@@ -67,7 +67,7 @@ describe("profile", () => {
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Block Omar Haddad" }));
     await waitFor(() =>
-      expect(mockDb.read().users["usr_lucas"]?.blockedUserIds).toContain("usr_omar"),
+      expect(mockDb.read().users["usr_rafael"]?.blockedUserIds).toContain("usr_omar"),
     );
     expect(await screen.findByText("Omar Haddad was blocked")).toBeInTheDocument();
   });
@@ -75,30 +75,30 @@ describe("profile", () => {
   it("edits the profile, including languages", async () => {
     const user = userEvent.setup();
     setViewportWidth(375);
-    renderApp("/u/lucas/edit");
+    renderApp("/u/rafael/edit");
     const name = await screen.findByLabelText("Name");
     await user.clear(name);
-    await user.type(name, "Lucas A.");
+    await user.type(name, "Rafael A.");
     await user.click(screen.getByRole("button", { name: "Remove English (US)" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByRole("heading", { name: "Lucas A." })).toBeInTheDocument();
-    const saved = mockDb.read().users["usr_lucas"];
-    expect(saved?.displayName).toBe("Lucas A.");
+    expect(await screen.findByRole("heading", { name: "Rafael A." })).toBeInTheDocument();
+    const saved = mockDb.read().users["usr_rafael"];
+    expect(saved?.displayName).toBe("Rafael A.");
     expect(saved?.learningLanguages).toEqual(["vi-VN"]);
   });
 
   it("validates the username when editing", async () => {
     const user = userEvent.setup();
-    renderApp("/u/lucas/edit");
+    renderApp("/u/rafael/edit");
     const username = await screen.findByLabelText("Username");
     await user.clear(username);
-    await user.type(username, "cam");
+    await user.type(username, "linh");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("This username is already taken.")).toBeInTheDocument();
   });
 
   it("does not let you edit someone else's profile", async () => {
-    renderApp("/u/cam/edit");
+    renderApp("/u/linh/edit");
     expect(await screen.findByRole("button", { name: "Edit profile" })).toBeInTheDocument();
   });
 });

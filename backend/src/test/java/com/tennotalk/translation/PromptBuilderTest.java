@@ -22,11 +22,11 @@ class PromptBuilderTest {
     @Test
     void includesTheConversationAsContextOnly() {
         var request = new TranslationRequest("Eu também", "pt-BR", "vi-VN", List.of(
-                new TranslationRequest.ContextLine("Cam", "Em nhớ anh.\n(muito)"),
-                new TranslationRequest.ContextLine("Lucas", "x".repeat(400))));
+                new TranslationRequest.ContextLine("Linh", "Em nhớ anh.\n(muito)"),
+                new TranslationRequest.ContextLine("Rafael", "x".repeat(400))));
         String prompt = PromptBuilder.build(request);
         assertThat(prompt).contains("Recent conversation, for context only (do not translate it):")
-                .contains("- Cam: Em nhớ anh. (muito)")
+                .contains("- Linh: Em nhớ anh. (muito)")
                 .contains("x".repeat(300) + "…")
                 .doesNotContain("x".repeat(301));
     }

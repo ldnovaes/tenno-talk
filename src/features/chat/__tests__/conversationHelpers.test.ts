@@ -23,8 +23,8 @@ describe("conversation helpers", () => {
   const group = makeConversation({ id: "g", kind: "group", title: "Travel", unreadCount: 2 });
 
   it("resolves title and avatar", () => {
-    expect(otherMember(direct, "me")?.user.id).toBe("cam");
-    expect(conversationTitle(direct, "me")).toBe("Cam Nguyen");
+    expect(otherMember(direct, "me")?.user.id).toBe("linh");
+    expect(conversationTitle(direct, "me")).toBe("Linh Pham");
     expect(conversationTitle(group, "me")).toBe("Travel");
     expect(otherMember(group, "me")).toBeNull();
     expect(conversationAvatar(group, "me").displayName).toBe("Travel");
@@ -46,7 +46,7 @@ describe("conversation helpers", () => {
       filterConversations(list, { filter: "groups", query: "", viewerId: "me" }).map((c) => c.id),
     ).toEqual(["g"]);
     expect(
-      filterConversations(list, { filter: "all", query: "@cam", viewerId: "me" }),
+      filterConversations(list, { filter: "all", query: "@linh", viewerId: "me" }),
     ).toHaveLength(2);
     expect(
       filterConversations(list, { filter: "all", query: "PHỞ", viewerId: "me" }).map((c) => c.id),
@@ -68,7 +68,7 @@ describe("conversation helpers", () => {
 describe("previews", () => {
   it("shows the translation of received messages once ready", () => {
     const message = makeMessage({
-      senderId: "cam",
+      senderId: "linh",
       content: { type: "text", body: { text: "Anh nhớ em", language: "vi-VN" } },
       translation: {
         targetLanguage: "pt-BR",
@@ -84,7 +84,7 @@ describe("previews", () => {
 
   it("falls back to the original while translating, and keeps own originals", () => {
     const pending = makeMessage({
-      senderId: "cam",
+      senderId: "linh",
       content: { type: "text", body: { text: "Anh nhớ em", language: "vi-VN" } },
       translation: {
         targetLanguage: "pt-BR",
@@ -111,12 +111,12 @@ describe("previews", () => {
 
   it("labels media", () => {
     const image = makeMessage({
-      senderId: "cam",
+      senderId: "linh",
       content: { type: "image", media: [], caption: null },
     });
     expect(previewText(image, "me", labels)).toBe("📷 Photo");
     const captioned = makeMessage({
-      senderId: "cam",
+      senderId: "linh",
       content: { type: "image", media: [], caption: { text: "Lake", language: "en-US" } },
     });
     expect(previewText(captioned, "me", labels)).toBe("📷 Photo · Lake");

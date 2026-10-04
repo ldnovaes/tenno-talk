@@ -5,7 +5,7 @@ import { prepare, signInAsDemo } from "./support";
 test.beforeEach(async ({ context }) => prepare(context));
 
 test("likes and comments on a post", async ({ page }) => {
-  await signInAsDemo(page, "Lucas");
+  await signInAsDemo(page, "Rafael");
   await page.goto("/feed");
   const post = page.getByRole("article").first();
   await expect(post).toBeVisible();
@@ -27,9 +27,9 @@ test("likes and comments on a post", async ({ page }) => {
 
 test("stories open from the tray and are driven by the keyboard", async ({ page }, info) => {
   test.skip(info.project.name === "mobile", "keyboard navigation is a desktop interaction");
-  await signInAsDemo(page, "Lucas");
+  await signInAsDemo(page, "Rafael");
   await page.goto("/feed");
-  await page.getByRole("link", { name: "Open Cam Nguyen's stories" }).click();
+  await page.getByRole("link", { name: "Open Linh Pham's stories" }).click();
   await expect(page).toHaveURL(/\/stories\//);
   const viewer = page.getByRole("dialog", { name: /Stories of/ });
   await expect(viewer).toBeVisible();

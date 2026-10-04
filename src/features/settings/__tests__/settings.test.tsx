@@ -7,7 +7,7 @@ import { useDevicePreferencesStore } from "@/stores/devicePreferencesStore";
 import { renderApp, signInAs } from "@/test/utils";
 
 describe("settings", () => {
-  beforeEach(() => signInAs("usr_lucas"));
+  beforeEach(() => signInAs("usr_rafael"));
 
   it("lists every section and navigates into one", async () => {
     const user = userEvent.setup();
@@ -40,13 +40,15 @@ describe("settings", () => {
     await user.click(await screen.findByRole("combobox", { name: "Who can message me" }));
     await user.click(await screen.findByRole("option", { name: "People I follow" }));
     await waitFor(() =>
-      expect(mockDb.read().users["usr_lucas"]?.preferences.privacy.whoCanMessage).toBe("followers"),
+      expect(mockDb.read().users["usr_rafael"]?.preferences.privacy.whoCanMessage).toBe(
+        "followers",
+      ),
     );
   });
 
   it("lists and unblocks blocked users", async () => {
     mockDb.update((db) => {
-      db.users["usr_lucas"]?.blockedUserIds.push("usr_mei");
+      db.users["usr_rafael"]?.blockedUserIds.push("usr_mei");
     });
     const user = userEvent.setup();
     renderApp("/settings/privacy");
@@ -60,7 +62,7 @@ describe("settings", () => {
     renderApp("/settings/notifications");
     await user.click(await screen.findByRole("switch", { name: "Likes" }));
     await waitFor(() =>
-      expect(mockDb.read().users["usr_lucas"]?.preferences.notifications.likes).toBe(false),
+      expect(mockDb.read().users["usr_rafael"]?.preferences.notifications.likes).toBe(false),
     );
   });
 
@@ -70,7 +72,7 @@ describe("settings", () => {
     await user.click(await screen.findByRole("combobox", { name: "Receive messages in" }));
     await user.click(await screen.findByRole("option", { name: /English \(US\)/ }));
     await waitFor(() =>
-      expect(mockDb.read().users["usr_lucas"]?.preferences.translation.receivingLanguage).toBe(
+      expect(mockDb.read().users["usr_rafael"]?.preferences.translation.receivingLanguage).toBe(
         "en-US",
       ),
     );
@@ -91,7 +93,7 @@ describe("settings", () => {
     await user.type(within(dialog).getByLabelText("Current password"), "demo1234");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Password updated")).toBeInTheDocument();
-    expect(mockDb.read().users["usr_lucas"]?.password).toBe("newsecret1");
+    expect(mockDb.read().users["usr_rafael"]?.password).toBe("newsecret1");
   });
 
   it("shows connected accounts and accepted terms", async () => {
@@ -108,7 +110,9 @@ describe("settings", () => {
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete account" }));
     expect(await screen.findByRole("heading", { name: /talk to anyone/i })).toBeInTheDocument();
-    expect(mockDb.read().users["usr_lucas"]).toBeUndefined();
-    expect(Object.keys(mockDb.read().conversations).some((id) => id.includes("lucas"))).toBe(false);
+    expect(mockDb.read().users["usr_rafael"]).toBeUndefined();
+    expect(Object.keys(mockDb.read().conversations).some((id) => id.includes("rafael"))).toBe(
+      false,
+    );
   });
 });

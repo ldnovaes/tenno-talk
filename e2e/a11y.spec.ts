@@ -6,12 +6,12 @@ import { prepare, signInAsDemo } from "./support";
 /** No serious or critical WCAG 2.1 AA violations on the main screens, in both themes (PLAN.md §20). */
 const SCREENS = [
   "/chats",
-  "/chats/conv_lucas_cam",
+  "/chats/conv_rafael_linh",
   "/discover",
   "/feed",
   "/notifications",
   "/settings",
-  "/u/cam",
+  "/u/linh",
 ];
 
 async function audit(page: Page) {
@@ -39,7 +39,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto("/welcome");
     await page.waitForLoadState("networkidle");
     expect(await audit(page), "/welcome").toEqual([]);
-    await signInAsDemo(page, "Lucas");
+    await signInAsDemo(page, "Rafael");
     for (const path of SCREENS) {
       await page.goto(path);
       await page.waitForLoadState("networkidle");

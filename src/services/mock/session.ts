@@ -3,7 +3,7 @@ import { readJson, removeKey, writeJson } from "@/lib/storage";
 
 /**
  * Server-side session of the mock backend (stands in for the HttpOnly cookie).
- * Per tab (sessionStorage): open Lucas in one tab and Cam in another to chat.
+ * Per tab (sessionStorage): open Rafael in one tab and Linh in another to chat.
  */
 const SESSION_KEY = "tenno.mock-session";
 

@@ -14,16 +14,16 @@ async function chooseMode(page: Page, mode: RegExp) {
 }
 
 test("display modes change every message at once", async ({ page }) => {
-  await signInAsDemo(page, "Lucas");
+  await signInAsDemo(page, "Rafael");
   await chooseMode(page, /Original \+ Translation/);
-  await page.goto("/chats/conv_lucas_cam");
+  await page.goto("/chats/conv_rafael_linh");
   const log = page.getByRole("log", { name: "Messages" });
   const bubble = await bubbleWith(log, "Eu também estava com saudade de você.");
   await expect(bubble.getByText("Original", { exact: true })).toBeVisible();
   await expect(bubble.getByText("Em cũng nhớ anh.")).toBeVisible();
 
   await chooseMode(page, /Original only/);
-  await page.goto("/chats/conv_lucas_cam");
+  await page.goto("/chats/conv_rafael_linh");
   await expect(log.getByText("Em cũng nhớ anh.")).toBeVisible();
   await expect(log.getByText("Eu também estava com saudade de você.")).toHaveCount(0);
 });

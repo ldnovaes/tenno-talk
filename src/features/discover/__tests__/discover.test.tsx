@@ -8,7 +8,7 @@ import { writeMockSession } from "@/services/mock/session";
 import { renderApp, signInAs } from "@/test/utils";
 
 describe("discover service", () => {
-  beforeEach(() => writeMockSession("usr_lucas"));
+  beforeEach(() => writeMockSession("usr_rafael"));
 
   it("pages through everyone except the viewer, best matches first", async () => {
     const first = await mockDiscoverService.getPeople({ nativeLanguage: null }, null);
@@ -17,20 +17,20 @@ describe("discover service", () => {
     expect(first.items[0]?.learningLanguages.some((l) => l.startsWith("pt"))).toBe(true);
     const second = await mockDiscoverService.getPeople({ nativeLanguage: null }, first.nextCursor);
     const ids = [...first.items, ...second.items].map((p) => p.id);
-    expect(ids).not.toContain("usr_lucas");
+    expect(ids).not.toContain("usr_rafael");
     expect(new Set(ids).size).toBe(ids.length);
     expect(second.nextCursor).toBeNull();
   });
 
   it("filters by native language (any regional variant)", async () => {
     const page = await mockDiscoverService.getPeople({ nativeLanguage: "vi-VN" }, null);
-    expect(page.items.map((p) => p.id).sort()).toEqual(["usr_cam", "usr_minh"]);
+    expect(page.items.map((p) => p.id).sort()).toEqual(["usr_linh", "usr_minh"]);
   });
 
   it("hides people blocked in either direction", async () => {
     mockDb.update((db) => {
-      db.users["usr_lucas"]?.blockedUserIds.push("usr_cam");
-      db.users["usr_minh"]?.blockedUserIds.push("usr_lucas");
+      db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
+      db.users["usr_minh"]?.blockedUserIds.push("usr_rafael");
     });
     const page = await mockDiscoverService.getPeople({ nativeLanguage: "vi-VN" }, null);
     expect(page.items).toEqual([]);
@@ -38,7 +38,7 @@ describe("discover service", () => {
 });
 
 describe("discover page", () => {
-  beforeEach(() => signInAs("usr_lucas"));
+  beforeEach(() => signInAs("usr_rafael"));
 
   it("shows people cards with languages and actions", async () => {
     renderApp("/discover");
@@ -56,7 +56,7 @@ describe("discover page", () => {
     await user.click(screen.getByRole("combobox", { name: "Native language" }));
     await user.click(await screen.findByRole("option", { name: /Tiếng Việt/ }));
     await waitFor(() => expect(screen.queryByText("Sofía Martínez")).not.toBeInTheDocument());
-    expect(screen.getByText("Cam Nguyen")).toBeInTheDocument();
+    expect(screen.getByText("Linh Pham")).toBeInTheDocument();
     expect(screen.getByText("Minh Tran")).toBeInTheDocument();
   });
 

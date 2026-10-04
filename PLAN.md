@@ -60,7 +60,7 @@
 TENNO TALK é uma plataforma social de comunicação entre pessoas de países diferentes. O núcleo é um chat no estilo WhatsApp/Telegram com identidade própria. A diferença é que **cada pessoa escreve no próprio idioma e lê no idioma que escolheu**.
 
 ```
-Lucas (pt-BR → recebe em pt-BR)            Cam (vi-VN → recebe em vi-VN)
+Rafael (pt-BR → recebe em pt-BR)            Linh (vi-VN → recebe em vi-VN)
 "Estou com saudade de você."      ──►      "Em nhớ anh."
 "Também senti sua falta."         ◄──      "Em cũng nhớ anh."
 ```
@@ -232,11 +232,11 @@ Rail de ícones (64px) + lista de conversas (300px) + conversa. Perfil e setting
 ┌────┬──────────────────┬─────────────────────────────────────────┐
 │Rail│  Chats (360px)   │  Conversa                               │
 │    │  [stories]       │  ┌ header ──────────────────────────┐   │
-│ 💬 │  [search]        │  │ avatar  Cam · online      📞  ⋯  │   │
+│ 💬 │  [search]        │  │ avatar  Linh · online      📞  ⋯  │   │
 │ 🧭 │  [All|Unread|Grp]│  └──────────────────────────────────┘   │
-│ 🖼 │  ▸ Cam      09:42│        mensagens (chat-bg)              │
+│ 🖼 │  ▸ Linh      09:42│        mensagens (chat-bg)              │
 │ 🔔 │  ▸ Travel   08:15│                                         │
-│    │  ▸ Lucas     Ontem│  ┌ composer ────────────────────────┐   │
+│    │  ▸ Rafael     Ontem│  ┌ composer ────────────────────────┐   │
 │ 👤 │                  │  │ 😊 📎  Message…             ➤    │   │
 │ ⚙  │                  │  └──────────────────────────────────┘   │
 └────┴──────────────────┴─────────────────────────────────────────┘
@@ -441,7 +441,7 @@ Logo TENNO TALK, a proposta em uma frase ("Talk to anyone. In your own language.
 
 Abaixo dos botões fica o texto "By continuing you agree to our Terms of Use and Privacy Policy", com links para `/terms` e `/privacy`. O aceite formal acontece no primeiro passo do onboarding (§9.2).
 
-No MVP tudo é simulado pelo `authService` mock: os botões sociais criam uma conta nova que passa pelo onboarding. Em desenvolvimento há também **contas demo** (Lucas · pt-BR, Cam · vi-VN), já onboardadas. Trocar de conta permite ver a mesma conversa pelos dois lados. Quando o backend existir, os botões sociais fazem redirect de página inteira para o OAuth2 do backend (§30).
+No MVP tudo é simulado pelo `authService` mock: os botões sociais criam uma conta nova que passa pelo onboarding. Em desenvolvimento há também **contas demo** (Rafael · pt-BR, Linh · vi-VN), já onboardadas. Trocar de conta permite ver a mesma conversa pelos dois lados. Quando o backend existir, os botões sociais fazem redirect de página inteira para o OAuth2 do backend (§30).
 
 ### 9.2 Onboarding
 
@@ -478,8 +478,8 @@ Grid responsivo (1 coluna mobile, 2 tablet, 2–3 desktop) de `PersonCard`:
 
 ```
 ┌───────────────────────────────┐
-│ (avatar)  Cam Nguyen          │
-│           @cam · 🇻🇳 Vietnam   │
+│ (avatar)  Linh Pham          │
+│           @linh · 🇻🇳 Vietnam   │
 │ Native    Vietnamese          │
 │ Learning  Portuguese, English │
 │ "Love coffee and photography" │
@@ -843,7 +843,7 @@ export type Notification = NotificationBase & (
 | — | `clientId` | Reconciliação do otimismo e idempotência no servidor. |
 | Learning Mode na mensagem | `TranslationInsight` separado | Não infla o payload padrão; gerado sob demanda. |
 
-**IDs:** sempre strings estáveis. Nunca índices de array como `key` ou id. Mocks usam ids legíveis e fixos (`usr_cam`, `conv_lucas_cam`, `msg_lc_0001`). Ids criados no cliente usam `crypto.randomUUID()`.
+**IDs:** sempre strings estáveis. Nunca índices de array como `key` ou id. Mocks usam ids legíveis e fixos (`usr_linh`, `conv_rafael_linh`, `msg_lc_0001`). Ids criados no cliente usam `crypto.randomUUID()`.
 
 ## 13. Fluxo de mensagens
 
@@ -1071,7 +1071,7 @@ Os hooks chamam `chatService.getConversations()` dentro de `queryFn`; nenhum com
 - `latency.ts`: atraso aleatório entre 150 e 600ms por chamada. Taxa de falha configurável via `localStorage`/devtools: padrão 0% para chamadas comuns, ~10% para traduções (exercita o retry).
 - `mockTranslator.ts`: dicionário de frases do seed nas combinações pt-BR ↔ vi-VN ↔ en-US ↔ es-ES (inclui as do briefing: "Estou com saudade de você." ↔ "Em nhớ anh."). Frases desconhecidas recebem uma pseudo-tradução marcada (ex.: `«vi» texto`) para ficar claro que é mock. Em ~20% das traduções, uma versão 2 "melhorada" chega alguns segundos depois.
 - `autoResponder.ts`: depois de um envio, o contato mock passa por sent → delivered (1s) → read (2–4s, se "online"), emite `typing.started` e responde no idioma dele com uma frase do roteiro. Tudo via `mockRealtimeClient`, exercitando o mesmo caminho do realtime real.
-- Contas demo: **Lucas** (pt-BR, Brasil), **Cam** (vi-VN, Vietnã), além de ~10 pessoas para Discover (es, en, ja, fr, ar…, incluindo um idioma RTL para testar layout).
+- Contas demo: **Rafael** (pt-BR, Brasil), **Linh** (vi-VN, Vietnã), além de ~10 pessoas para Discover (es, en, ja, fr, ar…, incluindo um idioma RTL para testar layout).
 
 ## 17. Abstração de realtime
 
@@ -1158,7 +1158,7 @@ Componente `EmptyState { icon, title, description, action? }`:
 |---|---|---|
 | Chats | No conversations yet | Find someone from another country and start talking. → Discover |
 | Chats (Unread) | You're all caught up | — |
-| Conversa nova | Say hi to Cam 👋 | Write in your language — Cam will read it in Vietnamese. |
+| Conversa nova | Say hi to Linh 👋 | Write in your language — Linh will read it in Vietnamese. |
 | Discover sem resultado | No one found | Try another language or country. |
 | Feed | No posts yet | Share your first moment. → Create |
 | Perfil sem posts | No posts yet | (próprio) Share your first moment. |
@@ -1169,7 +1169,7 @@ Componente `EmptyState { icon, title, description, action? }`:
 - Componentes Radix (via shadcn) cuidam de foco, `aria-*` e teclado em menus, dialogs e sheets.
 - **Todo botão de ícone tem `aria-label`** (com Tooltip no desktop).
 - Inputs com `<Label htmlFor>` (o `Form` do shadcn faz a associação); erros via `aria-describedby`.
-- Lista de mensagens com `role="log"` e `aria-live="polite"`; cada mensagem tem um rótulo acessível ("Cam, 09:41: …").
+- Lista de mensagens com `role="log"` e `aria-live="polite"`; cada mensagem tem um rótulo acessível ("Linh, 09:41: …").
 - **`lang` em cada bloco de texto de conteúdo** (mensagens, legendas, nomes de idioma) e `dir="auto"`.
 - Teclado:
   - `Enter` envia, `Shift+Enter` quebra linha;

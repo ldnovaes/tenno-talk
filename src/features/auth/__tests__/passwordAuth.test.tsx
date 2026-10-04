@@ -23,7 +23,7 @@ describe("email + password", () => {
 
   it("shows the server error for a duplicate email", async () => {
     renderApp("/signup");
-    await userEvent.type(await screen.findByLabelText("Email"), "cam@demo.tenno.talk");
+    await userEvent.type(await screen.findByLabelText("Email"), "linh@demo.tenno.talk");
     await userEvent.type(screen.getByLabelText("Password"), "secret123");
     await userEvent.type(screen.getByLabelText("Confirm password"), "secret123");
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
@@ -45,7 +45,7 @@ describe("email + password", () => {
 
   it("rejects wrong credentials and signs in with the right ones", async () => {
     renderApp("/signin");
-    await userEvent.type(await screen.findByLabelText("Email"), "cam@demo.tenno.talk");
+    await userEvent.type(await screen.findByLabelText("Email"), "linh@demo.tenno.talk");
     await userEvent.type(screen.getByLabelText("Password"), "wrong-password");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByText("Invalid email or password.")).toBeInTheDocument();

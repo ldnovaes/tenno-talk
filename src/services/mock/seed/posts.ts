@@ -14,12 +14,12 @@ interface SeedPost {
 
 const SEED_POSTS: SeedPost[] = [
   {
-    id: "post_cam_1",
-    authorId: "usr_cam",
-    phrase: "post_cam_1",
+    id: "post_linh_1",
+    authorId: "usr_linh",
+    phrase: "post_linh_1",
     hours: 2,
     images: [{ hueA: 20, hueB: 45, alt: "Sunset over West Lake" }],
-    likedBy: ["usr_lucas", "usr_minh", "usr_sofia"],
+    likedBy: ["usr_rafael", "usr_minh", "usr_sofia"],
   },
   {
     id: "post_sofia_1",
@@ -30,15 +30,15 @@ const SEED_POSTS: SeedPost[] = [
     likedBy: ["usr_emma"],
   },
   {
-    id: "post_lucas_1",
-    authorId: "usr_lucas",
-    phrase: "post_lucas_1",
+    id: "post_rafael_1",
+    authorId: "usr_rafael",
+    phrase: "post_rafael_1",
     hours: 9,
     images: [
       { hueA: 195, hueB: 175, alt: "Beach in Ubatuba" },
       { hueA: 200, hueB: 60, alt: "Sea and sand" },
     ],
-    likedBy: ["usr_cam", "usr_sofia"],
+    likedBy: ["usr_linh", "usr_sofia"],
   },
   {
     id: "post_yuki_1",
@@ -54,7 +54,7 @@ const SEED_POSTS: SeedPost[] = [
     phrase: "post_minh_1",
     hours: 20,
     images: [{ hueA: 40, hueB: 30, alt: "Bánh mì sandwich" }],
-    likedBy: ["usr_cam"],
+    likedBy: ["usr_linh"],
   },
   {
     id: "post_emma_1",
@@ -73,16 +73,16 @@ const SEED_POSTS: SeedPost[] = [
     likedBy: [],
   },
   {
-    id: "post_cam_2",
-    authorId: "usr_cam",
-    phrase: "post_cam_2",
+    id: "post_linh_2",
+    authorId: "usr_linh",
+    phrase: "post_linh_2",
     hours: 40,
     images: [
       { hueA: 15, hueB: 50, alt: "Lanterns in Hội An" },
       { hueA: 45, hueB: 25, alt: "Old town street" },
       { hueA: 190, hueB: 40, alt: "River at night" },
     ],
-    likedBy: ["usr_lucas"],
+    likedBy: ["usr_rafael"],
   },
   {
     id: "post_lena_1",
@@ -98,7 +98,7 @@ const SEED_POSTS: SeedPost[] = [
     phrase: "post_omar_1",
     hours: 60,
     images: [{ hueA: 25, hueB: 200, alt: "Sunrise over the Nile" }],
-    likedBy: ["usr_lucas"],
+    likedBy: ["usr_rafael"],
   },
   {
     id: "post_mei_1",
@@ -127,9 +127,9 @@ const SEED_POSTS: SeedPost[] = [
 ];
 
 const SEED_COMMENTS = [
-  { id: "cmt_1", postId: "post_cam_1", authorId: "usr_lucas", phrase: "comment_1", hours: 1.5 },
-  { id: "cmt_2", postId: "post_cam_1", authorId: "usr_minh", phrase: "comment_2", hours: 1 },
-  { id: "cmt_3", postId: "post_lucas_1", authorId: "usr_cam", phrase: "comment_3", hours: 8 },
+  { id: "cmt_1", postId: "post_linh_1", authorId: "usr_rafael", phrase: "comment_1", hours: 1.5 },
+  { id: "cmt_2", postId: "post_linh_1", authorId: "usr_minh", phrase: "comment_2", hours: 1 },
+  { id: "cmt_3", postId: "post_rafael_1", authorId: "usr_linh", phrase: "comment_3", hours: 8 },
   { id: "cmt_4", postId: "post_sofia_1", authorId: "usr_emma", phrase: "comment_4", hours: 4 },
 ];
 

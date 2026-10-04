@@ -6,7 +6,7 @@ import { mockTranslationService } from "@/services/mock/implementations/mockTran
 import { writeMockSession } from "@/services/mock/session";
 
 describe("mockFeedService", () => {
-  beforeEach(() => writeMockSession("usr_lucas"));
+  beforeEach(() => writeMockSession("usr_rafael"));
 
   it("pages the feed newest first", async () => {
     const first = await mockFeedService.getFeed(null);
@@ -24,7 +24,7 @@ describe("mockFeedService", () => {
   });
 
   it("projects captions in the viewer's language, keeping the original", async () => {
-    const post = await mockFeedService.getPost("post_cam_1");
+    const post = await mockFeedService.getPost("post_linh_1");
     expect(post.caption).toEqual({
       text: "Hoàng hôn ở Hồ Tây hôm nay đẹp quá 🌅",
       language: "vi-VN",
@@ -51,7 +51,7 @@ describe("mockFeedService", () => {
     expect(notifications).toHaveLength(1);
     expect(notifications[0]).toMatchObject({
       type: "like",
-      actorId: "usr_lucas",
+      actorId: "usr_rafael",
       postId: "post_yuki_1",
     });
     const unliked = await mockFeedService.unlike("post_yuki_1");
@@ -60,7 +60,7 @@ describe("mockFeedService", () => {
 
   it("does not notify yourself", async () => {
     const before = Object.keys(mockDb.read().notifications).length;
-    await mockFeedService.like("post_lucas_1");
+    await mockFeedService.like("post_rafael_1");
     expect(Object.keys(mockDb.read().notifications)).toHaveLength(before);
   });
 
@@ -80,7 +80,7 @@ describe("mockFeedService", () => {
     await expect(mockFeedService.addComment("post_yuki_1", "Oi")).rejects.toMatchObject({
       code: "forbidden",
     });
-    await expect(mockFeedService.addComment("post_lucas_1", "  ")).rejects.toMatchObject({
+    await expect(mockFeedService.addComment("post_rafael_1", "  ")).rejects.toMatchObject({
       code: "validation",
     });
   });
@@ -89,7 +89,7 @@ describe("mockFeedService", () => {
     mockDb.update((db) => {
       const leo = db.users["usr_leo"];
       if (leo) leo.preferences.privacy.profileVisibility = "private";
-      db.users["usr_omar"]?.blockedUserIds.push("usr_lucas");
+      db.users["usr_omar"]?.blockedUserIds.push("usr_rafael");
     });
     await expect(mockFeedService.getPost("post_leo_1")).rejects.toMatchObject({
       code: "not_found",
@@ -100,7 +100,7 @@ describe("mockFeedService", () => {
     expect((await mockFeedService.getUserPosts("usr_leo", null)).items).toEqual([]);
     mockDb.update((db) => {
       db.follows.push({
-        followerId: "usr_lucas",
+        followerId: "usr_rafael",
         followeeId: "usr_leo",
         createdAt: new Date().toISOString(),
       });
@@ -146,17 +146,17 @@ describe("mockFeedService", () => {
 
   it("translates content on demand and caches it", async () => {
     mockDb.update((db) => {
-      const lucas = db.users["usr_lucas"];
-      if (lucas) lucas.preferences.translation.receivingLanguage = "es-ES";
+      const rafael = db.users["usr_rafael"];
+      if (rafael) rafael.preferences.translation.receivingLanguage = "es-ES";
     });
-    const before = await mockFeedService.getPost("post_cam_1");
+    const before = await mockFeedService.getPost("post_linh_1");
     expect(before.captionTranslation).toBeNull();
     const translation = await mockTranslationService.translateContent(
-      { kind: "post", id: "post_cam_1" },
+      { kind: "post", id: "post_linh_1" },
       "es-ES",
     );
     expect(translation.status).toBe("translated");
-    expect((await mockFeedService.getPost("post_cam_1")).captionTranslation?.text).toBe(
+    expect((await mockFeedService.getPost("post_linh_1")).captionTranslation?.text).toBe(
       translation.text,
     );
   });

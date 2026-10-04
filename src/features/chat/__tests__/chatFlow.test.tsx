@@ -9,20 +9,20 @@ import { writeMockSession } from "@/services/mock/session";
 import { setViewportWidth } from "@/test/setup";
 import { renderApp, signInAs } from "@/test/utils";
 
-async function openConversation(id = "conv_lucas_cam") {
-  signInAs("usr_lucas");
+async function openConversation(id = "conv_rafael_linh") {
+  signInAs("usr_rafael");
   renderApp(`/chats/${id}`);
   const log = await screen.findByRole("log", { name: "Messages" });
   return { log, input: screen.getByRole("textbox", { name: "Message" }) };
 }
 
-/** Acts as another user on the mock backend while the UI stays signed in as Lucas. */
+/** Acts as another user on the mock backend while the UI stays signed in as Rafael. */
 async function asOtherUser<T>(userId: string, action: () => Promise<T>): Promise<T> {
   writeMockSession(userId);
   try {
     return await act(action);
   } finally {
-    writeMockSession("usr_lucas");
+    writeMockSession("usr_rafael");
   }
 }
 
@@ -72,11 +72,11 @@ describe("chat", () => {
     if (!(bubble instanceof HTMLElement)) throw new Error("bubble not found");
     await user.click(within(bubble).getByRole("button", { name: "Message actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Reply" }));
-    expect(screen.getByText("Replying to Cam Nguyen")).toBeInTheDocument();
+    expect(screen.getByText("Replying to Linh Pham")).toBeInTheDocument();
     await user.type(input, "Combinado!{Enter}");
-    const quote = await within(log).findByRole("button", { name: "Reply to Cam Nguyen" });
+    const quote = await within(log).findByRole("button", { name: "Reply to Linh Pham" });
     expect(quote).toHaveTextContent("Pode ser! Sábado às 8 da noite, então.");
-    expect(screen.queryByText("Replying to Cam Nguyen")).not.toBeInTheDocument();
+    expect(screen.queryByText("Replying to Linh Pham")).not.toBeInTheDocument();
   });
 
   it("cancels a reply with Escape", async () => {
@@ -87,7 +87,7 @@ describe("chat", () => {
     await user.click(within(bubble).getByRole("button", { name: "Message actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Reply" }));
     await user.type(input, "{Escape}");
-    expect(screen.queryByText("Replying to Cam Nguyen")).not.toBeInTheDocument();
+    expect(screen.queryByText("Replying to Linh Pham")).not.toBeInTheDocument();
   });
 
   it("reacts and removes the reaction", async () => {
@@ -107,10 +107,10 @@ describe("chat", () => {
 
   it("receives a message in realtime and shows it translated", async () => {
     const { log } = await openConversation();
-    await asOtherUser("usr_cam", () =>
+    await asOtherUser("usr_linh", () =>
       mockChatService.sendMessage({
-        conversationId: "conv_lucas_cam",
-        clientId: "from-cam",
+        conversationId: "conv_rafael_linh",
+        clientId: "from-linh",
         text: "Em cũng yêu anh",
         media: [],
         replyToId: null,
@@ -125,8 +125,8 @@ describe("chat", () => {
     act(() =>
       publish({
         kind: "typing",
-        conversationId: "conv_lucas_cam",
-        userId: "usr_cam",
+        conversationId: "conv_rafael_linh",
+        userId: "usr_linh",
         isTyping: true,
       }),
     );
@@ -134,8 +134,8 @@ describe("chat", () => {
     act(() =>
       publish({
         kind: "typing",
-        conversationId: "conv_lucas_cam",
-        userId: "usr_cam",
+        conversationId: "conv_rafael_linh",
+        userId: "usr_linh",
         isTyping: false,
       }),
     );
@@ -146,7 +146,7 @@ describe("chat", () => {
 
   it("marks a conversation as read when opened", async () => {
     const user = userEvent.setup();
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/chats");
     const list = await screen.findByRole("list", { name: "Chats" });
     expect(await within(list).findByLabelText("2 unread messages")).toBeInTheDocument();
@@ -158,10 +158,10 @@ describe("chat", () => {
 
   it("filters unread conversations and searches", async () => {
     const user = userEvent.setup();
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/chats");
     const list = await screen.findByRole("list", { name: "Chats" });
-    await within(list).findByText("Cam Nguyen");
+    await within(list).findByText("Linh Pham");
     await user.click(screen.getByRole("radio", { name: "Unread" }));
     expect(
       within(list)
@@ -180,7 +180,7 @@ describe("chat", () => {
     const list = screen.getByRole("list", { name: "Chats" });
     await user.click(within(list).getByRole("link", { name: /Emma Johnson/ }));
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue(""));
-    await user.click(within(list).getByRole("link", { name: /Cam Nguyen/ }));
+    await user.click(within(list).getByRole("link", { name: /Linh Pham/ }));
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("rascunho"),
     );
@@ -188,7 +188,7 @@ describe("chat", () => {
 
   it("starts a new conversation from the new chat dialog", async () => {
     const user = userEvent.setup();
-    signInAs("usr_lucas");
+    signInAs("usr_rafael");
     renderApp("/chats");
     await user.click(await screen.findByRole("button", { name: "New chat" }));
     const dialog = await screen.findByRole("dialog", { name: "New chat" });
@@ -212,8 +212,8 @@ describe("chat", () => {
   });
 
   it("shows the conversation not found state", async () => {
-    signInAs("usr_lucas");
-    renderApp("/chats/conv_cam_jisoo");
+    signInAs("usr_rafael");
+    renderApp("/chats/conv_linh_jisoo");
     expect(
       await screen.findByText("You are not a member of this conversation."),
     ).toBeInTheDocument();

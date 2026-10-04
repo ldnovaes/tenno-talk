@@ -16,13 +16,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class NotificationsIT extends IntegrationTest {
 
-    private UUID lucas;
-    private UUID cam;
+    private UUID rafael;
+    private UUID linh;
 
     @BeforeEach
     void people() {
-        lucas = data.user("lucas", "pt-BR");
-        cam = data.user("cam", "vi-VN");
+        rafael = data.user("rafael", "pt-BR");
+        linh = data.user("linh", "vi-VN");
     }
 
     private long unread(UUID user) throws Exception {
@@ -36,30 +36,30 @@ class NotificationsIT extends IntegrationTest {
 
     @Test
     void followingNotifies() throws Exception {
-        api.put(cam, "/api/profiles/" + lucas + "/follow").andExpect(status().isOk());
-        JsonNode list = api.getOk(lucas, "/api/notifications");
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+        JsonNode list = api.getOk(rafael, "/api/notifications");
         assertThat(list.size()).isOne();
         assertThat(list.at("/0/type").asString()).isEqualTo("follow");
-        assertThat(list.at("/0/actor/username").asString()).isEqualTo("cam");
+        assertThat(list.at("/0/actor/username").asString()).isEqualTo("linh");
         assertThat(list.at("/0/readAt").isNull()).isTrue();
         assertThat(list.get(0).has("postId")).isFalse();
-        assertThat(unread(lucas)).isOne();
+        assertThat(unread(rafael)).isOne();
     }
 
     @Test
     void followingTwiceNotifiesOnce() throws Exception {
-        api.put(cam, "/api/profiles/" + lucas + "/follow");
-        api.put(cam, "/api/profiles/" + lucas + "/follow");
-        assertThat(api.getOk(lucas, "/api/notifications").size()).isOne();
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        assertThat(api.getOk(rafael, "/api/notifications").size()).isOne();
     }
 
     @Test
     void notificationsAreNewestFirstWithTheirTargets() throws Exception {
-        String post = post(lucas);
-        api.put(cam, "/api/posts/" + post + "/like");
-        String comment = api.postOk(cam, "/api/posts/" + post + "/comments", Map.of("text", "đẹp")).get("id").asString();
+        String post = post(rafael);
+        api.put(linh, "/api/posts/" + post + "/like");
+        String comment = api.postOk(linh, "/api/posts/" + post + "/comments", Map.of("text", "đẹp")).get("id").asString();
 
-        JsonNode list = api.getOk(lucas, "/api/notifications");
+        JsonNode list = api.getOk(rafael, "/api/notifications");
         assertThat(list.size()).isEqualTo(2);
         assertThat(list.at("/0/type").asString()).isEqualTo("comment");
         assertThat(list.at("/0/postId").asString()).isEqualTo(post);
@@ -70,47 +70,47 @@ class NotificationsIT extends IntegrationTest {
 
     @Test
     void readAllClearsTheBadge() throws Exception {
-        api.put(cam, "/api/profiles/" + lucas + "/follow");
-        assertThat(unread(lucas)).isOne();
-        api.post(lucas, "/api/notifications/read-all", null).andExpect(status().isNoContent());
-        assertThat(unread(lucas)).isZero();
-        assertThat(api.getOk(lucas, "/api/notifications").at("/0/readAt").isNull()).isFalse();
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        assertThat(unread(rafael)).isOne();
+        api.post(rafael, "/api/notifications/read-all", null).andExpect(status().isNoContent());
+        assertThat(unread(rafael)).isZero();
+        assertThat(api.getOk(rafael, "/api/notifications").at("/0/readAt").isNull()).isFalse();
     }
 
     @Test
     void notificationsArePrivate() throws Exception {
-        api.put(cam, "/api/profiles/" + lucas + "/follow");
-        assertThat(api.getOk(cam, "/api/notifications").size()).isZero();
-        api.post(cam, "/api/notifications/read-all", null);
-        assertThat(unread(lucas)).isOne();
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        assertThat(api.getOk(linh, "/api/notifications").size()).isZero();
+        api.post(linh, "/api/notifications/read-all", null);
+        assertThat(unread(rafael)).isOne();
     }
 
     @Test
     void eachTypeHonorsItsPreference() throws Exception {
-        data.setPreference(lucas, "notify_followers", false);
-        data.setPreference(lucas, "notify_comments", false);
-        String post = post(lucas);
-        api.put(cam, "/api/profiles/" + lucas + "/follow");
-        api.postOk(cam, "/api/posts/" + post + "/comments", Map.of("text", "oi"));
-        api.put(cam, "/api/posts/" + post + "/like");
-        JsonNode list = api.getOk(lucas, "/api/notifications");
+        data.setPreference(rafael, "notify_followers", false);
+        data.setPreference(rafael, "notify_comments", false);
+        String post = post(rafael);
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        api.postOk(linh, "/api/posts/" + post + "/comments", Map.of("text", "oi"));
+        api.put(linh, "/api/posts/" + post + "/like");
+        JsonNode list = api.getOk(rafael, "/api/notifications");
         assertThat(list.size()).isOne();
         assertThat(list.at("/0/type").asString()).isEqualTo("like");
     }
 
     @Test
     void blockedActorsDisappearFromTheList() throws Exception {
-        api.put(cam, "/api/profiles/" + lucas + "/follow");
-        data.block(lucas, cam);
-        assertThat(api.getOk(lucas, "/api/notifications").size()).isZero();
-        assertThat(unread(lucas)).isZero();
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        data.block(rafael, linh);
+        assertThat(api.getOk(rafael, "/api/notifications").size()).isZero();
+        assertThat(unread(rafael)).isZero();
     }
 
     @Test
     void nobodyIsNotifiedAboutTheirOwnActions() throws Exception {
-        String post = post(lucas);
-        api.put(lucas, "/api/posts/" + post + "/like");
-        api.postOk(lucas, "/api/posts/" + post + "/comments", Map.of("text", "eu"));
-        assertThat(api.getOk(lucas, "/api/notifications").size()).isZero();
+        String post = post(rafael);
+        api.put(rafael, "/api/posts/" + post + "/like");
+        api.postOk(rafael, "/api/posts/" + post + "/comments", Map.of("text", "eu"));
+        assertThat(api.getOk(rafael, "/api/notifications").size()).isZero();
     }
 }

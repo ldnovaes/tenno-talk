@@ -50,20 +50,20 @@ class RateLimitIT extends IntegrationTest {
 
     @Test
     void limitsArePerUser() throws Exception {
-        UUID lucas = data.user("lucas", "pt-BR");
-        UUID cam = data.user("cam", "vi-VN");
+        UUID rafael = data.user("rafael", "pt-BR");
+        UUID linh = data.user("linh", "vi-VN");
         for (int i = 0; i < 30; i++) {
-            api.post(lucas, "/api/posts", Map.of()).andExpect(status().isBadRequest());
+            api.post(rafael, "/api/posts", Map.of()).andExpect(status().isBadRequest());
         }
-        api.post(lucas, "/api/posts", Map.of()).andExpect(status().isTooManyRequests());
-        api.post(cam, "/api/posts", Map.of()).andExpect(status().isBadRequest());
+        api.post(rafael, "/api/posts", Map.of()).andExpect(status().isTooManyRequests());
+        api.post(linh, "/api/posts", Map.of()).andExpect(status().isBadRequest());
     }
 
     @Test
     void readsAreNotLimited() throws Exception {
-        UUID lucas = data.user("lucas", "pt-BR");
+        UUID rafael = data.user("rafael", "pt-BR");
         for (int i = 0; i < 150; i++) {
-            mvc.perform(get("/api/conversations").with(as(lucas))).andExpect(status().isOk());
+            mvc.perform(get("/api/conversations").with(as(rafael))).andExpect(status().isOk());
         }
     }
 

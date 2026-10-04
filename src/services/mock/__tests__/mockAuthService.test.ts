@@ -24,19 +24,19 @@ describe("mockAuthService", () => {
 
   it("rejects a duplicate email with a field error", async () => {
     await expect(
-      mockAuthService.signUp({ email: "lucas@demo.tenno.talk", password: "whatever1" }),
+      mockAuthService.signUp({ email: "rafael@demo.tenno.talk", password: "whatever1" }),
     ).rejects.toMatchObject({ code: "conflict", fieldErrors: { email: expect.any(String) } });
   });
 
   it("signs in with the right password only", async () => {
     await expect(
-      mockAuthService.signInWithPassword({ email: "lucas@demo.tenno.talk", password: "nope" }),
+      mockAuthService.signInWithPassword({ email: "rafael@demo.tenno.talk", password: "nope" }),
     ).rejects.toMatchObject({ code: "unauthenticated" });
     const session = await mockAuthService.signInWithPassword({
-      email: "LUCAS@demo.tenno.talk",
+      email: "RAFAEL@demo.tenno.talk",
       password: "demo1234",
     });
-    expect(session.userId).toBe("usr_lucas");
+    expect(session.userId).toBe("usr_rafael");
   });
 
   it("creates a fresh account for each simulated OAuth sign-in", async () => {
@@ -50,22 +50,22 @@ describe("mockAuthService", () => {
   });
 
   it("signs in as a demo account", async () => {
-    expect(await mockAuthService.signInAsDemo("usr_cam")).toEqual({ userId: "usr_cam" });
+    expect(await mockAuthService.signInAsDemo("usr_linh")).toEqual({ userId: "usr_linh" });
     await expect(mockAuthService.signInAsDemo("usr_nobody")).rejects.toMatchObject({
       code: "not_found",
     });
   });
 
   it("ignores a session for a user that no longer exists", async () => {
-    await mockAuthService.signInAsDemo("usr_cam");
+    await mockAuthService.signInAsDemo("usr_linh");
     mockDb.update((db) => {
-      delete db.users["usr_cam"];
+      delete db.users["usr_linh"];
     });
     expect(await mockAuthService.getSession()).toBeNull();
   });
 
   it("signs out", async () => {
-    await mockAuthService.signInAsDemo("usr_cam");
+    await mockAuthService.signInAsDemo("usr_linh");
     await mockAuthService.signOut();
     expect(readMockSession()).toBeNull();
   });

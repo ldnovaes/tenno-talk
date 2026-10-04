@@ -25,15 +25,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminAiIT extends IntegrationTest {
 
     private UUID admin;
-    private UUID lucas;
-    private UUID cam;
+    private UUID rafael;
+    private UUID linh;
 
     @BeforeEach
     void people() {
         admin = data.user("admin", "pt-BR");
         data.makeAdmin(admin);
-        lucas = data.user("lucas", "pt-BR");
-        cam = data.user("cam", "vi-VN");
+        rafael = data.user("rafael", "pt-BR");
+        linh = data.user("linh", "vi-VN");
     }
 
     private JsonNode adminPost(String path) throws Exception {
@@ -57,7 +57,7 @@ class AdminAiIT extends IntegrationTest {
     }
 
     private void waitingJob() throws Exception {
-        steps.send(lucas, steps.direct(lucas, cam), "Oi!");
+        steps.send(rafael, steps.direct(rafael, linh), "Oi!");
         jdbc.sql("UPDATE translation_jobs SET status = 'waiting_provider'").update();
     }
 
@@ -70,9 +70,9 @@ class AdminAiIT extends IntegrationTest {
     @Test
     void onlyAdminsGetIn() throws Exception {
         mvc.perform(get("/api/admin/ai")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/admin/ai").with(as(lucas))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("forbidden"));
-        mvc.perform(post("/api/admin/ai/codex/reauth").with(as(lucas)).with(csrf())).andExpect(status().isForbidden());
-        mvc.perform(post("/api/admin/ai/codex/check").with(as(lucas)).with(csrf())).andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/ai").with(as(rafael))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("forbidden"));
+        mvc.perform(post("/api/admin/ai/codex/reauth").with(as(rafael)).with(csrf())).andExpect(status().isForbidden());
+        mvc.perform(post("/api/admin/ai/codex/check").with(as(rafael)).with(csrf())).andExpect(status().isForbidden());
         assertThat(ai.calls()).isEmpty();
     }
 
@@ -92,7 +92,7 @@ class AdminAiIT extends IntegrationTest {
 
     @Test
     void statusListsProvidersInPriorityOrderAndTheQueue() throws Exception {
-        steps.send(lucas, steps.direct(lucas, cam), "Oi!");
+        steps.send(rafael, steps.direct(rafael, linh), "Oi!");
         JsonNode body = aiStatus();
         assertThat(body.at("/providers/0/provider").asString()).isEqualTo("codex");
         assertThat(body.at("/providers/1/provider").asString()).isEqualTo("claude");
