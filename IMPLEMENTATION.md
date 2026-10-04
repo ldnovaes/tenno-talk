@@ -487,11 +487,12 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 - [x] Testes: os dois SDKs contra um servidor stub local, `ApiErrors`, `FakeTranslators` nos testes de integração (suíte completa do backend: 402 testes)
 - [x] Painel `/admin/ai`: modelo, `invalid_key`/`not_configured`, dica do Infisical, sem login; Política de Privacidade atualizada e versão dos termos `2026-10-04` (novo aceite)
 - [x] Deploy: `tenno-talk.service` com `infisical run`; provision sem Node/CLIs e exigindo a machine identity; `ai-login` removido; imagem Docker sem Node; `.env.example` com as chaves
-- [ ] Infisical: `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no projeto `tenno-talk` (env `prod`)
+- [x] Infisical: `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no projeto `tenno-talk` (env `prod`); "Injecting 2 Infisical secrets" na subida
 - [x] provision e deploy gravam a identity do Infisical no `tenno.env` da VPS a partir do `vps.env` local (`remote/set-env.sh`, pelo stdin do ssh); o deploy para cedo se faltar a identity ou se o serviço da VPS ainda for o antigo
 - [x] Identity `vps-prod-eldialabs` criada no projeto `tenno-talk` (Viewer). A da Eldia não serve: é gerenciada pelo projeto dela
-- [ ] Client ID + Client Secret dessa identity em `TENNO_INFISICAL_CLIENT_ID`/`_SECRET` no `vps.env` local
-- [ ] `./tenno vps provision` e `./tenno run deploy:prod`
+- [x] Client ID + Client Secret dessa identity em `TENNO_INFISICAL_CLIENT_ID`/`_SECRET` no `vps.env` local
+- [x] `./tenno vps provision` (vizinhos inalterados) e `./tenno run deploy:prod` (`eee9b13`, todos os testes + e2e 17/17; migration V3 aplicada)
 - [ ] Limite de gasto nos consoles da OpenAI e da Anthropic
-- [ ] Smoke em produção: mensagem traduzida com `provider=openai`; `AI usage` no log; `/admin/ai` com os dois provedores em `ok`
-- [ ] Limpar `/opt/tenno-talk/{node,cli}` e `/var/lib/tenno-talk/{.codex,.claude}` na VPS
+- [x] Smoke em produção: jobs parados retomados e traduzidos com `provider=openai` (`AI usage` ~230 tokens de entrada / ~20 de saída); os dois provedores em `ok`; as duas chaves aceitas (modelo consultado, HTTP 200)
+- [ ] Primeira tradução real pela Anthropic (só acontece quando a OpenAI falhar)
+- [x] Limpar `/opt/tenno-talk/{node,cli}` e `/var/lib/tenno-talk/{.codex,.claude}` na VPS (~1 GB)
