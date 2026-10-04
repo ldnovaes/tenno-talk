@@ -40,6 +40,22 @@ describe("profile", () => {
     );
   });
 
+  it("requests access to a private profile and can cancel the request", async () => {
+    mockDb.update((db) => {
+      const emma = db.users["usr_emma"];
+      if (emma) emma.preferences.privacy.profileVisibility = "private";
+    });
+    const user = userEvent.setup();
+    renderApp("/u/emma");
+    await user.click(await screen.findByRole("button", { name: "Follow" }));
+    expect(await screen.findByRole("button", { name: "Requested" })).toBeInTheDocument();
+    expect(mockDb.read().follows.some((f) => f.followeeId === "usr_emma")).toBe(false);
+    expect(mockDb.read().followRequests.some((f) => f.followeeId === "usr_emma")).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Requested" }));
+    await waitFor(() => expect(mockDb.read().followRequests).toHaveLength(0));
+    expect(await screen.findByRole("button", { name: "Follow" })).toBeInTheDocument();
+  });
+
   it("opens the conversation from Message", async () => {
     const user = userEvent.setup();
     renderApp("/u/linh");

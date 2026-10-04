@@ -46,6 +46,30 @@ describe("settings", () => {
     );
   });
 
+  it("lets a private account approve a follow request", async () => {
+    mockDb.update((db) => {
+      const rafael = db.users["usr_rafael"];
+      if (rafael) rafael.preferences.privacy.profileVisibility = "private";
+      db.followRequests.push({
+        followerId: "usr_emma",
+        followeeId: "usr_rafael",
+        createdAt: new Date().toISOString(),
+      });
+    });
+    const user = userEvent.setup();
+    renderApp("/settings/privacy");
+    expect(await screen.findByText("Emma Johnson")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Approve" }));
+    await waitFor(() =>
+      expect(
+        mockDb
+          .read()
+          .follows.some((f) => f.followerId === "usr_emma" && f.followeeId === "usr_rafael"),
+      ).toBe(true),
+    );
+    expect(mockDb.read().followRequests).toHaveLength(0);
+  });
+
   it("lists and unblocks blocked users", async () => {
     mockDb.update((db) => {
       db.users["usr_rafael"]?.blockedUserIds.push("usr_mei");

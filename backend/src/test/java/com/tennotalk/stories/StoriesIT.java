@@ -143,6 +143,20 @@ class StoriesIT extends IntegrationTest {
         assertThat(api.getOk(rafael, "/api/stories/tray").at("/0/user/username").asString()).isEqualTo("ana");
     }
 
+    @Test
+    void pendingFollowRequestDoesNotRevealPrivateStories() throws Exception {
+        String id = story(ana, "private story");
+        data.setPreference(ana, "profile_visibility", "private");
+
+        api.put(rafael, "/api/profiles/" + ana + "/follow").andExpect(status().isOk())
+                .andExpect(jsonPath("$.followRequestPending").value(true));
+        assertThat(api.getOk(rafael, "/api/stories/tray").size()).isZero();
+        api.get(rafael, "/api/stories/" + id).andExpect(status().isNotFound());
+
+        api.post(ana, "/api/me/follow-requests/" + rafael + "/approve", null).andExpect(status().isNoContent());
+        api.get(rafael, "/api/stories/" + id).andExpect(status().isOk());
+    }
+
     // ---- reactions and replies --------------------------------------------
 
     @Test

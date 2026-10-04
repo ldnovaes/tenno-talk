@@ -263,7 +263,7 @@ public class ChatService {
         if (viewer.equals(target)) throw ApiException.validation("You can't message yourself.");
         UserRow other = users.findById(target).filter(UserRow::onboarded).orElseThrow(() -> ApiException.notFound("User not found."));
         graph.lockPair(viewer, target);
-        if (graph.blockedEitherWay(viewer, other.id())) throw ApiException.forbidden("You can't message this person.");
+        if (graph.blockedEitherWay(viewer, other.id())) throw ApiException.forbidden("Messaging is unavailable.");
         String key = directKey(viewer, target);
         Optional<UUID> existing = chat.findDirect(key);
         if (existing.isPresent()) return conversation(viewer, existing.get());

@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,7 +52,8 @@ class ChatIT extends IntegrationTest {
 
     @Test
     void directConversationsRespectPrivacyAndBlocks() throws Exception {
-        data.setPreference(linh, "who_can_message", "nobody");
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("privacy", Map.of("whoCanMessage", "nobody"))).with(as(linh)))
+                .andExpect(status().isOk());
         data.setPreference(sofia, "who_can_message", "followers");
         mvc.perform(withJson(post("/api/conversations/direct"), Map.of("userId", linh)).with(as(rafael)))
                 .andExpect(status().isForbidden());
@@ -62,7 +64,9 @@ class ChatIT extends IntegrationTest {
         mvc.perform(withJson(post("/api/conversations/direct"), Map.of("userId", sofia)).with(as(rafael))).andExpect(status().isOk());
         UUID omar = data.user("omar", "ar");
         data.block(omar, rafael);
-        mvc.perform(withJson(post("/api/conversations/direct"), Map.of("userId", omar)).with(as(rafael))).andExpect(status().isForbidden());
+        mvc.perform(withJson(post("/api/conversations/direct"), Map.of("userId", omar)).with(as(rafael)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value("Messaging is unavailable."));
         mvc.perform(withJson(post("/api/conversations/direct"), Map.of("userId", rafael)).with(as(rafael))).andExpect(status().isBadRequest());
         mvc.perform(withJson(post("/api/conversations/direct"), Map.of("userId", UUID.randomUUID())).with(as(rafael)))
                 .andExpect(status().isNotFound());
@@ -72,7 +76,8 @@ class ChatIT extends IntegrationTest {
     void privacyChangesAndBlocksStopNewMessagesInAnExistingConversation() throws Exception {
         UUID conversation = steps.direct(rafael, linh);
         JsonNode original = steps.send(rafael, conversation, "Before privacy changed", "before-privacy");
-        data.setPreference(linh, "who_can_message", "nobody");
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("privacy", Map.of("whoCanMessage", "nobody"))).with(as(linh)))
+                .andExpect(status().isOk());
         mvc.perform(withJson(post("/api/conversations/" + conversation + "/messages"),
                 Map.of("clientId", "after-privacy", "text", "This must not arrive")).with(as(rafael)))
                 .andExpect(status().isForbidden())
@@ -83,10 +88,12 @@ class ChatIT extends IntegrationTest {
         assertThat(count("SELECT count(*) FROM messages")).isOne();
         assertThat(count("SELECT count(*) FROM notifications WHERE recipient_id = '" + linh + "'")).isOne();
 
-        data.setPreference(linh, "who_can_message", "followers");
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("privacy", Map.of("whoCanMessage", "followers"))).with(as(linh)))
+                .andExpect(status().isOk());
         data.follow(linh, rafael);
         steps.send(rafael, conversation, "Allowed by Linh", "allowed");
-        data.block(linh, rafael);
+        mvc.perform(put("/api/profiles/" + rafael + "/block").with(as(linh)).with(csrf()))
+                .andExpect(status().isNoContent());
         for (UUID sender : List.of(rafael, linh)) {
             mvc.perform(withJson(post("/api/conversations/" + conversation + "/messages"),
                     Map.of("clientId", "blocked-" + sender, "text", "Blocked")).with(as(sender)))

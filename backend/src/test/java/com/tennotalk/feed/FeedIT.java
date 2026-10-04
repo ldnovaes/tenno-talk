@@ -153,6 +153,20 @@ class FeedIT extends IntegrationTest {
     }
 
     @Test
+    void aPendingFollowRequestDoesNotRevealPrivatePosts() throws Exception {
+        String id = post(rafael, "secret").get("id").asString();
+        data.setPreference(rafael, "profile_visibility", "private");
+
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk())
+                .andExpect(jsonPath("$.followRequestPending").value(true));
+        assertThat(api.getOk(linh, "/api/feed").get("items").size()).isZero();
+        api.get(linh, "/api/posts/" + id).andExpect(status().isNotFound());
+
+        api.post(rafael, "/api/me/follow-requests/" + linh + "/approve", null).andExpect(status().isNoContent());
+        api.get(linh, "/api/posts/" + id).andExpect(status().isOk());
+    }
+
+    @Test
     void authorsAlwaysSeeTheirOwnPrivatePosts() throws Exception {
         post(rafael, "secret");
         data.setPreference(rafael, "profile_visibility", "private");

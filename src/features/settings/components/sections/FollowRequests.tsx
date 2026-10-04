@@ -35,28 +35,35 @@ export function FollowRequests() {
       </p>
     );
   return (
-    <ul>
-      {requests.data.map((person) => (
-        <li key={person.id} className="flex items-center gap-3 px-4 py-3">
-          <UserAvatar user={person} size="sm" />
-          <span className="min-w-0 flex-1 truncate font-medium">{person.displayName}</span>
-          <Button
-            size="sm"
-            disabled={decide.isPending}
-            onClick={() => decide.mutate({ userId: person.id, approve: true })}
-          >
-            {t("settings.privacySection.approve")}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={decide.isPending}
-            onClick={() => decide.mutate({ userId: person.id, approve: false })}
-          >
-            {t("settings.privacySection.decline")}
-          </Button>
-        </li>
-      ))}
-    </ul>
+    <div>
+      {decide.isError && (
+        <p role="alert" className="px-4 py-2 text-sm text-destructive">
+          {t("errors.generic")}
+        </p>
+      )}
+      <ul>
+        {requests.data.map((person) => (
+          <li key={person.id} className="flex items-center gap-3 px-4 py-3">
+            <UserAvatar user={person} size="sm" />
+            <span className="min-w-0 flex-1 truncate font-medium">{person.displayName}</span>
+            <Button
+              size="sm"
+              disabled={decide.isPending}
+              onClick={() => decide.mutate({ userId: person.id, approve: true })}
+            >
+              {t("settings.privacySection.approve")}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={decide.isPending}
+              onClick={() => decide.mutate({ userId: person.id, approve: false })}
+            >
+              {t("settings.privacySection.decline")}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

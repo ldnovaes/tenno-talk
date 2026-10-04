@@ -191,6 +191,23 @@ class ProfileIT extends IntegrationTest {
     }
 
     @Test
+    void makingAProfilePublicResolvesPendingFollowRequests() throws Exception {
+        UUID owner = data.user("privateowner", "pt-BR");
+        UUID requester = data.user("requester", "vi-VN");
+        data.setPreference(owner, "profile_visibility", "private");
+        mvc.perform(put("/api/profiles/" + owner + "/follow").with(as(requester)).with(csrf()))
+                .andExpect(jsonPath("$.followRequestPending").value(true));
+
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("privacy", Map.of("profileVisibility", "public"))).with(as(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.preferences.privacy.profileVisibility").value("public"));
+        mvc.perform(get("/api/profiles/privateowner").with(as(requester)))
+                .andExpect(jsonPath("$.isFollowing").value(true))
+                .andExpect(jsonPath("$.followRequestPending").value(false));
+        assertThat(jdbc.sql("SELECT count(*) FROM follow_requests").query(Long.class).single()).isZero();
+    }
+
+    @Test
     void blockingHidesPeopleBothWaysAndRemovesFollows() throws Exception {
         UUID rafael = data.user("rafael", "pt-BR");
         UUID linh = data.user("linh", "vi-VN");
