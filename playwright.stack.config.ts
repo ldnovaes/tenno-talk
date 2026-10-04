@@ -12,5 +12,12 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
     baseURL: process.env["STACK_URL"] ?? "https://localhost:8443",
     ignoreHTTPSErrors: true,
+    // Rehearsals: e.g. STACK_HOST_RULES="MAP tenno.eldialabs.com:443 127.0.0.1:8443" reaches a
+    // local VM under the real domain name (cookies, CSP and the WebSocket origin check).
+    launchOptions: {
+      args: process.env["STACK_HOST_RULES"]
+        ? [`--host-resolver-rules=${process.env["STACK_HOST_RULES"]}`]
+        : [],
+    },
   },
 });

@@ -15,6 +15,8 @@ Commands:
   vps ssh                          Shell on the VPS
   vps status                       Service, health and release in production
   vps logs                         Follows the backend log
+  vps ai-login <codex|claude>      Logs a CLI in with the plan subscription (interactive,
+                                   once; the admin page can redo it later from the phone)
   vps backup                       Runs the backup now (database tenno + media)
 USAGE
   exit 1
@@ -53,6 +55,16 @@ case "$GROUP:$COMMAND" in
   vps:logs)
     source "$ROOT_DIR/deploy/shared-vps/lib.sh"
     exec ssh -t "${SSH_OPTS[@]}" "$TENNO_VPS_HOST" "journalctl -u tenno-talk -f -n 100"
+    ;;
+  vps:ai-login)
+    source "$ROOT_DIR/deploy/shared-vps/lib.sh"
+    case "${1:-}" in
+      codex) login="codex login --device-auth" ;;
+      claude) login="claude setup-token" ;;
+      *) usage ;;
+    esac
+    exec ssh -t "${SSH_OPTS[@]}" "$TENNO_VPS_HOST" \
+      "runuser -u tenno -- env HOME=/var/lib/tenno-talk PATH=/opt/tenno-talk/cli/bin:/opt/tenno-talk/node/bin:/usr/bin:/bin $login"
     ;;
   vps:backup)
     source "$ROOT_DIR/deploy/shared-vps/lib.sh"
