@@ -112,9 +112,14 @@ public class MediaRepository {
                                                                          OR (b.blocker_id = :viewer AND b.blocked_id = p.author_id))
                                  AND (up.profile_visibility = 'public' OR p.author_id = :viewer
                                       OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = :viewer AND f.followee_id = p.author_id)))
-                    OR EXISTS (SELECT 1 FROM stories s WHERE s.media_id = :media AND s.expires_at > now()
-                               AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = s.author_id AND b.blocked_id = :viewer)
-                                                                       OR (b.blocker_id = :viewer AND b.blocked_id = s.author_id)))
+                    OR EXISTS (SELECT 1 FROM stories s
+                               JOIN user_preferences up ON up.user_id = s.author_id
+                               WHERE s.media_id = :media AND s.expires_at > now()
+                                 AND (s.author_id = :viewer OR (
+                                   NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = s.author_id AND b.blocked_id = :viewer)
+                                                                           OR (b.blocker_id = :viewer AND b.blocked_id = s.author_id))
+                                   AND (up.profile_visibility = 'public' OR EXISTS (
+                                       SELECT 1 FROM follows f WHERE f.follower_id = :viewer AND f.followee_id = s.author_id)))))
                     OR EXISTS (SELECT 1 FROM users u WHERE u.avatar_url = '/api/media/' || :mediaText)
                 """)
                 .param("media", mediaId)

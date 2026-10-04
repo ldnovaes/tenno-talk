@@ -216,6 +216,22 @@ class MediaIT extends IntegrationTest {
     }
 
     @Test
+    void privateStoryMediaNeedsAnApprovedFollowEvenWithItsDirectUrl() throws Exception {
+        String id = uploadOk(rafael, "private.png", image("png", 2, 2));
+        api.postOk(rafael, "/api/stories", Map.of("mediaId", id));
+        data.setPreference(rafael, "profile_visibility", "private");
+
+        download(linh, id).andExpect(status().isNotFound());
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+        download(linh, id).andExpect(status().isNotFound());
+
+        api.post(rafael, "/api/me/follow-requests/" + linh + "/approve", null).andExpect(status().isNoContent());
+        download(linh, id).andExpect(status().isOk());
+        data.block(rafael, linh);
+        download(linh, id).andExpect(status().isNotFound());
+    }
+
+    @Test
     void avatarsArePublic() throws Exception {
         String id = uploadOk(rafael, "me.png", image("png", 2, 2));
         jdbc.sql("UPDATE users SET avatar_url = :url WHERE id = :id").param("url", "/api/media/" + id).param("id", rafael).update();

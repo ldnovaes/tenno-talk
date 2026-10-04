@@ -535,6 +535,7 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 - [ ] 11.9 — Validar visual, acessibilidade, navegação, push com app fechado e teclado/safe area em dispositivos; registrar evidências e pendências
 - [x] 11.10 — Revalidar bloqueio em cada envio direto (inclusive conversa antiga, encaminhamento e resposta a story), ocultar eventos em tempo real entre bloqueados e usar erro genérico
 - [x] 11.10 — Conta privada exige solicitação de seguir e aprovação; pedido pendente não libera posts/stories; bloqueio remove follows e pedidos nos dois sentidos
+- [x] 11.10 — Autorizar download direto de mídia de story pelas mesmas regras de privacidade e bloqueio do story
 - [x] 11.10 — Serializar mudanças rápidas de preferências no cliente e invalidar caches de perfis, Feed, stories e chat após alterações de privacidade/bloqueio
 - [ ] 11.10 — Confirmar privacidade, bloqueio, pedidos de seguir e ausência de push após bloqueio em dois dispositivos reais
 
