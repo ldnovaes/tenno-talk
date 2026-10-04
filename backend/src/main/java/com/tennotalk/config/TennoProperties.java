@@ -1,7 +1,6 @@
 package com.tennotalk.config;
 
 import java.time.Duration;
-import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -26,10 +25,15 @@ public record TennoProperties(
             Duration timeout,
             Duration cooldownDefault) {}
 
-    /** AI providers in priority order: ChatGPT (codex) first, Claude as fallback. */
-    public record Ai(List<Provider> providers, List<String> authErrorPatterns, List<String> quotaErrorPatterns) {}
+    /** Translation providers (PLAN.md §28.1): OpenAI first, Anthropic as fallback. */
+    public record Ai(int maxOutputTokens, Provider openai, Provider anthropic) {}
 
-    public record Provider(String id, List<String> command, List<String> statusCommand, List<String> loginCommand) {}
+    /** One API account. {@code baseUrl} is only set by tests (stub server). */
+    public record Provider(String apiKey, String model, String baseUrl) {
+        public boolean configured() {
+            return apiKey != null && !apiKey.isBlank();
+        }
+    }
 
     public record RateLimit(boolean enabled) {}
 

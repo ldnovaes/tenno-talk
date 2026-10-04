@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs ON the VPS as root (./tenno vps provision copies it there). Idempotent: safe to re-run.
 # Prepares TENNO TALK next to other sites without changing them:
-#   system user, folders, Node + AI CLIs (inside /opt/tenno-talk), database and role in the
+#   system user, folders, the Infisical CLI (AI keys), database and role in the
 #   existing PostgreSQL, systemd unit, its own TLS certificate and its own nginx file.
 #
 # Env: DOMAIN, CERT_EMAIL, PORT (backend, 127.0.0.1 only), NEIGHBOR_HOSTS (sites whose answers
@@ -18,6 +18,10 @@ PORT="${PORT:-8090}"
 CERT_MODE="${CERT_MODE:-letsencrypt}"
 NEIGHBOR_HOSTS="${NEIGHBOR_HOSTS:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# The Infisical machine identity arrives on stdin (./tenno vps provision); read it before any
+# other command can consume stdin.
+IDENTITY=""
+[ -t 0 ] || IDENTITY="$(cat)"
 
 APP=/opt/tenno-talk
 WEB=/var/www/tenno-talk
@@ -41,24 +45,13 @@ install -d -o root -g root -m 755 "$APP" "$APP/releases" "$APP/bin" "$WEB" "$WEB
 install -d -o root -g tenno -m 750 "$CONF"
 install -d -o root -g root -m 700 /var/backups/tenno-talk
 
-# ---------------------------------------------------------------- Node + AI CLIs (no system packages)
-if ! "$APP/node/bin/node" --version 2>/dev/null | grep -q '^v22\.'; then
-  log "Installing Node 22 into $APP/node"
-  tmp="$(mktemp -d)"
-  base="https://nodejs.org/dist/latest-v22.x"
-  curl -fsSL "$base/SHASUMS256.txt" -o "$tmp/SHASUMS256.txt"
-  file="$(grep -o 'node-v22[^ ]*-linux-x64.tar.xz' "$tmp/SHASUMS256.txt" | head -1)"
-  curl -fsSL "$base/$file" -o "$tmp/$file"
-  (cd "$tmp" && grep " $file\$" SHASUMS256.txt | sha256sum -c -)
-  rm -rf "$APP/node" && mkdir -p "$APP/node"
-  tar -xJf "$tmp/$file" -C "$APP/node" --strip-components=1
-  rm -rf "$tmp"
+# ---------------------------------------------------------------- Infisical CLI (AI keys, PLAN.md §28.1)
+# Same CLI the neighbours' backend uses; installed once from the Infisical apt repository.
+if ! command -v infisical >/dev/null 2>&1; then
+  log "Installing the Infisical CLI"
+  curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+  apt-get install -y infisical
 fi
-log "Installing/updating the AI CLIs (codex, claude)"
-PATH="$APP/node/bin:$PATH" npm install -g --silent --no-fund --no-audit --prefix "$APP/cli" @openai/codex @anthropic-ai/claude-code
-# Each check on its own line: inside "a && b", set -e would ignore a failure of a.
-PATH="$APP/node/bin:$PATH" "$APP/cli/bin/codex" --version >/dev/null
-PATH="$APP/node/bin:$PATH" "$APP/cli/bin/claude" --version >/dev/null
 
 # ---------------------------------------------------------------- database
 if [ ! -f "$ENV_FILE" ]; then
@@ -78,6 +71,11 @@ PUBLIC_URL=https://$DOMAIN
 COOKIE_SECURE=true
 MEDIA_ROOT=$DATA/media
 MAX_UPLOAD_SIZE=500MB
+# Infisical machine identity of the tenno-talk project: it brings OPENAI_API_KEY / ANTHROPIC_API_KEY
+# into the process (tenno-talk.service). Written by set-env.sh from the local vps.env.
+INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=
+INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=
+INFISICAL_PROJECT_ID=
 # Social login (optional): leave blank and the button is not shown.
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -88,6 +86,8 @@ ENV
   chown root:tenno "$ENV_FILE"
   chmod 640 "$ENV_FILE"
 fi
+# Infisical identity for the AI keys (tenno-talk project).
+[ -z "$IDENTITY" ] || bash "$HERE/set-env.sh" "$ENV_FILE" <<<"$IDENTITY"
 db_password="$(grep '^DATABASE_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"
 
 if [ "$(psql_q "select 1 from pg_roles where rolname = 'tenno'")" != "1" ]; then
@@ -111,6 +111,16 @@ for db in $(psql_q "select datname from pg_database where not datistemplate and 
 done
 
 # ---------------------------------------------------------------- systemd
+# The service starts through Infisical: without the identity it could not start, and a deploy
+# would roll back to a release that cannot start either. Stop here instead.
+missing=""
+for var in INFISICAL_UNIVERSAL_AUTH_CLIENT_ID INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET INFISICAL_PROJECT_ID; do
+  grep -q "^$var=." "$ENV_FILE" || missing="$missing $var"
+done
+if [ -n "$missing" ]; then
+  log "ERROR:$missing missing in $ENV_FILE. Set TENNO_INFISICAL_CLIENT_ID/_SECRET in vps.env and run ./tenno vps provision again."
+  exit 1
+fi
 install -o root -g root -m 644 "$HERE/tenno-talk.service" /etc/systemd/system/tenno-talk.service
 install -o root -g root -m 755 "$HERE/backup.sh" "$APP/bin/backup.sh"
 systemctl daemon-reload

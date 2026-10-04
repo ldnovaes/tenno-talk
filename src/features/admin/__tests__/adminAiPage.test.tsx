@@ -10,13 +10,15 @@ describe("AI providers page", () => {
     renderApp("/admin/ai");
     const names = await screen.findAllByRole("heading", { level: 2 });
     expect(names.map((heading) => heading.textContent)).toEqual([
-      "ChatGPT",
-      "Claude",
+      "OpenAI",
+      "Anthropic",
       "Translation queue",
     ]);
     expect(screen.getByText("Primary")).toBeInTheDocument();
     expect(screen.getByText("Fallback")).toBeInTheDocument();
     expect(screen.getAllByText("Working")).toHaveLength(2);
+    expect(screen.getByText(/gpt-4\.1-mini/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Check now" })).toHaveLength(2);
     expect(screen.getByText("Waiting for a provider")).toBeInTheDocument();
   });
 
@@ -24,7 +26,7 @@ describe("AI providers page", () => {
     signInAs("usr_linh");
     renderApp("/admin/ai");
     expect(await screen.findByText("This page is for administrators.")).toBeInTheDocument();
-    expect(screen.queryByText("ChatGPT")).not.toBeInTheDocument();
+    expect(screen.queryByText("OpenAI")).not.toBeInTheDocument();
   });
 
   it("is reachable from settings by admins only", async () => {
@@ -32,6 +34,6 @@ describe("AI providers page", () => {
     signInAs("usr_rafael");
     renderApp("/settings");
     await user.click(await screen.findByRole("button", { name: "AI providers" }));
-    expect(await screen.findByRole("heading", { name: "ChatGPT" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "OpenAI" })).toBeInTheDocument();
   });
 });

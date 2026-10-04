@@ -35,10 +35,7 @@ public abstract class IntegrationTest {
     protected JsonMapper json;
 
     @Autowired
-    protected FakeProcessRunner ai;
-
-    @Autowired
-    private com.tennotalk.translation.ReauthService reauth;
+    protected FakeTranslators ai;
 
     protected ChatSteps steps;
 
@@ -50,7 +47,6 @@ public abstract class IntegrationTest {
         api = new Api(mvc, json);
         data.reset();
         ai.reset();
-        reauth.clearThrottle();
     }
 
     /** The Spring Session cookie set by a response (the browser's credential). */

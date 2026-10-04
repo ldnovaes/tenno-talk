@@ -9,9 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * ChatGPT first; Claude only when ChatGPT fails (PLAN.md §28.3):
- * login problems trigger re-authentication, quota problems a cooldown, transient
- * errors one more try before moving on. Providers that are down are skipped.
+ * OpenAI first; Anthropic only when OpenAI fails (PLAN.md §28.3):
+ * a rejected key marks the provider invalid, quota problems start a cooldown, transient
+ * errors get one more try before moving on. Providers that are down are skipped.
  */
 public class FallbackTranslator {
 
@@ -48,15 +48,19 @@ public class FallbackTranslator {
                     return new TranslationOutcome.Success(result);
                 } catch (TranslatorException exception) {
                     if (exception.kind() == TranslatorException.Kind.AUTH) {
-                        log.warn("AI provider {} needs re-authentication: {}", provider.id(), exception.getMessage());
-                        status.markNeedsReauth(provider.id(), exception.getMessage());
-                        skipped.add(provider.id() + ": login");
+                        log.warn("AI provider {} rejected its key: {}", provider.id(), exception.getMessage());
+                        status.markInvalidKey(provider.id(), exception.getMessage());
+                        skipped.add(provider.id() + ": key");
                         break;
                     }
                     if (exception.kind() == TranslatorException.Kind.QUOTA) {
-                        var until = exception.retryAt() != null ? exception.retryAt() : clock.instant().plus(defaultCooldown);
-                        log.warn("AI provider {} is out of quota until {}", provider.id(), until);
-                        status.markCoolingDown(provider.id(), until, exception.getMessage());
+                        log.warn("AI provider {} is out of quota: {}", provider.id(), exception.getMessage());
+                        if (exception.retryAt() != null) {
+                            status.markCoolingDown(provider.id(), exception.retryAt(), exception.getMessage());
+                        } else {
+                            // No reset time: credits are gone, so wait longer and tell the admin.
+                            status.markOutOfCredits(provider.id(), clock.instant().plus(defaultCooldown), exception.getMessage());
+                        }
                         skipped.add(provider.id() + ": quota");
                         break;
                     }

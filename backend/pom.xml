@@ -23,6 +23,8 @@
     <bucket4j.version>8.21.0</bucket4j.version>
     <tika.version>4.1.0</tika.version>
     <bouncycastle.version>1.86</bouncycastle.version>
+    <anthropic.version>2.68.0</anthropic.version>
+    <openai.version>4.75.1</openai.version>
   </properties>
 
   <dependencies>
@@ -91,6 +93,17 @@
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk18on</artifactId>
       <version>${bouncycastle.version}</version>
+    </dependency>
+    <dependency>
+      <!-- Translation providers (PLAN.md §28.1): official SDKs. -->
+      <groupId>com.openai</groupId>
+      <artifactId>openai-java</artifactId>
+      <version>${openai.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.anthropic</groupId>
+      <artifactId>anthropic-java</artifactId>
+      <version>${anthropic.version}</version>
     </dependency>
 
     <dependency>

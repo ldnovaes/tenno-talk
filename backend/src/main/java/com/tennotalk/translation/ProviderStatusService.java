@@ -25,7 +25,7 @@ public class ProviderStatusService {
     }
 
     public List<ProviderState> all() {
-        return jdbc.sql("SELECT * FROM ai_provider_status ORDER BY CASE provider WHEN 'codex' THEN 0 ELSE 1 END")
+        return jdbc.sql("SELECT * FROM ai_provider_status ORDER BY CASE provider WHEN 'openai' THEN 0 ELSE 1 END")
                 .query((rs, row) -> new ProviderState(
                         rs.getString("provider"),
                         rs.getString("state"),
@@ -50,18 +50,20 @@ public class ProviderStatusService {
         if (!ProviderState.OK.equals(before.state())) events.publishEvent(new ProviderRecovered(provider));
     }
 
-    public void markNeedsReauth(String provider, String error) {
-        boolean changed = !ProviderState.NEEDS_REAUTH.equals(current(provider).state());
-        set(provider, ProviderState.NEEDS_REAUTH, null, error);
-        if (changed) events.publishEvent(new ProviderNeedsReauth(provider, error));
-    }
-
-    public void markReauthPending(String provider) {
-        set(provider, ProviderState.REAUTH_PENDING, null, current(provider).lastError());
+    public void markInvalidKey(String provider, String error) {
+        boolean changed = !ProviderState.INVALID_KEY.equals(current(provider).state());
+        set(provider, ProviderState.INVALID_KEY, null, error);
+        if (changed) events.publishEvent(new ProviderNeedsAttention(provider, error));
     }
 
     public void markCoolingDown(String provider, Instant until, String error) {
         set(provider, ProviderState.COOLING_DOWN, until, error);
+    }
+
+    /** No credits left: cools down like a rate limit, but only the administrator can fix it. */
+    public void markOutOfCredits(String provider, Instant until, String error) {
+        markCoolingDown(provider, until, error);
+        events.publishEvent(new ProviderNeedsAttention(provider, error));
     }
 
     /** Cooldowns that ended become ok again (and wake up waiting jobs). */

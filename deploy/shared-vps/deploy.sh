@@ -16,6 +16,13 @@ fi
 SHA="$(git -C "$ROOT_DIR" rev-parse --short HEAD)"
 echo "[deploy] Deploying $SHA to https://$TENNO_DOMAIN"
 
+# --- (a2) the service reads the AI keys from Infisical: check before spending time on tests ---
+IDENTITY="$(infisical_env_lines)"
+if ! vps_ssh "grep -q 'infisical run' /etc/systemd/system/tenno-talk.service"; then
+  echo "[deploy] ERROR: the VPS still has the old service. Run ./tenno vps provision first." >&2
+  exit 1
+fi
+
 # --- (b) tests ---
 if [ "$SKIP_TESTS" = "true" ]; then
   echo "[deploy] Skipping tests (--skip-tests)."
@@ -43,6 +50,9 @@ vps_ssh "mkdir -p /opt/tenno-talk/releases/$SHA /var/www/tenno-talk/releases/$SH
 vps_rsync "$ROOT_DIR/dist/" "/var/www/tenno-talk/releases/$SHA/"
 vps_rsync "$JAR" "/opt/tenno-talk/releases/$SHA/app.jar"
 vps_rsync "$ROOT_DIR/deploy/shared-vps/remote/activate.sh" "/opt/tenno-talk/bin/activate.sh"
+vps_rsync "$ROOT_DIR/deploy/shared-vps/remote/set-env.sh" "/opt/tenno-talk/bin/set-env.sh"
+# Identity on stdin (never on a command line); the restart in activate.sh picks it up.
+vps_ssh "bash /opt/tenno-talk/bin/set-env.sh /etc/tenno-talk/tenno.env" <<<"$IDENTITY"
 
 # --- (e) activate (health check + automatic rollback on the VPS) ---
 vps_ssh "DOMAIN='$TENNO_DOMAIN' PORT='$TENNO_PORT' bash /opt/tenno-talk/bin/activate.sh '$SHA'"

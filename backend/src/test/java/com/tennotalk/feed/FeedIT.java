@@ -291,7 +291,7 @@ class FeedIT extends IntegrationTest {
         assertThat(seen.at("/caption/text").asString()).isEqualTo("Pôr do sol na praia");
 
         api.postOk(linh, "/api/translations/post/" + id + "?lang=vi-VN", null);
-        assertThat(ai.translationCalls("codex")).isOne();
+        assertThat(ai.translationCalls("openai")).isOne();
     }
 
     @Test
@@ -308,7 +308,7 @@ class FeedIT extends IntegrationTest {
         String id = post(rafael, "segredo").get("id").asString();
         data.setPreference(rafael, "profile_visibility", "private");
         api.post(linh, "/api/translations/post/" + id + "?lang=vi-VN", null).andExpect(status().isNotFound());
-        assertThat(ai.translationCalls("codex")).isZero();
+        assertThat(ai.translationCalls("openai")).isZero();
     }
 
     @Test
@@ -319,8 +319,8 @@ class FeedIT extends IntegrationTest {
 
     @Test
     void whenProvidersAreDownTheCaptionWaitsInTheQueue() throws Exception {
-        ai.mode("codex", com.tennotalk.support.FakeProcessRunner.Mode.QUOTA);
-        ai.mode("claude", com.tennotalk.support.FakeProcessRunner.Mode.QUOTA);
+        ai.mode("openai", com.tennotalk.support.FakeTranslators.Mode.QUOTA);
+        ai.mode("anthropic", com.tennotalk.support.FakeTranslators.Mode.QUOTA);
         String id = post(rafael, "Pôr do sol").get("id").asString();
         JsonNode pending = api.postOk(linh, "/api/translations/post/" + id + "?lang=vi-VN", null);
         assertThat(pending.get("status").asString()).isEqualTo("pending");

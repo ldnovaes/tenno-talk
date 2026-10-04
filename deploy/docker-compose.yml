@@ -25,9 +25,6 @@ services:
       COOKIE_SECURE: "true"
     volumes:
       - media:/data/media
-      # CLI logins (ChatGPT / Claude plans) survive restarts and image upgrades.
-      - ai-codex:/home/tenno/.codex
-      - ai-claude:/home/tenno/.claude
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,6 +47,4 @@ volumes:
   caddy-data:
   caddy-config:
   media:
-  ai-codex:
-  ai-claude:
   pgdata:

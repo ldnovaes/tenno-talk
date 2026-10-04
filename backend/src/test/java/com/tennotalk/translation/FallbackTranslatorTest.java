@@ -38,6 +38,14 @@ class FallbackTranslatorTest {
         }
 
         @Override
+        public String model() {
+            return id + "-model";
+        }
+
+        @Override
+        public void check() {}
+
+        @Override
         public TranslationResult translate(TranslationRequest request) throws TranslatorException {
             calls++;
             TranslatorException next = script.poll();
@@ -48,8 +56,8 @@ class FallbackTranslatorTest {
 
     private final Instant now = Instant.parse("2026-10-03T12:00:00Z");
     private final ProviderStatusService status = mock(ProviderStatusService.class);
-    private final Scripted codex = new Scripted("codex");
-    private final Scripted claude = new Scripted("claude");
+    private final Scripted openai = new Scripted("openai");
+    private final Scripted anthropic = new Scripted("anthropic");
     private FallbackTranslator fallback;
     private final TranslationRequest request = TranslationRequest.of("Oi", "pt-BR", "vi-VN");
 
@@ -57,7 +65,7 @@ class FallbackTranslatorTest {
     void setUp() {
         when(status.usable(anyString())).thenReturn(true);
         when(status.current(anyString())).thenAnswer(inv -> new ProviderState(inv.getArgument(0), "ok", null, null, now));
-        fallback = new FallbackTranslator(List.of(codex, claude), status, Clock.fixed(now, ZoneOffset.UTC), Duration.ofMinutes(15));
+        fallback = new FallbackTranslator(List.of(openai, anthropic), status, Clock.fixed(now, ZoneOffset.UTC), Duration.ofMinutes(15));
     }
 
     private static TranslatorException error(TranslatorException.Kind kind) {
@@ -65,77 +73,77 @@ class FallbackTranslatorTest {
     }
 
     @Test
-    void chatGptIsThePrimaryProvider() {
+    void openAiIsThePrimaryProvider() {
         var outcome = fallback.translate(request);
-        assertThat(outcome).isEqualTo(new TranslationOutcome.Success(new TranslationResult("ok-codex", "lit-codex", "codex")));
-        assertThat(claude.calls).isZero();
-        assertThat(fallback.providerIds()).containsExactly("codex", "claude");
+        assertThat(outcome).isEqualTo(new TranslationOutcome.Success(new TranslationResult("ok-openai", "lit-openai", "openai")));
+        assertThat(anthropic.calls).isZero();
+        assertThat(fallback.providerIds()).containsExactly("openai", "anthropic");
     }
 
     @Test
-    void loginFailureMarksReauthAndFallsBackToClaude() {
-        codex.script.add(error(TranslatorException.Kind.AUTH));
+    void aRejectedKeyMarksTheProviderInvalidAndFallsBackToAnthropic() {
+        openai.script.add(error(TranslatorException.Kind.AUTH));
         var outcome = fallback.translate(request);
-        assertThat(((TranslationOutcome.Success) outcome).result().provider()).isEqualTo("claude");
-        assertThat(codex.calls).isOne();
-        verify(status).markNeedsReauth(eq("codex"), anyString());
-        verify(status).markOk("claude");
+        assertThat(((TranslationOutcome.Success) outcome).result().provider()).isEqualTo("anthropic");
+        assertThat(openai.calls).isOne();
+        verify(status).markInvalidKey(eq("openai"), anyString());
+        verify(status).markOk("anthropic");
     }
 
     @Test
     void quotaFailureCoolsDownUntilTheResetTime() {
         Instant reset = now.plusSeconds(3600);
-        codex.script.add(new TranslatorException(TranslatorException.Kind.QUOTA, "limit", reset));
+        openai.script.add(new TranslatorException(TranslatorException.Kind.QUOTA, "limit", reset));
         fallback.translate(request);
-        verify(status).markCoolingDown(eq("codex"), eq(reset), anyString());
+        verify(status).markCoolingDown(eq("openai"), eq(reset), anyString());
     }
 
     @Test
-    void quotaWithoutResetUsesTheDefaultCooldown() {
-        codex.script.add(error(TranslatorException.Kind.QUOTA));
+    void quotaWithoutResetIsOutOfCreditsAndUsesTheDefaultCooldown() {
+        openai.script.add(error(TranslatorException.Kind.QUOTA));
         fallback.translate(request);
-        verify(status).markCoolingDown(eq("codex"), eq(now.plus(Duration.ofMinutes(15))), anyString());
+        verify(status).markOutOfCredits(eq("openai"), eq(now.plus(Duration.ofMinutes(15))), anyString());
     }
 
     @Test
     void aTransientErrorGetsOneMoreTryOnTheSameProvider() {
-        codex.script.add(error(TranslatorException.Kind.TRANSIENT));
+        openai.script.add(error(TranslatorException.Kind.TRANSIENT));
         var outcome = fallback.translate(request);
-        assertThat(((TranslationOutcome.Success) outcome).result().provider()).isEqualTo("codex");
-        assertThat(codex.calls).isEqualTo(2);
-        assertThat(claude.calls).isZero();
+        assertThat(((TranslationOutcome.Success) outcome).result().provider()).isEqualTo("openai");
+        assertThat(openai.calls).isEqualTo(2);
+        assertThat(anthropic.calls).isZero();
     }
 
     @Test
     void unusableProvidersAreSkippedWithoutCalls() {
-        when(status.usable("codex")).thenReturn(false);
+        when(status.usable("openai")).thenReturn(false);
         var outcome = fallback.translate(request);
-        assertThat(((TranslationOutcome.Success) outcome).result().provider()).isEqualTo("claude");
-        assertThat(codex.calls).isZero();
+        assertThat(((TranslationOutcome.Success) outcome).result().provider()).isEqualTo("anthropic");
+        assertThat(openai.calls).isZero();
     }
 
     @Test
-    void bothLoggedOutMeansUnavailableNotFailed() {
-        codex.script.add(error(TranslatorException.Kind.AUTH));
-        claude.script.add(error(TranslatorException.Kind.AUTH));
+    void bothKeysRejectedMeansUnavailableNotFailed() {
+        openai.script.add(error(TranslatorException.Kind.AUTH));
+        anthropic.script.add(error(TranslatorException.Kind.AUTH));
         assertThat(fallback.translate(request)).isInstanceOf(TranslationOutcome.Unavailable.class);
     }
 
     @Test
     void transientFailuresEverywhereMeanFailed() {
         for (int i = 0; i < 2; i++) {
-            codex.script.add(error(TranslatorException.Kind.TRANSIENT));
-            claude.script.add(error(TranslatorException.Kind.TRANSIENT));
+            openai.script.add(error(TranslatorException.Kind.TRANSIENT));
+            anthropic.script.add(error(TranslatorException.Kind.TRANSIENT));
         }
         assertThat(fallback.translate(request)).isInstanceOf(TranslationOutcome.Failed.class);
-        verify(status, never()).markNeedsReauth(any(), any());
+        verify(status, never()).markInvalidKey(any(), any());
     }
 
     @Test
-    void mixedLoginAndTransientFailuresAreRetriedLater() {
-        codex.script.add(error(TranslatorException.Kind.AUTH));
-        claude.script.add(error(TranslatorException.Kind.TRANSIENT));
-        claude.script.add(error(TranslatorException.Kind.TRANSIENT));
+    void mixedKeyAndTransientFailuresAreRetriedLater() {
+        openai.script.add(error(TranslatorException.Kind.AUTH));
+        anthropic.script.add(error(TranslatorException.Kind.TRANSIENT));
+        anthropic.script.add(error(TranslatorException.Kind.TRANSIENT));
         assertThat(fallback.translate(request)).isInstanceOf(TranslationOutcome.Failed.class);
     }
 }

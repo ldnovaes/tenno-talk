@@ -192,7 +192,7 @@ export const en = {
         },
         {
           title: "3. Sharing with AI providers",
-          body: "Content to be translated, plus a few recent messages of the same conversation for context, is processed by OpenAI and Anthropic. Training on this data is disabled on the accounts we use. No other sharing happens for advertising.",
+          body: "Content to be translated, plus a few recent messages of the same conversation for context, is sent to the OpenAI and Anthropic APIs. Under their API terms, this data is not used to train their models; they may keep it for a limited time to monitor abuse. No other sharing happens for advertising.",
         },
         {
           title: "4. Where data is stored",
@@ -626,23 +626,19 @@ export const en = {
     ai: {
       title: "AI providers",
       description:
-        "Translations use ChatGPT first and Claude when it fails. Nothing is lost while a provider is down: messages wait and are translated when it is back.",
+        "Translations use the OpenAI API first and the Anthropic API when it fails. Nothing is lost while a provider is down: messages wait and are translated when it is back.",
       primary: "Primary",
       fallback: "Fallback",
       states: {
         ok: "Working",
-        needs_reauth: "Needs login",
-        reauth_pending: "Waiting for login",
+        invalid_key: "Key rejected",
         cooling_down: "Usage limit reached",
+        not_configured: "No API key",
       },
       backAt: "Back",
       check: "Check now",
-      reauth: "Log in again",
-      challengeTitle: "Log in to {{provider}}",
-      challengeSteps:
-        "Open the link on any device, sign in to the subscription account and enter this code.",
-      challengeNoLink: "The login did not show a link. Its output:",
-      openLink: "Open login page",
+      keyHint:
+        "Set the API key in Infisical (project tenno-talk), restart the backend and check again.",
       queueTitle: "Translation queue",
       queue: {
         pending: "Pending",

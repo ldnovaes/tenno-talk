@@ -14,15 +14,34 @@ Para quando a TENNO TALK divide a VPS com outros sites que já têm nginx e Post
 ```sh
 cp deploy/shared-vps/vps.env.example deploy/shared-vps/vps.env   # endereço, domínio, sites vizinhos
 ./tenno vps provision              # uma vez (idempotente; pode repetir)
-./tenno vps ai-login codex         # uma vez: login do ChatGPT (link + código)
-./tenno vps ai-login claude        # uma vez: login do Claude
 ./tenno run deploy:prod            # testes + build + deploy (rollback automático)
 ./tenno vps status | logs | backup | ssh
 ```
 
+## Chaves das IAs (Infisical)
+
+A tradução usa as APIs da OpenAI e da Anthropic (PLAN.md §28.1). As chaves ficam no **Infisical**, no projeto `tenno-talk` (ID `12c1b503-6d69-4fbe-a9a7-3601d35e2a7b`, env `prod`). Elas são lidas por uma machine identity **própria desse projeto**, a `vps-prod-eldialabs` (Viewer). Ela não enxerga os segredos da Eldia. O `tenno-talk.service` faz `infisical login` e sobe a JVM por `infisical run --projectId=<tenno-talk>`: as chaves vão direto para a memória do processo, sem passar pelo disco.
+
+A identity da Eldia na VPS não serve: ela é gerenciada pelo projeto da Eldia e não pode entrar no `tenno-talk`.
+
+Uma vez:
+
+1. No projeto `tenno-talk`, crie os segredos `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no env `prod`. `OPENAI_TRANSLATION_MODEL` e `ANTHROPIC_TRANSLATION_MODEL` são opcionais (padrões: `gpt-4.1-mini` e `claude-haiku-4-5`).
+2. Em **Access Control → Machine Identities → `vps-prod-eldialabs` → Authentication → Universal Auth**, copie o **Client ID** e use **Create Client Secret**. O secret aparece **uma vez só**. Dá para restringir os IPs confiáveis ao IP da VPS.
+3. No `deploy/shared-vps/vps.env` **local** (fora do git), preencha `TENNO_INFISICAL_CLIENT_ID` e `TENNO_INFISICAL_CLIENT_SECRET`.
+4. Rode `./tenno vps provision` (instala o serviço novo) e depois `./tenno run deploy:prod`. Os dois gravam a identity em `/etc/tenno-talk/tenno.env` na VPS (`remote/set-env.sh`, pelo stdin do ssh, nunca pela linha de comando). Você não precisa mexer na VPS.
+5. Defina um limite de gasto nos consoles da OpenAI e da Anthropic.
+
+Para trocar o client secret, mude o `vps.env` e rode um deploy (ou o provision).
+
+Para trocar uma chave de IA, mude no Infisical e rode `systemctl restart tenno-talk` na VPS. Na subida, um provedor marcado `invalid_key` é verificado de novo. Também dá para usar **Check now** em `/admin/ai`.
+
+Limpeza da instalação antiga das CLIs, depois do primeiro deploy saudável: `rm -rf /opt/tenno-talk/node /opt/tenno-talk/cli /var/lib/tenno-talk/.codex /var/lib/tenno-talk/.claude`.
+
 ## O que o provision faz, e o que ele nunca faz
 
-- Cria o usuário de sistema `tenno`, `/opt/tenno-talk` (releases, Node 22 e as CLIs de IA, sem pacote de sistema), `/var/www/tenno-talk`, `/var/lib/tenno-talk` (mídia, credenciais das CLIs) e `/etc/tenno-talk/tenno.env` (senha do banco gerada uma vez, `root:tenno 640`).
+- Cria o usuário de sistema `tenno`, `/opt/tenno-talk` (releases), `/var/www/tenno-talk`, `/var/lib/tenno-talk` (mídia) e `/etc/tenno-talk/tenno.env` (senha do banco gerada uma vez, `root:tenno 640`).
+- Instala a CLI do Infisical, se faltar (a Eldia já instalou). Recusa continuar enquanto o `tenno.env` não tiver a machine identity (abaixo).
 - No PostgreSQL existente: usuário e banco `tenno`. Revoga o `CONNECT` público dos bancos vizinhos, para o `tenno` não conseguir nem conectar neles (os donos continuam com acesso).
 - Certificado **próprio** com `certbot certonly --webroot` (não altera nenhum arquivo do nginx nem o certificado dos vizinhos), renovado pelo timer do certbot com reload do nginx.
 - nginx: **um arquivo novo** (`sites-available/tenno-talk.conf` + snippet de headers). Antes de aplicar: `nginx -t`; se falhar, desfaz e o nginx em execução nem fica sabendo. Aplica com `reload` (nunca `restart`). Mede as respostas HTTP e HTTPS dos sites vizinhos (`TENNO_NEIGHBOR_HOSTS`) antes e depois; qualquer diferença desfaz a mudança.

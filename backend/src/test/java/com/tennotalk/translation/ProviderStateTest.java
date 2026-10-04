@@ -12,20 +12,19 @@ class ProviderStateTest {
 
     @Test
     void okIsUsable() {
-        assertThat(new ProviderState("codex", "ok", null, null, now).usable(now)).isTrue();
+        assertThat(new ProviderState("openai", "ok", null, null, now).usable(now)).isTrue();
     }
 
     @Test
-    void reauthStatesAreNotUsable() {
-        assertThat(new ProviderState("codex", "needs_reauth", null, null, now).usable(now)).isFalse();
-        assertThat(new ProviderState("codex", "reauth_pending", null, null, now).usable(now)).isFalse();
+    void anInvalidKeyIsNotUsable() {
+        assertThat(new ProviderState("openai", "invalid_key", null, null, now).usable(now)).isFalse();
     }
 
     @Test
     void coolingDownEndsAtItsDeadline() {
-        assertThat(new ProviderState("codex", "cooling_down", now.plusSeconds(1), null, now).usable(now)).isFalse();
-        assertThat(new ProviderState("codex", "cooling_down", now, null, now).usable(now)).isTrue();
-        assertThat(new ProviderState("codex", "cooling_down", null, null, now).usable(now)).isFalse();
+        assertThat(new ProviderState("openai", "cooling_down", now.plusSeconds(1), null, now).usable(now)).isFalse();
+        assertThat(new ProviderState("openai", "cooling_down", now, null, now).usable(now)).isTrue();
+        assertThat(new ProviderState("openai", "cooling_down", null, null, now).usable(now)).isFalse();
     }
 
     @Test

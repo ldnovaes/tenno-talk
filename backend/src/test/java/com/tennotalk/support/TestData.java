@@ -19,7 +19,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @Component
 public class TestData {
 
-    public static final String TERMS = "2026-10-03";
+    public static final String TERMS = "2026-10-04";
 
     private final JdbcClient jdbc;
 

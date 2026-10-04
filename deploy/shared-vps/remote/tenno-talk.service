@@ -1,19 +1,21 @@
 [Unit]
 Description=TENNO TALK - Backend
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
 
 [Service]
 Type=simple
 User=tenno
 Group=tenno
 WorkingDirectory=/opt/tenno-talk/current
+# Database and server settings, plus the Infisical machine identity of the tenno-talk project
+# (INFISICAL_UNIVERSAL_AUTH_CLIENT_ID/_SECRET, INFISICAL_PROJECT_ID), written by remote/set-env.sh.
 EnvironmentFile=/etc/tenno-talk/tenno.env
-# The AI CLIs (codex, claude) run from here, logged in with the plan subscriptions (PLAN.md §28).
-Environment=PATH=/opt/tenno-talk/cli/bin:/opt/tenno-talk/node/bin:/usr/local/bin:/usr/bin:/bin
 Environment=HOME=/var/lib/tenno-talk
+# The AI API keys (PLAN.md §28.1) come from Infisical straight into the process memory, never to disk.
+# $$ leaves the variables to bash (systemd would otherwise expand them itself).
 # Shared VPS: an explicit memory ceiling so the neighbours keep theirs.
-ExecStart=/usr/bin/java -Xmx384m -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError -jar /opt/tenno-talk/current/app.jar
+ExecStart=/bin/bash -c 'TOKEN=$$(/usr/bin/infisical login --method=universal-auth --client-id="$$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" --client-secret="$$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" --silent --plain) && exec /usr/bin/infisical run --token="$$TOKEN" --projectId="$$INFISICAL_PROJECT_ID" --env=prod --silent -- /usr/bin/java -Xmx384m -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError -jar /opt/tenno-talk/current/app.jar'
 Restart=on-failure
 RestartSec=5
 SyslogIdentifier=tenno-talk

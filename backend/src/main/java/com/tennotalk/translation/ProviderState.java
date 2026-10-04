@@ -6,8 +6,7 @@ import java.time.Instant;
 public record ProviderState(String provider, String state, Instant until, String lastError, Instant checkedAt) {
 
     public static final String OK = "ok";
-    public static final String NEEDS_REAUTH = "needs_reauth";
-    public static final String REAUTH_PENDING = "reauth_pending";
+    public static final String INVALID_KEY = "invalid_key";
     public static final String COOLING_DOWN = "cooling_down";
 
     /** Cooling down ends by itself once {@code until} passes. */

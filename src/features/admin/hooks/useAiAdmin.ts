@@ -4,7 +4,7 @@ import { adminService } from "@/services/adminService";
 
 import { adminKeys } from "../lib/queryKeys";
 
-/** Polls while the page is open: a device login completes on the server. */
+/** Polls while the page is open: cooldowns end and keys are checked on the server. */
 export function useAiStatus() {
   return useQuery({
     queryKey: adminKeys.ai(),
@@ -17,14 +17,6 @@ export function useCheckProvider() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (provider: string) => adminService.checkProvider(provider),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: adminKeys.ai() }),
-  });
-}
-
-export function useStartReauth() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (provider: string) => adminService.startReauth(provider),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: adminKeys.ai() }),
   });
 }

@@ -27,7 +27,7 @@ class RateLimitRulesTest {
             "POST, /api/stories, create",
             "POST, /api/conversations/direct, create",
             "POST, /api/conversations/groups, create",
-            "POST, /api/admin/ai/codex/reauth, admin",
+            "POST, /api/admin/ai/openai/check, admin",
     })
     void limitedRequests(String method, String path, String rule) {
         assertThat(RateLimitRules.match(method, path)).hasValueSatisfying(r -> assertThat(r.name()).isEqualTo(rule));

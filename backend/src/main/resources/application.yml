@@ -43,7 +43,7 @@ springdoc:
 
 tenno:
   public-url: ${PUBLIC_URL:http://localhost:5173}
-  terms-version: "2026-10-03"
+  terms-version: "2026-10-04"
   # Social login: a provider is offered only when its client id is set (OAuthClients).
   oauth:
     google:
@@ -64,17 +64,16 @@ tenno:
     timeout: 60s
     cooldown-default: 15m
   ai:
-    # ChatGPT is the primary provider; Claude only when it fails (PLAN.md §28).
-    providers:
-      - id: codex
-        command: ["codex", "exec", "--skip-git-repo-check", "{prompt}"]
-        status-command: ["codex", "login", "status"]
-        login-command: ["codex", "login", "--device-auth"]
-      - id: claude
-        command: ["claude", "-p", "{prompt}", "--output-format", "json"]
-        status-command: ["claude", "auth", "status"]
-        login-command: ["claude", "setup-token"]
-    auth-error-patterns: ["not logged in", "login required", "unauthorized", "401", "authentication", "please run /login", "expired"]
-    quota-error-patterns: ["usage limit", "rate limit", "429", "quota", "too many requests"]
+    # OpenAI is the primary provider; Anthropic only when it fails (PLAN.md §28.1).
+    # A provider without a key is not registered. Keys come from Infisical in production.
+    max-output-tokens: 4096
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_TRANSLATION_MODEL:gpt-4.1-mini}
+      base-url: ${OPENAI_BASE_URL:}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      model: ${ANTHROPIC_TRANSLATION_MODEL:claude-haiku-4-5}
+      base-url: ${ANTHROPIC_BASE_URL:}
   rate-limit:
     enabled: true

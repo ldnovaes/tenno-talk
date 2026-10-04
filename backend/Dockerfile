@@ -1,4 +1,4 @@
-# Backend image: Spring Boot on Java 21 + the ChatGPT (codex) and Claude CLIs used as translators (PLAN.md §28).
+# Backend image: Spring Boot on Java 21. Translation calls the OpenAI and Anthropic APIs (PLAN.md §28).
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 COPY .mvn .mvn
@@ -8,14 +8,10 @@ COPY src src
 RUN ./mvnw -q -B -DskipTests package && cp target/tenno-talk-backend-*.jar /app.jar
 
 FROM eclipse-temurin:21-jre
-# Node only to run the AI CLIs; they log in with the plan subscriptions, never API keys.
+# curl only for the health check.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
- && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
- && apt-get install -y --no-install-recommends nodejs \
- && npm install -g @openai/codex @anthropic-ai/claude-code \
- && npm cache clean --force \
- && apt-get purge -y gnupg && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --uid 10001 tenno && mkdir -p /data/media && chown -R tenno /data
 USER tenno
 WORKDIR /home/tenno

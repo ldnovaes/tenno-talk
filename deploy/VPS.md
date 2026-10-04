@@ -1,6 +1,6 @@
 # Deploy na VPS
 
-Guia de operação de produção (PLAN.md §32). Tudo roda numa VPS com Docker Compose: `web` (Caddy + SPA), `backend` (Java + CLIs de IA) e `postgres`.
+Guia de operação de produção (PLAN.md §32). Tudo roda numa VPS com Docker Compose: `web` (Caddy + SPA), `backend` (Java) e `postgres`.
 
 ## 1. Servidor
 
@@ -40,12 +40,11 @@ O DNS do domínio precisa apontar para a VPS antes: o Caddy obtém o certificado
 
 Depois:
 
-1. **Login das IAs** (uma vez; as credenciais ficam nos volumes `ai-codex` e `ai-claude`):
-   `docker compose exec backend codex login --device-auth` e `docker compose exec backend claude setup-token`.
-   Desative o uso dos dados para treinamento nas duas contas.
+1. **Chaves das IAs:** preencha `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no `.env` e rode `docker compose up -d backend`.
+   Defina um limite de gasto nos consoles da OpenAI e da Anthropic.
 2. **Admin:** crie sua conta pelo app e rode
    `docker compose exec postgres psql -U tenno -c "UPDATE users SET role='admin' WHERE email='voce@exemplo.com'"`.
-   Saia e entre de novo. Em **Settings → AI providers** dá para refazer o login das IAs pelo celular.
+   Saia e entre de novo. Em **Settings → AI providers** dá para ver o estado das IAs e conferir uma chave nova (**Check now**).
 3. **OAuth:** registre `https://<domínio>/login/oauth2/code/google` e `.../facebook` nos apps do Google e do Facebook.
 
 ## 3. Atualizar
@@ -72,5 +71,5 @@ Restaurar: `deploy/restore.sh /var/backups/tenno-talk/<data>` (pede confirmaçã
 ## 5. Monitoramento
 
 - **Uptime:** um monitor externo (UptimeRobot, Better Stack…) em `https://<domínio>/actuator/health`. Ele responde `DOWN` (503) se o disco tiver menos de `DISK_ALERT_THRESHOLD` livres (padrão 2 GB): mídia não tem limite de produto (R15).
-- **IAs:** `Settings → AI providers` mostra o estado de cada provedor e a fila de traduções. Quando um login cai, o aviso aparece nos logs (`docker compose logs backend | grep -i reauth`).
+- **IAs:** `Settings → AI providers` mostra o estado de cada provedor, o modelo e a fila de traduções. Chave recusada ou créditos esgotados geram um aviso nos logs (`docker compose logs backend | grep -i "ACTION NEEDED"`); o uso de tokens por chamada aparece como `AI usage`.
 - **Logs:** `docker compose logs -f backend`.

@@ -1,9 +1,9 @@
 import type { ProviderStateName } from "@/types/admin";
 
-/** Display names: the product calls them by brand, the server by CLI id. */
+/** Display names of the API providers (server ids: openai, anthropic). */
 export function providerName(id: string): string {
-  if (id === "codex") return "ChatGPT";
-  if (id === "claude") return "Claude";
+  if (id === "openai") return "OpenAI";
+  if (id === "anthropic") return "Anthropic";
   return id;
 }
 
@@ -11,11 +11,11 @@ export type ProviderTone = "ok" | "warning" | "danger";
 
 export function providerTone(state: ProviderStateName): ProviderTone {
   if (state === "ok") return "ok";
-  if (state === "needs_reauth") return "danger";
-  return "warning";
+  if (state === "cooling_down") return "warning";
+  return "danger";
 }
 
-/** Login is offered whenever the provider is not healthy (also to restart a stuck login). */
-export function canReauth(state: ProviderStateName): boolean {
-  return state !== "ok";
+/** Without a key there is nothing to check: the key must be added on the server first. */
+export function canCheck(state: ProviderStateName): boolean {
+  return state !== "not_configured";
 }

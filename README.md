@@ -49,7 +49,7 @@ Com o backend no ar, rode o frontend contra ele:
 VITE_DATA_SOURCE=http bun run dev   # o Vite repassa /api, /oauth2, /login/oauth2 e /ws para :8080
 ```
 
-As traduções usam as CLIs `codex` (ChatGPT, principal) e `claude` (reserva), logadas com os planos de assinatura, nunca com chaves de API (PLAN.md §28). Sem as CLIs, as mensagens continuam funcionando e as traduções esperam na fila.
+As traduções usam as APIs da OpenAI (principal) e da Anthropic (reserva), com `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no ambiente do backend (PLAN.md §28). Localmente: `infisical run --projectId=<tenno-talk> --env=prod -- ./mvnw spring-boot:run`, ou exporte as variáveis. Sem nenhuma chave, as mensagens continuam funcionando e as traduções esperam na fila.
 
 ## Produção (uma VPS)
 
@@ -57,14 +57,13 @@ Guia completo: [deploy/VPS.md](deploy/VPS.md) (servidor, primeiro deploy, backup
 
 ```sh
 cd deploy
-cp .env.example .env        # domínio, senha do banco, OAuth
+cp .env.example .env        # domínio, senha do banco, OAuth, chaves das APIs de IA
 docker compose up -d --build
 ```
 
 Depois do primeiro deploy:
 
-1. Faça login nas CLIs dentro do container (uma vez; as credenciais ficam em volumes):
-   `docker compose exec backend codex login --device-auth` e `docker compose exec backend claude setup-token`.
+1. Defina um limite de gasto nos consoles da OpenAI e da Anthropic.
 2. Promova sua conta a admin:
    `docker compose exec postgres psql -U tenno -c "UPDATE users SET role='admin' WHERE email='voce@exemplo.com'"`.
-3. Acompanhe os provedores em **Settings → AI providers** (`/admin/ai`), inclusive para refazer o login pelo celular.
+3. Acompanhe os provedores em **Settings → AI providers** (`/admin/ai`): estado, modelo, fila e **Check now** depois de trocar uma chave.

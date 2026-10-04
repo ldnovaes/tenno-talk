@@ -1238,7 +1238,7 @@ O detalhamento (checklist) está no [IMPLEMENTATION.md](IMPLEMENTATION.md).
 | **5. Profiles, discovery & settings** | Perfil, edição, follow, Discover, Settings completas | **MVP completo** em 360/768/1024/1440px com a11y básica |
 | **6. Feed** | Feed, create post, likes, comments, tradução de legendas | Post criado aparece no feed e no perfil; tradução respeita a preferência |
 | **7. Stories, notifications & groups** | Tray, viewer, reply/reaction, notificações, grupos (máx. 1 criado por pessoa) | Viewer navegável por toque/teclado; badges atualizam; segundo grupo é bloqueado |
-| **8. Backend integration** | Backend Java (Spring Boot + PostgreSQL), OAuth2, serviços HTTP, mídia em disco, worker de tradução (Claude/ChatGPT via planos), deploy na VPS | Mesmos fluxos contra backend real sem alterar componentes |
+| **8. Backend integration** | Backend Java (Spring Boot + PostgreSQL), OAuth2, serviços HTTP, mídia em disco, worker de tradução (OpenAI/Anthropic via API), deploy na VPS | Mesmos fluxos contra backend real sem alterar componentes |
 | **9. Realtime** | `wsRealtimeClient` + WebSocket do backend, presença, typing, recuperação | Duas contas conversam em tempo real em idiomas diferentes |
 | **10. Production hardening** | Performance, a11y, e2e, moderação, observabilidade, deploy | Metas atingidas e pipeline verde |
 
@@ -1265,8 +1265,8 @@ Backend Java (Spring Boot, monolito modular)
    ├─ users         perfis, preferências, termos aceitos
    ├─ chat          conversas, mensagens, reações, leitura
    ├─ translation   fila em tabela + workers → Translator
-   │                  ├─ ClaudeCliTranslator  (Claude Code, plano de assinatura)
-   │                  └─ CodexCliTranslator   (Codex CLI, plano ChatGPT)
+   │                  ├─ OpenAiTranslator     (API da OpenAI, principal)
+   │                  └─ AnthropicTranslator  (API da Anthropic, reserva)
    ├─ realtime      WebSocket com os eventos do RealtimeEventMap
    ├─ media         MediaStorage → disco da VPS
    └─ feed · stories · notifications (fases 6–7)
@@ -1293,7 +1293,7 @@ PostgreSQL (volume)                      /data/media (volume)
 | Stories | `GET /api/stories/tray` · `POST /api/stories` · `PUT /api/stories/{id}/view` · `POST /api/stories/{id}/reactions` · `POST /api/stories/{id}/replies` |
 | Notificações | `GET /api/notifications` · `GET /api/notifications/unread-count` · `POST /api/notifications/read-all` |
 | Mídia | `POST /api/media` (multipart `file`) · `GET /api/media/{id}` |
-| Admin | `GET /api/admin/ai` · `POST /api/admin/ai/{provider}/check` · `POST /api/admin/ai/{provider}/reauth` |
+| Admin | `GET /api/admin/ai` · `POST /api/admin/ai/{provider}/check` |
 | Realtime | `GET /ws` (WebSocket, mesma sessão) |
 
 IDs malformados respondem 404, como IDs inexistentes. O OpenAPI fica em `/api/openapi`.
@@ -1330,7 +1330,7 @@ PostgreSQL com migrations Flyway. As sessões HTTP ficam nas tabelas do Spring S
 | `messages` | `id`, `conversation_id`, `sender_id`, `client_id (unique por sender)`, `type`, `original_text`, `original_language`, `reply_to_id`, `created_at` |
 | `message_translations` | `message_id`, `target_language`, `text`, `literal_text`, `status`, `version`, `provider`, `attempts`, `error`, `updated_at` — PK `(message_id, target_language)` |
 | `translation_jobs` | `id`, `kind`, `ref_id`, `target_language`, `status (pending \| running \| waiting_provider \| done \| failed)`, `run_after`, `attempts`, `locked_at`, `created_at` — fila em tabela (`SELECT … FOR UPDATE SKIP LOCKED`) |
-| `ai_provider_status` | `provider (codex \| claude)`, `state (ok \| needs_reauth \| reauth_pending \| cooling_down)`, `until`, `last_error`, `checked_at` |
+| `ai_provider_status` | `provider (openai \| anthropic)`, `state (ok \| invalid_key \| cooling_down)`, `until`, `last_error`, `checked_at` |
 | `media` | `id`, `owner_id`, `kind`, `mime`, `size_bytes`, `width`, `height`, `duration_ms`, `storage_path`, `created_at` |
 | `message_media` | `message_id`, `media_id`, `position` |
 | `message_reactions` | `message_id`, `user_id`, `emoji` |
@@ -1345,35 +1345,30 @@ Observações:
 
 ## 28. IA e pipeline de tradução
 
-### 28.1 Provedores: Claude e ChatGPT pelos planos de assinatura
+### 28.1 Provedores: OpenAI e Anthropic pelas APIs (2026-10-04)
 
-Decisão de produto: usar as duas IAs **pelos planos de assinatura** (Claude Pro/Max e ChatGPT Plus/Pro), e não pelas APIs cobradas por token. Na prática, o backend executa as **CLIs oficiais em modo não interativo**, autenticadas com as contas dos planos:
+Decisão de produto (2026-10-04): usar as **APIs oficiais**, cobradas por token, com chave de API. Até essa data o backend executava as CLIs dos planos de assinatura (`codex exec` e `claude -p`). Elas exigiam Node na VPS, um login que expirava e reautenticação assistida, além de termos de uso pensados para uso pessoal (R14), e foram removidas.
 
-| Ordem | Provedor | Ferramenta | Execução |
-|---|---|---|---|
-| **1. Principal** | ChatGPT | Codex CLI | `codex exec "<prompt>"` |
-| **2. Reserva** | Claude | Claude Code | `claude -p "<prompt>" --output-format json` |
-
-As flags exatas, a seleção de modelo e o modo sem ferramentas (somente texto) de cada CLI serão confirmados na Phase 8.
+| Ordem | Provedor | SDK (Java) | Modelo padrão | Variáveis |
+|---|---|---|---|---|
+| **1. Principal** | OpenAI | `com.openai:openai-java` (Chat Completions) | `gpt-4.1-mini` | `OPENAI_API_KEY`, `OPENAI_TRANSLATION_MODEL` |
+| **2. Reserva** | Anthropic | `com.anthropic:anthropic-java` (Messages) | `claude-haiku-4-5` | `ANTHROPIC_API_KEY`, `ANTHROPIC_TRANSLATION_MODEL` |
 
 ```java
 public interface Translator {
-    String id();                                  // "codex-cli", "claude-cli", no futuro "openai-api"…
-    TranslationResult translate(TranslationRequest request)
-        throws TranslatorAuthException,          // login expirado ou inválido
-               TranslatorQuotaException,         // limite do plano atingido
-               TranslatorTransientException;     // timeout, rede, resposta inválida
+    String id();                                  // "openai", "anthropic"
+    TranslationResult translate(TranslationRequest request) throws TranslatorException;
+    void check() throws TranslatorException;      // consulta o modelo, sem gastar tokens
 }
 ```
 
-- `FallbackTranslator` compõe os dois: **ChatGPT é o principal** e o **Claude só é usado quando o ChatGPT falha** (login, limite de uso, timeout ou resposta inválida). As regras de falha estão em §28.3.
-- Trocar para API no futuro = escrever uma nova implementação de `Translator`. Nada mais muda.
-- **Operação:** as CLIs ficam instaladas na imagem do backend (requer Node.js no container). O login inicial é feito uma vez (`codex login` / `claude setup-token`), e as credenciais ficam num volume persistente. Cada chamada roda num diretório vazio, sem acesso a ferramentas, com timeout (ex.: 60s) e concorrência limitada (1–2 processos).
-- **Limites reais:**
-  - os planos têm cotas por janela de tempo, e se a cota estourar a tradução espera até ela renovar;
-  - cada chamada leva alguns segundos (inicialização da CLI), o que a UI já trata com o estado `translating`;
-  - os termos das assinaturas são pensados para uso pessoal. Antes de abrir o app para mais pessoas, é preciso revisar os termos de cada provedor e, se necessário, migrar para a API (R14).
-- **Privacidade:** as mensagens são enviadas à Anthropic e à OpenAI pelas contas dos planos. Isso precisa constar nos Termos e na Política de Privacidade, e o **uso dos dados para treinamento deve ser desativado** nas configurações das duas contas.
+- `FallbackTranslator` compõe os dois: **a OpenAI é a principal** e a **Anthropic só é usada quando a OpenAI falha** (chave, limite, timeout ou resposta inválida). As regras de falha estão em §28.3.
+- **Provedor opcional:** cada provedor só é registrado quando a chave dele está definida, como no login social (§30). Sem nenhuma chave, o servidor sobe e as traduções esperam em `waiting_provider`.
+- **Chamada:** o prompt é dividido em `system` (instruções fixas) e `user` (idiomas, contexto e mensagem). A resposta usa **saída estruturada** com o schema `{natural, literal}`: `json_schema` strict na OpenAI e `output_config.format` na Anthropic. Não há cache de prompt, porque o `system` (~200 tokens) fica abaixo do mínimo cacheável. O teto de saída é `tenno.ai.max-output-tokens` (4096).
+- **Retentativas:** os SDKs rodam com `maxRetries(0)` e timeout `tenno.translation.timeout`. Quem tenta de novo é o `FallbackTranslator`, que fica com a política inteira em um lugar só.
+- **Custo:** cada chamada registra no log o provedor, o modelo e os tokens de entrada e saída. Há limite de gasto configurado nos consoles da OpenAI e da Anthropic.
+- **Chaves:** ficam no **Infisical** (projeto `tenno-talk`, env `prod`) e entram no processo por `infisical run` no systemd (§32.1). Elas nunca são gravadas em disco na VPS e nunca vão para o frontend.
+- **Privacidade:** as mensagens são enviadas à OpenAI e à Anthropic pelas APIs. Pelos termos das APIs, os dados não são usados para treinar modelos, e os provedores podem retê-los por tempo limitado para monitorar abuso. Isso consta nos Termos e na Política de Privacidade.
 
 ### 28.2 Pipeline
 
@@ -1390,47 +1385,39 @@ Worker (pool pequeno)
   7. monta o prompt: instruções de tradução natural (sentido, não palavra por palavra),
      idioma de origem provável, últimas N mensagens da conversa (originais), mensagem-alvo;
      pede JSON { natural, literal }
-  8. ChatGPT (principal) → em falha, Claude (reserva) — regras em §28.3
+  8. OpenAI (principal) → em falha, Anthropic (reserva) — regras em §28.3
   9. valida o JSON; grava text/literal/version/provider → translation.updated
  10. falha transitória nos dois → retry com backoff (até 3) → 'failed' + retry manual pelo usuário
-     falha de login/cota nos dois → job em 'waiting_provider': não conta tentativa e nunca vira 'failed'
+     chave/cota indisponível nos dois → job em 'waiting_provider': não conta tentativa e nunca vira 'failed'
 ```
 
-### 28.3 Falhas de login e de cota: nada se perde
+### 28.3 Falhas de chave e de cota: nada se perde
 
 **Garantia:** uma mensagem **nunca se perde** por falha da IA. Ela é gravada no banco (passo 2) e entregue ao destinatário no original **antes** de qualquer chamada à IA. A tradução é um job separado, que só sai da fila quando é concluída. Se a IA cair no meio, o job continua lá e é retomado.
 
-Cada `Translator` classifica a falha, e o `FallbackTranslator` reage:
+Cada `Translator` classifica a falha a partir das exceções tipadas do SDK (`ApiErrors`), e o `FallbackTranslator` reage:
 
-| Falha no ChatGPT | O que acontece |
-|---|---|
-| **Login** (`TranslatorAuthException`) | ChatGPT vai para `needs_reauth` e a reautenticação começa (abaixo). O job vai **na hora** para o Claude. |
-| **Cota do plano** (`TranslatorQuotaException`) | ChatGPT vai para `cooling_down` até a renovação (quando a CLI informar o horário; senão, nova tentativa a cada 15 min). Os jobs vão para o Claude. |
-| **Transitória** (timeout, rede, JSON inválido) | Mais uma tentativa no ChatGPT; depois, Claude. |
+| Falha na OpenAI | Classificação | O que acontece |
+|---|---|---|
+| **Chave** (401, 403) | `AUTH` | A OpenAI vai para `invalid_key` e o administrador é avisado. O job vai **na hora** para a Anthropic. |
+| **Rate limit** (429) | `QUOTA` | A OpenAI vai para `cooling_down` pelo tempo do `retry-after` (padrão de 60s). Os jobs vão para a Anthropic. |
+| **Créditos esgotados** (OpenAI 429 `insufficient_quota`, Anthropic 402 `billing_error`) | `QUOTA` | `cooling_down` por `tenno.translation.cooldown-default` (15 min), e o administrador é avisado. |
+| **Transitória** (5xx, 529 overloaded, rede, timeout, recusa, resposta inválida) | `TRANSIENT` | Mais uma tentativa na OpenAI; depois, Anthropic. |
+| **Requisição inválida** (400, 404, 422: modelo errado, por exemplo) | `TRANSIENT` | Igual à transitória, mas registrada como erro. O job falha depois de 3 tentativas, e o `last_error` aparece no painel. |
 
-Enquanto o ChatGPT está indisponível, os jobs novos vão direto para o Claude, sem esperar timeout. Quando o ChatGPT volta a `ok`, ele reassume como principal.
+Enquanto a OpenAI está indisponível, os jobs novos vão direto para a Anthropic, sem esperar timeout. Quando a OpenAI volta a `ok`, ela reassume como principal.
 
-**Os dois indisponíveis** (ex.: ambos sem login, ou ChatGPT sem login e Claude sem cota): o job fica em `waiting_provider`. Ele **não gasta tentativas e nunca vira `failed`**. Assim que qualquer provedor volta, os jobs em espera são reprocessados em ordem de chegada e as traduções chegam aos usuários por `translation.updated`. Do lado do usuário, a conversa continua funcionando no original (§14.5).
+**Os dois indisponíveis** (ex.: as duas chaves inválidas, ou a OpenAI sem chave e a Anthropic em rate limit): o job fica em `waiting_provider`. Ele **não gasta tentativas e nunca vira `failed`**. Assim que qualquer provedor volta, os jobs em espera são reprocessados em ordem de chegada e as traduções chegam aos usuários por `translation.updated`. Do lado do usuário, a conversa continua funcionando no original (§14.5).
 
-**Reautenticação:**
+**Chave inválida:** não existe login a refazer. O administrador troca a chave no Infisical e reinicia o backend (`systemctl restart tenno-talk`). Na subida, o provedor é verificado e volta a `ok`. **Check now** no painel faz a mesma verificação sem reiniciar: `GET /v1/models/{model}` nos dois provedores, sem gastar tokens. Ela também confirma que o ID do modelo configurado existe.
 
-1. **Automática.** As CLIs renovam a sessão sozinhas (refresh token) enquanto ele for válido. Quando ocorre `TranslatorAuthException`, o backend força uma renovação em segundo plano e, se der certo, o provedor volta a `ok` e os jobs são retomados sem intervenção.
-2. **Assistida, quando a renovação automática não basta.** OpenAI e Anthropic exigem que uma pessoa aprove um novo login da conta do plano, então essa etapa não pode ser 100% automática. O backend:
-   - inicia o login da CLI por link/código (*device code*, quando a CLI oferecer) e muda o estado para `reauth_pending`;
-   - **avisa o administrador** (e-mail e notificação no app) com o link e o código;
-   - o administrador aprova pelo celular, sem precisar de SSH na VPS;
-   - concluído o login, o provedor volta a `ok` e a fila é retomada automaticamente.
-3. **Para reduzir a frequência:** o Claude usa um token de longa duração do plano (`claude setup-token`), que dispensa login interativo por um período longo. O Codex usa as credenciais persistidas com refresh automático.
+**Painel de administração** (`/admin/ai`, só para `role = admin`): mostra o estado de cada provedor (`ok`, `invalid_key`, `cooling_down` ou `not_configured`, quando falta a chave), o modelo em uso, a última falha e o tamanho da fila, além do botão **Check now**.
 
-As flags de login e de status de cada CLI serão confirmadas na Phase 8.
-
-**Painel de administração** (`/admin/ai`, só para `role = admin`): mostra o estado de cada provedor (`ok`, `needs_reauth`, `reauth_pending`, `cooling_down`), o tamanho da fila em espera e a última falha, além do botão **Reauthenticate**, que inicia o fluxo assistido manualmente.
-
-**Saúde:** uma verificação periódica e leve do status de login de cada CLI (sem gastar cota quando a CLI permitir) alimenta `ai_provider_status` e o health check do Actuator. Login prestes a expirar também gera aviso antecipado ao administrador.
+**Saúde:** os cooldowns vencidos voltam sozinhos a `ok` (`recoverExpired`, a cada 30s) e acordam os jobs em espera.
 
 - **Detecção de idioma:** não existe detecção no servidor. O idioma do original é o **idioma nativo do remetente**, pré-selecionado no onboarding a partir do idioma do sistema (`navigator.languages`) e editável em Settings. O prompt informa esse idioma como "provável", então o modelo ainda traduz corretamente se a pessoa escrever em outra língua. Limitação aceita: se o idioma declarado for igual ao do destinatário, a mensagem é marcada como `not_needed` e não é traduzida.
 - **Learning Mode:** o `literal` já vem do passo 7; explicação e vocabulário são gerados sob demanda pelo mesmo pipeline.
-- **Custo:** sem custo por token, mas limitado pelas cotas dos planos. Mitigação: cache por (mensagem, idioma), tradução de feed/stories só sob demanda e fila com backpressure.
+- **Custo:** cobrado por token. Mitigação: modelos pequenos (`gpt-4.1-mini`, `claude-haiku-4-5`), cache por (mensagem, idioma), tradução de feed/stories só sob demanda, teto de saída, rate limit de tradução (§31), fila com backpressure e limite de gasto nos consoles.
 
 ## 29. Storage
 
@@ -1469,10 +1456,10 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **Uploads:** MIME real, armazenamento fora da raiz web, servidos só por endpoint autorizado.
 - **Block e report:** bloquear pelo perfil; denunciar pessoa, mensagem recebida ou post (`POST /api/reports`, motivos: spam, assédio, ódio, conteúdo sexual, violência, outro). Só se denuncia o que se pode ver; uma denúncia aberta por alvo e pessoa. Admins revisam em **Settings → Reports** (`/admin/reports`).
 - **LGPD:**
-  - os Termos e a Política informam que as mensagens são processadas por IA de terceiros (Anthropic e OpenAI) para tradução, além da base legal, retenção e direitos do titular;
+  - os Termos e a Política informam que as mensagens são processadas pelas APIs de IA de terceiros (OpenAI e Anthropic) para tradução, além da base legal, retenção e direitos do titular;
   - acesso aos dados e **exclusão da conta**: implementados. **Download my data** (`GET /api/me/export`, JSON montado pelo Postgres, sem hash de senha nem dados privados de outras pessoas) e exclusão da conta (os arquivos saem do disco só depois do commit);
-  - treinamento desativado nas contas das IAs.
-- **Segredos** (client secrets OAuth, credenciais das CLIs, senha do banco) só no servidor: `.env` fora do git (o `.gitignore` ignora qualquer `.env`, menos `.env.example`) e volumes protegidos.
+  - as APIs da OpenAI e da Anthropic não usam os dados enviados para treinar modelos (termos das APIs).
+- **Segredos** (client secrets OAuth, chaves das APIs de IA, senha do banco) só no servidor. Na VPS compartilhada, as chaves de IA ficam no **Infisical** (projeto `tenno-talk`, env `prod`, machine identity própria, só de leitura) e entram na memória do processo por `infisical run`, sem ir para o disco (§32.1). No resto, `.env` fora do git (o `.gitignore` ignora qualquer `.env`, menos `.env.example`) e volumes protegidos.
 - **IP real e limite por IP:** o backend usa o `X-Forwarded-For` que o Caddy define, e o Caddy substitui o valor enviado pelo cliente. A porta do backend nunca é publicada. Testado: forjar o cabeçalho através do Caddy não fura o limite de login. Sob carga (300 tentativas simultâneas do mesmo IP): 10 passam, 290 recebem 429.
 - **Borda:** Caddy com HTTPS automático, HSTS, CSP (`connect-src` inclui `blob:` e `data:` porque a foto é lida da prévia local logo antes do upload; sem isso, nenhum upload funcionava em produção; `script-src 'self'`; por isso o script de tema é o arquivo `public/theme-init.js`, e não inline), `X-Frame-Options: DENY` e demais headers.
 - **Testes de segurança:** `SecurityMatrixIT` descobre todos os endpoints do Spring MVC e verifica que cada um responde 401 sem sessão, 403 sem CSRF nas escritas e 403 nas rotas de admin para quem não é admin. Nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário.
@@ -1481,12 +1468,12 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 
 ## 32. Deploy (VPS)
 
-Uma VPS com **Docker Compose** (sugestão mínima: 2 vCPU, 4 GB de RAM, por causa da JVM, do Postgres e das CLIs em Node):
+Uma VPS com **Docker Compose** (sugestão mínima: 2 vCPU, 2 GB de RAM, por causa da JVM e do Postgres):
 
 ```yaml
 services:
   web:       # Caddy com o build do Vite (deploy/Dockerfile.web): 80/443, TLS; proxy /api, /oauth2, /login/oauth2, /ws, /actuator/health → backend
-  backend:   # Spring Boot (JRE 21) + Node.js + CLIs codex/claude (backend/Dockerfile), usuário não-root; volumes: media, ai-codex, ai-claude
+  backend:   # Spring Boot (JRE 21) (backend/Dockerfile), usuário não-root; volume: media; OPENAI_API_KEY/ANTHROPIC_API_KEY do .env
   postgres:  # 16; volume pgdata; sem porta exposta
 ```
 
@@ -1494,14 +1481,14 @@ Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.we
 
 - **Domínio único** (ex.: `tennotalk.app`): SPA e API na mesma origem.
 - **Frontend:** `vite build` → `dist/` servido pelo Caddy, com fallback de SPA (`try_files {path} /index.html`) e cache imutável para assets com hash.
-- **Backend:** imagem multi-stage (build Maven → JRE 21 + Node + CLIs). Migrations Flyway no startup.
-- **Configuração:** `.env` não versionado (banco, client ids/secrets OAuth, URL pública, SMTP).
+- **Backend:** imagem multi-stage (build Maven → JRE 21). Migrations Flyway no startup.
+- **Configuração:** `.env` não versionado (banco, client ids/secrets OAuth, chaves das APIs de IA, URL pública, SMTP).
 - **CI (GitHub Actions):** lint, typecheck, test e build do frontend (mock e http); `./mvnw test` do backend, que roda unitários **e** integração (`*IT`, Testcontainers).
 - **CD:** workflow manual **Deploy** (`.github/workflows/deploy.yml`): SSH na VPS, `git checkout` da ref, `docker compose up -d --build` e espera o health. Passo a passo da VPS (hardening, login das IAs, admin, backups, monitoramento) em `deploy/VPS.md`.
 - **Backups:** `deploy/backup.sh` (pg_dump custom + mídia, 14 dias, confere o dump) e `deploy/restore.sh`. **Restauração testada** na pilha de produção local: dados e fotos apagados voltaram, e o usuário restaurado entrou e viu a conversa com a foto.
 - **PWA:** `manifest.webmanifest` com ícones (inclusive maskable) e `apple-touch-icon`: instalável na tela inicial. Sem service worker (offline não é objetivo).
 - **Ambientes:** local (`docker compose` de desenvolvimento) e produção. Staging é opcional por enquanto.
-- **Observabilidade:** logs JSON (`docker logs`), Spring Actuator (health, incluindo as CLIs de IA), monitor de uptime externo; Sentry é opcional.
+- **Observabilidade:** logs JSON (`docker logs`), Spring Actuator (health), monitor de uptime externo; Sentry é opcional.
 
 ---
 
@@ -1511,7 +1498,8 @@ A TENNO TALK está em **https://tenno.eldialabs.com**, na VPS da Eldia Labs, ao 
 
 - nginx da Eldia + **um arquivo próprio** (`server_name` exato, `listen 443 ssl;` sem opções de socket) e certificado próprio (`certbot certonly --webroot`, conta Let's Encrypt já existente no servidor). Os sites vizinhos são medidos antes e depois de cada mudança; qualquer diferença desfaz tudo.
 - PostgreSQL 14 da VPS (a suíte do backend roda contra o 14 no deploy): banco e usuário `tenno`, sem `CONNECT` nos bancos vizinhos.
-- Backend como `.jar` + systemd, só em `127.0.0.1:8090`, `-Xmx384m`. Node 22 e as CLIs de IA ficam em `/opt/tenno-talk`, sem pacote de sistema.
+- Backend como `.jar` + systemd, só em `127.0.0.1:8090`, `-Xmx384m`.
+- **Segredos via Infisical** (2026-10-04): o `ExecStart` faz `infisical login` com uma machine identity só de leitura do projeto `tenno-talk` e sobe a JVM por `infisical run --env=prod`. As chaves de IA entram só na memória do processo. Em `/etc/tenno-talk/tenno.env` ficam apenas `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`, `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` e `INFISICAL_PROJECT_ID` (além da senha do banco). O `./tenno vps provision` e o `./tenno run deploy:prod` gravam esses valores a partir do `vps.env` local (fora do git), pelo stdin do ssh (`remote/set-env.sh`). O deploy recusa começar sem eles ou com o serviço antigo na VPS. É o mesmo padrão do backend da Eldia, mas com uma **identity própria do projeto `tenno-talk`** (Viewer). A identity da Eldia é gerenciada pelo projeto dela e não pode ser compartilhada. Assim, a TENNO não enxerga os segredos da Eldia. Se o Infisical falhar, o serviço não sobe, e o deploy faz rollback.
 - Build sempre local; deploy com health check e rollback automático (ensaiados num container Ubuntu 22.04 com a configuração real do nginx: configuração inválida rejeitada sem reload, backend quebrado revertido sozinho).
 
 A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENNO.
@@ -1529,13 +1517,13 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | R5 | Multi-escrita (vietnamita, CJK, tailandês, árabe) | Fontes quebradas, layout errado em RTL | Inter + fallbacks; `dir="auto"`; propriedades lógicas; conta seed RTL |
 | R6 | Bandeira ≠ idioma; Windows não renderiza emoji de bandeira | UX confusa, "BR" no lugar da bandeira | Nome nativo do idioma como principal; bandeiras SVG por variante regional |
 | R7 | Colisão de nomes `useTranslation` (i18n × tradução) | Imports errados, confusão | Nomenclatura definida (D11) |
-| R8 | Latência da tradução via CLI (inicialização de processo) | Mensagens ficam alguns segundos em "translating" | UI não bloqueia; concorrência controlada; fallback entre provedores |
+| R8 | Latência da tradução (chamada à API) | Mensagens ficam um a dois segundos em "translating" | UI não bloqueia; modelos pequenos; concorrência controlada; fallback entre provedores |
 | R9 | `backdrop-blur` do painel lateral em dispositivos fracos | Jank | Fallback sem blur (`prefers-reduced-transparency`, heurística) |
 | R10 | Mock divergir da API real | Retrabalho na Phase 8 | `src/types` como contrato; OpenAPI + openapi-typescript; o mock imita a projeção do servidor |
 | R11 | Flags estritas do TS × código gerado pelo shadcn | Erros de tipo em `components/ui` | Ajustes pontuais e documentados; não afrouxar o tsconfig |
 | R12 | Tradução "melhorada" troca um texto que o usuário está lendo | Estranhamento | Crossfade suave; aplicar só se `version` maior |
 | R13 | Conectar desconhecidos de vários países (quando abrir para mais gente) | Spam, assédio | Block/report, privacidade restritiva por padrão, message requests |
-| R14 | IA pelos planos de assinatura (CLIs) em vez da API | Cotas por janela de tempo, sessão de login expirando, mudanças nas CLIs, termos de uso pensados para uso pessoal | ChatGPT → Claude com fallback; jobs em espera sem perda (§28.3); reautenticação automática e assistida; revisar os termos antes de abrir o app; migração para API sem impacto no resto |
+| R14 | Custo por token das APIs de IA | Conta alta se o uso crescer ou houver abuso | Modelos pequenos; cache por (mensagem, idioma); tradução de feed/stories sob demanda; `max-output-tokens`; rate limit de tradução; limite de gasto nos consoles; uso de tokens no log |
 | R15 | Mídia sem limite de produto numa VPS | Disco cheio derruba banco e app | Teto técnico alto configurável; alerta de uso de disco; mover mídia para object storage se crescer |
 | R16 | Facebook Login (App Review, e-mail ausente) | Login social atrasado ou contas sem e-mail | Começar com Google + email/senha; contas sem e-mail suportadas no modelo |
 | R17 | Idioma de origem declarado (sem detecção) | Mensagem escrita em outra língua pode não ser traduzida quando os idiomas declarados coincidem | O prompt trata o idioma como "provável"; idioma editável em Settings; detecção pode entrar depois |
@@ -1547,7 +1535,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | # | Tema | Decisão |
 |---|---|---|
 | 1 | Backend | **Java** (Spring Boot 4, Java 21) + PostgreSQL |
-| 2 | Provedores de IA | **ChatGPT (principal) + Claude (reserva, só quando o ChatGPT falha)**, pelos **planos de assinatura** (CLIs oficiais), não pela API. Falha de login dispara reautenticação, e nada do que foi enviado se perde (§28.3) |
+| 2 | Provedores de IA | **OpenAI (principal) + Anthropic (reserva, só quando a OpenAI falha)**, pelas **APIs oficiais** com chave no Infisical (revisto em 2026-10-04; antes eram as CLIs dos planos de assinatura). Chave inválida avisa o admin, e nada do que foi enviado se perde (§28.3) |
 | 3 | Privacidade / LGPD | Nos **Termos de Uso e Política de Privacidade**, com aceite obrigatório na criação da conta |
 | 4 | Detecção de idioma | Pelo **idioma do sistema** da pessoa (pré-seleção do idioma nativo no onboarding); sem detecção no servidor |
 | 5 | Editar / excluir mensagens | **Fora do escopo** por enquanto |
@@ -1568,7 +1556,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 
 ### 34.2 Ainda em aberto
 
-1. Quais modelos usar em cada plano.
+1. ~~Quais modelos usar.~~ Resolvido em 2026-10-04: `gpt-4.1-mini` e `claude-haiku-4-5`, configuráveis por variável (§28.1).
 2. Provedor e região da VPS; domínio.
 3. Texto jurídico dos Termos e da Política (idealmente revisado por alguém da área).
 4. Provedor de e-mail transacional (SMTP) para verificação de e-mail e redefinição de senha.

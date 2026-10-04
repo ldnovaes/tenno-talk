@@ -1,4 +1,4 @@
-import type { AiStatus, ProviderState, ReauthChallenge } from "@/types/admin";
+import type { AiStatus, ProviderState } from "@/types/admin";
 import type { Report, ReportStatus } from "@/types/moderation";
 
 import { httpAdminService } from "./http/httpAdminService";
@@ -8,7 +8,6 @@ import { mockAdminService } from "./mock/implementations/mockAdminService";
 export interface AdminService {
   getAiStatus(): Promise<AiStatus>;
   checkProvider(provider: string): Promise<{ ok: boolean; provider: ProviderState }>;
-  startReauth(provider: string): Promise<ReauthChallenge>;
   listReports(status: ReportStatus): Promise<Report[]>;
   resolveReport(id: string, status: Exclude<ReportStatus, "open">): Promise<Report>;
 }

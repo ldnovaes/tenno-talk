@@ -469,6 +469,29 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 - [x] Provision na VPS real: certificado próprio, nginx sem alterar os 7 sites vizinhos (comparados antes/depois), banco isolado
 - [x] Primeiro deploy (`38c064b`) com todos os testes: https://tenno.eldialabs.com no ar, backend só em 127.0.0.1
 - [ ] Criar a conta de admin (cadastro no app + promoção no banco)
-- [ ] Login das IAs: `./tenno vps ai-login codex` e `./tenno vps ai-login claude` (ou pelo painel AI providers)
+- [ ] ~~Login das IAs pelas CLIs~~ substituído pelas chaves de API no Infisical (seção abaixo)
 - [ ] Copiar `/var/backups/tenno-talk` para fora da VPS
 
+---
+
+## Tradução por API (2026-10-04)
+
+Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI (principal) e da Anthropic (reserva). Decisões em PLAN.md §28.1 e §28.3.
+
+- [x] PLAN.md atualizado (§25, §27, §28.1, §28.3, §31, §32, §32.1, R8, R14, §34)
+- [x] SDKs oficiais `openai-java` e `anthropic-java` (convivem com o Jackson 3 do Boot 4)
+- [x] `OpenAiTranslator` (Chat Completions, `json_schema` strict) e `AnthropicTranslator` (Messages, `output_config`), system + user, sem retries no SDK, uso de tokens no log
+- [x] `ApiErrors`: 401/403 → chave; 429 → cooldown pelo `retry-after`; créditos esgotados → cooldown padrão + aviso; 5xx/529/rede → transitório
+- [x] Provedor sem chave não é registrado; estado `invalid_key`; `ProviderHealthService` (aviso ao admin, **Check now** pelo modelo, verificação na subida)
+- [x] Migration V3 (`openai`/`anthropic`, estados novos, jobs em espera retomados); removidos `CliTranslator`, `ProcessRunner`, `ErrorClassifier`, `OutputParser`, `ReauthService` e o endpoint `/reauth`
+- [x] Testes: os dois SDKs contra um servidor stub local, `ApiErrors`, `FakeTranslators` nos testes de integração (suíte completa do backend: 402 testes)
+- [x] Painel `/admin/ai`: modelo, `invalid_key`/`not_configured`, dica do Infisical, sem login; Política de Privacidade atualizada e versão dos termos `2026-10-04` (novo aceite)
+- [x] Deploy: `tenno-talk.service` com `infisical run`; provision sem Node/CLIs e exigindo a machine identity; `ai-login` removido; imagem Docker sem Node; `.env.example` com as chaves
+- [ ] Infisical: `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no projeto `tenno-talk` (env `prod`)
+- [x] provision e deploy gravam a identity do Infisical no `tenno.env` da VPS a partir do `vps.env` local (`remote/set-env.sh`, pelo stdin do ssh); o deploy para cedo se faltar a identity ou se o serviço da VPS ainda for o antigo
+- [x] Identity `vps-prod-eldialabs` criada no projeto `tenno-talk` (Viewer). A da Eldia não serve: é gerenciada pelo projeto dela
+- [ ] Client ID + Client Secret dessa identity em `TENNO_INFISICAL_CLIENT_ID`/`_SECRET` no `vps.env` local
+- [ ] `./tenno vps provision` e `./tenno run deploy:prod`
+- [ ] Limite de gasto nos consoles da OpenAI e da Anthropic
+- [ ] Smoke em produção: mensagem traduzida com `provider=openai`; `AI usage` no log; `/admin/ai` com os dois provedores em `ok`
+- [ ] Limpar `/opt/tenno-talk/{node,cli}` e `/var/lib/tenno-talk/{.codex,.claude}` na VPS
