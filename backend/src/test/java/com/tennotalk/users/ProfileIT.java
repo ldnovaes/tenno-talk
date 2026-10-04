@@ -210,7 +210,7 @@ class ProfileIT extends IntegrationTest {
         data.user("linh", "vi-VN");
         UUID omar = data.user("omar", "ar");
         data.block(rafael, omar);
-        mvc.perform(get("/api/people/search").param("q", "@CA").with(as(rafael)))
+        mvc.perform(get("/api/people/search").param("q", "@LI").with(as(rafael)))
                 .andExpect(jsonPath("$[*].username", contains("linh")));
         mvc.perform(get("/api/people/suggestions").with(as(rafael)))
                 .andExpect(jsonPath("$[*].username", contains("linh")));

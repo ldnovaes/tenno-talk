@@ -22,7 +22,9 @@ export default function SignUpPage() {
         <p className="text-center text-sm text-muted-foreground">
           <Trans
             i18nKey="auth.haveAccount"
-            components={{ link: <Link to={paths.signIn()} className="font-medium text-primary" /> }}
+            components={{
+              signIn: <Link to={paths.signIn()} className="font-medium text-primary" />,
+            }}
           />
         </p>
         <p className="text-center text-xs text-muted-foreground">

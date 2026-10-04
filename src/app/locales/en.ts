@@ -64,8 +64,10 @@ export const en = {
     confirmPassword: "Confirm password",
     signIn: "Sign in",
     signUp: "Create account",
-    noAccount: "Don't have an account? <link>Create one</link>",
-    haveAccount: "Already have an account? <link>Sign in</link>",
+    // Tag names in <Trans> strings must not be HTML void elements (<link>, <br>…): their text
+    // would be rendered outside the element, leaving an empty, unclickable link.
+    noAccount: "Don't have an account? <signUp>Create one</signUp>",
+    haveAccount: "Already have an account? <signIn>Sign in</signIn>",
     signOut: "Sign out",
     validation: {
       email: "Enter a valid email address.",

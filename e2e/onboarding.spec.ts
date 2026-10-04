@@ -5,7 +5,11 @@ import { prepare } from "./support";
 test.beforeEach(async ({ context }) => prepare(context));
 
 test("a new person signs up, accepts the terms and completes onboarding", async ({ page }) => {
-  await page.goto("/signup");
+  // The way a visitor gets there: welcome → email → "Create one".
+  await page.goto("/welcome");
+  await page.getByRole("link", { name: "Continue with email" }).click();
+  await page.getByRole("link", { name: "Create one" }).click();
+  await expect(page).toHaveURL(/\/signup/);
   await page.getByLabel("Email").fill("new.person@example.com");
   await page.getByLabel("Password", { exact: true }).fill("secret123");
   await page.getByLabel("Confirm password").fill("secret123");

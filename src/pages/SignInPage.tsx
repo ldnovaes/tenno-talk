@@ -21,7 +21,9 @@ export default function SignInPage() {
         <p className="text-center text-sm text-muted-foreground">
           <Trans
             i18nKey="auth.noAccount"
-            components={{ link: <Link to={paths.signUp()} className="font-medium text-primary" /> }}
+            components={{
+              signUp: <Link to={paths.signUp()} className="font-medium text-primary" />,
+            }}
           />
         </p>
       </div>
