@@ -33,8 +33,8 @@ describe("groups", () => {
     expect(await screen.findByText("3 members")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Group info" }));
     const info = await screen.findByRole("dialog", { name: "Intercâmbio" });
-    expect(within(info).getByText("Receives in Tiếng Việt")).toBeInTheDocument();
-    expect(within(info).getByText("Receives in Español")).toBeInTheDocument();
+    expect(within(info).getByText("Reads in Tiếng Việt")).toBeInTheDocument();
+    expect(within(info).getByText("Reads in Español")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("radio", { name: "Groups" })).toBeInTheDocument();
   });

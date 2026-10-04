@@ -92,13 +92,15 @@ export const en = {
     },
     native: {
       title: "What language do you write in?",
-      description: "This is the language of your messages. Others will receive them translated.",
+      description:
+        "The language you write your messages in. People who speak other languages read them translated.",
       detected: "Detected from your device",
     },
     receive: {
-      title: "Receive messages in…",
-      description: "Messages from other people will be translated to this language.",
-      preview: "Messages will appear in {{language}}",
+      title: "What language do you want to read in?",
+      description:
+        "When someone writes to you in another language, you read their message translated into this one. For most people it's the language they write in. The original is always one tap away.",
+      example: "Example: a message written in {{from}} reaches you in {{language}}.",
     },
     profile: {
       title: "Create your profile",
@@ -370,7 +372,7 @@ export const en = {
     create: "Create group",
     limit: "You can create only one group.",
     info: "Group info",
-    receives: "Receives in {{language}}",
+    receives: "Reads in {{language}}",
     you: "You",
     selected_one: "{{count}} selected",
     selected_other: "{{count}} selected",
@@ -418,9 +420,11 @@ export const en = {
     },
     languageSection: {
       native: "Native language",
-      nativeHint: "The language you write in. Others receive your messages translated.",
-      receiving: "Receive messages in",
-      receivingHint: "Messages, posts and stories from others are translated to this language.",
+      nativeHint:
+        "The language you write in. People who speak other languages read your messages translated.",
+      receiving: "Read messages in",
+      receivingHint:
+        "Messages, posts and stories in other languages are translated into this one for you.",
       interface: "App language",
       interfaceHint: "More languages coming soon.",
       change: "Change",
@@ -473,7 +477,7 @@ export const en = {
     },
     sectionDescriptions: {
       account: "Profile, username, email and password",
-      language: "Native, receiving and interface languages",
+      language: "The languages you write in, read in and see the app in",
       translation: "How translated messages appear",
       appearance: "Light, dark or system",
       privacy: "Who can see and contact you",

@@ -69,7 +69,7 @@ describe("settings", () => {
   it("changes the receiving language", async () => {
     const user = userEvent.setup();
     renderApp("/settings/language");
-    await user.click(await screen.findByRole("combobox", { name: "Receive messages in" }));
+    await user.click(await screen.findByRole("combobox", { name: "Read messages in" }));
     await user.click(await screen.findByRole("option", { name: /English \(US\)/ }));
     await waitFor(() =>
       expect(mockDb.read().users["usr_rafael"]?.preferences.translation.receivingLanguage).toBe(

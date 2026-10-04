@@ -140,6 +140,30 @@
     border-color: var(--color-border);
   }
 
+  /* Tailwind v4 no longer gives buttons a pointer cursor: everything clickable shows one,
+     and disabled controls say so. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="menuitemcheckbox"],
+  [role="option"],
+  [role="radio"],
+  [role="checkbox"],
+  [role="switch"],
+  [role="combobox"],
+  label[for],
+  summary,
+  select {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;

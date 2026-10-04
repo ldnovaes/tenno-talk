@@ -30,10 +30,14 @@ describe("onboarding", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     // Step 3 — receiving language defaults to the native one, but can change.
-    const receive = await screen.findByRole("radiogroup", { name: "Receive messages in…" });
+    const receive = await screen.findByRole("radiogroup", {
+      name: "What language do you want to read in?",
+    });
     expect(within(receive).getByRole("radio", { checked: true })).toHaveTextContent("Tiếng Việt");
     await user.click(within(receive).getByRole("radio", { name: /English \(US\)/ }));
-    expect(screen.getByText("Messages will appear in English (US)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Example: a message written in Vietnamese reaches you in English (US)."),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     // Step 4 — profile with validation.
@@ -76,7 +80,7 @@ describe("onboarding", () => {
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await screen.findByRole("heading", { name: "What language do you write in?" });
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await screen.findByRole("heading", { name: "Receive messages in…" });
+    await screen.findByRole("heading", { name: "What language do you want to read in?" });
     await user.click(screen.getByRole("button", { name: "Continue" }));
     await user.type(await screen.findByLabelText("Name"), "Someone");
     await user.type(screen.getByLabelText("Username"), "linh");

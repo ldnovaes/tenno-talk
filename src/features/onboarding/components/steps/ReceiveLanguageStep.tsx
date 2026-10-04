@@ -23,6 +23,8 @@ export function ReceiveLanguageStep({ position, onNext }: StepProps) {
   }, [receivingLanguage, nativeLanguage, update]);
 
   const selected = receivingLanguage ? getLanguage(receivingLanguage) : undefined;
+  // A concrete example reads better than a rule: a message from another language.
+  const exampleFrom = getLanguage(selected?.code.startsWith("vi") ? "pt-BR" : "vi-VN");
 
   return (
     <OnboardingLayout
@@ -40,7 +42,10 @@ export function ReceiveLanguageStep({ position, onNext }: StepProps) {
       {selected && (
         <p className="mb-3 flex items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm text-accent-foreground">
           <Languages className="size-4 shrink-0" aria-hidden />
-          {t("onboarding.receive.preview", { language: selected.nativeName })}
+          {t("onboarding.receive.example", {
+            from: exampleFrom?.englishName ?? "",
+            language: selected.nativeName,
+          })}
         </p>
       )}
       <LanguagePicker
