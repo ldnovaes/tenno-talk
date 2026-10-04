@@ -9,8 +9,9 @@ import { resetPresence } from "@/services/mock/presence";
 import { resetMockConfig, setMockConfig } from "@/services/mock/latency";
 import { useSessionStore } from "@/stores/sessionStore";
 
-// Lazy routes load on first use; give async queries more room than the 1s default.
-configure({ asyncUtilTimeout: 3000 });
+// Generous on purpose: a "findBy" returns as soon as the element shows up, but the first test of a
+// file loads lazy routes cold, which under a full parallel run (e.g. the deploy) can take > 3s.
+configure({ asyncUtilTimeout: 8000 });
 
 /** Viewport used by matchMedia in tests. Override with setViewportWidth(). */
 let viewportWidth = 375;
