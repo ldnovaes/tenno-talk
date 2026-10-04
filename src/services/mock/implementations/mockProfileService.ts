@@ -210,7 +210,11 @@ export const mockProfileService: ProfileService = {
             createdAt: new Date().toISOString(),
           };
           if (target.preferences.privacy.profileVisibility === "private") {
-            if (!db.followRequests.some((item) => item.followerId === viewer.id && item.followeeId === userId))
+            if (
+              !db.followRequests.some(
+                (item) => item.followerId === viewer.id && item.followeeId === userId,
+              )
+            )
               db.followRequests.push(entry);
           } else db.follows.push(entry);
         }

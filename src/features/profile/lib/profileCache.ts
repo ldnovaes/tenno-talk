@@ -40,8 +40,7 @@ export function patchProfileInCaches(
 export function withFollowing(profile: UserProfile, following: boolean): UserProfile {
   if (following && (profile.isFollowing || profile.followRequestPending)) return profile;
   if (!following && !profile.isFollowing && !profile.followRequestPending) return profile;
-  if (following && profile.isPrivate)
-    return { ...profile, followRequestPending: true };
+  if (following && profile.isPrivate) return { ...profile, followRequestPending: true };
   if (!following && profile.followRequestPending)
     return { ...profile, followRequestPending: false };
   return {

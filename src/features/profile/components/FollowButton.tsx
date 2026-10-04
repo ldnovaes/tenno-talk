@@ -10,7 +10,10 @@ export function FollowButton({
   size = "sm",
   className,
 }: {
-  profile: Pick<UserProfile, "id" | "isFollowing" | "isPrivate" | "followRequestPending" | "displayName">;
+  profile: Pick<
+    UserProfile,
+    "id" | "isFollowing" | "isPrivate" | "followRequestPending" | "displayName"
+  >;
   size?: "sm" | "default";
   className?: string;
 }) {

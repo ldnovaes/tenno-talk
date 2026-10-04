@@ -291,10 +291,16 @@ describe("mockChatService", () => {
         if (linh) linh.preferences.privacy.whoCanMessage = "everyone";
         db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
       });
-      await expect(send("Blocked outward", "blocked-out")).rejects.toMatchObject({ code: "forbidden" });
+      await expect(send("Blocked outward", "blocked-out")).rejects.toMatchObject({
+        code: "forbidden",
+      });
       asLinh();
-      await expect(send("Blocked inward", "blocked-in")).rejects.toMatchObject({ code: "forbidden" });
-      expect(Object.values(mockDb.read().messages).filter((m) => m.clientId?.startsWith("blocked-"))).toHaveLength(0);
+      await expect(send("Blocked inward", "blocked-in")).rejects.toMatchObject({
+        code: "forbidden",
+      });
+      expect(
+        Object.values(mockDb.read().messages).filter((m) => m.clientId?.startsWith("blocked-")),
+      ).toHaveLength(0);
     });
 
     it("refuses to message yourself", async () => {

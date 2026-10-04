@@ -114,18 +114,29 @@ describe("mockProfileService", () => {
     });
     const requested = await mockProfileService.follow("usr_emma");
     expect(requested).toMatchObject({ isFollowing: false, followRequestPending: true });
-    expect(mockDb.read().follows.some((f) => f.followerId === "usr_rafael" && f.followeeId === "usr_emma")).toBe(false);
+    expect(
+      mockDb
+        .read()
+        .follows.some((f) => f.followerId === "usr_rafael" && f.followeeId === "usr_emma"),
+    ).toBe(false);
     writeMockSession("usr_emma");
-    expect((await mockProfileService.getFollowRequests()).map((person) => person.id)).toContain("usr_rafael");
+    expect((await mockProfileService.getFollowRequests()).map((person) => person.id)).toContain(
+      "usr_rafael",
+    );
     await mockProfileService.approveFollowRequest("usr_rafael");
     writeMockSession("usr_rafael");
-    expect(await mockProfileService.getProfile("emma")).toMatchObject({ isFollowing: true, followRequestPending: false });
+    expect(await mockProfileService.getProfile("emma")).toMatchObject({
+      isFollowing: true,
+      followRequestPending: false,
+    });
     await mockProfileService.unfollow("usr_emma");
     await mockProfileService.follow("usr_emma");
     await mockProfileService.block("usr_emma");
     expect(mockDb.read().followRequests).toHaveLength(0);
     writeMockSession("usr_emma");
-    await expect(mockProfileService.getProfile("rafael")).rejects.toMatchObject({ code: "not_found" });
+    await expect(mockProfileService.getProfile("rafael")).rejects.toMatchObject({
+      code: "not_found",
+    });
   });
 
   it("does not follow yourself", async () => {

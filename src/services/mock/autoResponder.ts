@@ -100,12 +100,9 @@ export function maybeAutoRespond(message: MessageRecord): void {
     if (canDirectMessage(mockDb.read(), message.senderId, botId))
       setCursor(conversation.id, botId, message.id, "read");
   }, step * 1.8);
-  setTimeout(
-    () => {
-      if (canDirectMessage(mockDb.read(), botId, message.senderId))
-        publish({ kind: "typing", conversationId: conversation.id, userId: botId, isTyping: true });
-    },
-    step * 2.4,
-  );
+  setTimeout(() => {
+    if (canDirectMessage(mockDb.read(), botId, message.senderId))
+      publish({ kind: "typing", conversationId: conversation.id, userId: botId, isTyping: true });
+  }, step * 2.4);
   setTimeout(() => reply(conversation.id, botId), step * 4.5);
 }
