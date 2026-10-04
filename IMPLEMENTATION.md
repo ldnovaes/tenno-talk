@@ -504,7 +504,7 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 
 ## Phase 11 — Notificações e experiência social
 
-> Planejada em 2026-10-04. Decisões em [PLAN.md §36](PLAN.md#36-revisão-da-experiência-social-2026-10-04), diagnóstico, contratos e aceite em [PLANO_UX.md](PLANO_UX.md). Implementação local em validação; chaves VAPID e ensaio em dispositivos reais pendentes.
+> Planejada em 2026-10-04. Decisões em [PLAN.md §36](PLAN.md#36-revisão-da-experiência-social-2026-10-04), diagnóstico, contratos e aceite em [PLANO_UX.md](PLANO_UX.md). Release `1821cbe` publicado na VPS com VAPID configurado e migration V5; ensaio em dispositivos reais pendente.
 
 - [x] Inspecionar os fluxos atuais e documentar o plano de implementação
 - [x] Registrar escopo confirmado: push incluído, stories privados, melhorias de confiabilidade do chat e manutenção do refetch completo
@@ -522,6 +522,7 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 - [x] 11.3 — Criar notificações de mensagens/respostas com idempotência e paridade HTTP/mock
 - [x] 11.3 — Implementar leitura individual/em lote segura, paginação, recuperação em falha, integração com leitura do chat e sincronização entre dispositivos
 - [x] 11.4 — Implementar service worker, inscrições por dispositivo, permissão explícita e preferências de Web Push
+- [x] 11.4 — Configurar par VAPID exclusivo na VPS fora do Git, publicar release `1821cbe` e confirmar service worker/health/migration V5 pela URL pública
 - [ ] 11.4 — Validar push com app fechado, retry/expiração, clique seguro e revogação no logout em dispositivos reais
 - [x] 11.5 — Padronizar retorno por origem interna/fallback, incluindo links diretos e estados de loading/erro
 - [x] 11.5 — Aplicar escala de espaçamento a chat, campos e formulários; corrigir composição de safe area e validar teclado

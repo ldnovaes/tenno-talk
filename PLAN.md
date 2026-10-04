@@ -1587,7 +1587,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 
 ## 36. Revisão da experiência social (2026-10-04)
 
-Status: implementação local em validação; Web Push aguarda chaves VAPID e ensaio em dispositivos reais. Plano detalhado em [PLANO_UX.md](PLANO_UX.md); execução na Phase 11 do [IMPLEMENTATION.md](IMPLEMENTATION.md#phase-11--notificações-e-experiência-social).
+Status: release `1821cbe` publicado em `https://tenno.eldialabs.com` com migration V5 e chaves VAPID de produção; Web Push com o app fechado ainda aguarda ensaio em dispositivos reais. Plano detalhado em [PLANO_UX.md](PLANO_UX.md); execução na Phase 11 do [IMPLEMENTATION.md](IMPLEMENTATION.md#phase-11--notificações-e-experiência-social).
 
 Esta revisão evolui as decisões das seções 6, 8, 9, 13, 17 e 26 para resolver notificações ausentes, confiabilidade do chat, espaçamento, comentários/respostas e retorno entre telas:
 
