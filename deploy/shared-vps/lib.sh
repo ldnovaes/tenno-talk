@@ -8,7 +8,7 @@ if [ ! -f "$VPS_ENV_FILE" ]; then
 fi
 # shellcheck source=/dev/null
 source "$VPS_ENV_FILE"
-: "${TENNO_VPS_HOST:?}" "${TENNO_VPS_PORT:=22}" "${TENNO_DOMAIN:?}" "${TENNO_CERT_EMAIL:?}" "${TENNO_PORT:=8090}"
+: "${TENNO_VPS_HOST:?}" "${TENNO_VPS_PORT:=22}" "${TENNO_DOMAIN:?}" "${TENNO_CERT_EMAIL:=}" "${TENNO_PORT:=8090}"
 : "${TENNO_NEIGHBOR_HOSTS:=}"
 
 SSH_OPTS=(-p "$TENNO_VPS_PORT" -o ConnectTimeout=15 ${TENNO_SSH_EXTRA:-})

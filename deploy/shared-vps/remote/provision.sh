@@ -12,7 +12,8 @@ export LANG=C.UTF-8 LC_ALL=C.UTF-8
 cd /
 
 DOMAIN="${DOMAIN:?}"
-CERT_EMAIL="${CERT_EMAIL:?}"
+# Optional: without it, the Let's Encrypt account already registered on the server is reused.
+CERT_EMAIL="${CERT_EMAIL:-}"
 PORT="${PORT:-8090}"
 CERT_MODE="${CERT_MODE:-letsencrypt}"
 NEIGHBOR_HOSTS="${NEIGHBOR_HOSTS:-}"
@@ -136,8 +137,14 @@ if [ ! -s "$live/fullchain.pem" ]; then
     rm -f "/var/www/certbot-webroot/.well-known/acme-challenge/$probe"
     [ "$got" = "ok" ] || { log "ERROR: http://$DOMAIN/.well-known/acme-challenge/ is not served from /var/www/certbot-webroot"; exit 1; }
     log "Requesting a Let's Encrypt certificate for $DOMAIN (certonly: nginx config untouched)"
+    email_args=()
+    if [ -n "$CERT_EMAIL" ]; then
+      email_args=(-m "$CERT_EMAIL")
+    elif ! ls /etc/letsencrypt/accounts/acme-v02.api.letsencrypt.org/directory/*/regr.json >/dev/null 2>&1; then
+      log "ERROR: no Let's Encrypt account on this server; set TENNO_CERT_EMAIL"; exit 1
+    fi
     certbot certonly --webroot -w /var/www/certbot-webroot --cert-name "$DOMAIN" -d "$DOMAIN" \
-      --non-interactive --agree-tos -m "$CERT_EMAIL" --deploy-hook "systemctl reload nginx"
+      --non-interactive --agree-tos "${email_args[@]}" --deploy-hook "systemctl reload nginx"
   fi
 fi
 
