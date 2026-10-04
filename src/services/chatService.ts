@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { Page } from "@/types/api";
 import type { Conversation } from "@/types/conversation";
 import type { MediaKind } from "@/types/media";
@@ -43,5 +42,4 @@ export interface ChatService {
   createGroup(input: { title: string; memberIds: string[] }): Promise<Conversation>;
 }
 
-export const chatService: ChatService =
-  env.dataSource === "http" ? httpChatService : mockChatService;
+export const chatService: ChatService = __USE_HTTP__ ? httpChatService : mockChatService;

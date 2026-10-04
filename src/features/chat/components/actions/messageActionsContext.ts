@@ -9,6 +9,7 @@ export interface MessageActionsValue {
   reply: (message: Message) => void;
   forward: (message: Message) => void;
   learn: (message: Message) => void;
+  report: (message: Message) => void;
   react: (message: Message, emoji: string) => void;
   copy: (text: string) => void;
   retry: (clientId: string) => void;

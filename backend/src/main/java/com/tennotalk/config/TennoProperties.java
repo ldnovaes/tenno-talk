@@ -13,7 +13,8 @@ public record TennoProperties(
         Media media,
         Translation translation,
         Ai ai,
-        RateLimit rateLimit) {
+        RateLimit rateLimit,
+        OAuth oauth) {
 
     public record Media(String root) {}
 
@@ -31,4 +32,12 @@ public record TennoProperties(
     public record Provider(String id, List<String> command, List<String> statusCommand, List<String> loginCommand) {}
 
     public record RateLimit(boolean enabled) {}
+
+    public record OAuth(Client google, Client facebook) {}
+
+    public record Client(String clientId, String clientSecret) {
+        public boolean configured() {
+            return clientId != null && !clientId.isBlank() && clientSecret != null && !clientSecret.isBlank();
+        }
+    }
 }

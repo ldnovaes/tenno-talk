@@ -15,6 +15,7 @@ import type { Post } from "@/types/post";
 import { useToggleLike } from "../hooks/useFeed";
 import { MediaCarousel } from "./MediaCarousel";
 import { PostActions } from "./PostActions";
+import { PostMenu } from "./PostMenu";
 
 function PostCardComponent({
   post,
@@ -59,6 +60,7 @@ function PostCardComponent({
           </span>
         </OverlayLink>
         <RelativeTime iso={post.createdAt} className="ms-auto text-xs text-muted-foreground" />
+        <PostMenu post={post} />
       </header>
       <div onDoubleClick={likeFromMedia} className="md:overflow-hidden md:rounded-xl">
         <MediaCarousel

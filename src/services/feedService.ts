@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { Page } from "@/types/api";
 import type { Comment, Post } from "@/types/post";
 
@@ -23,5 +22,4 @@ export interface FeedService {
   createPost(input: CreatePostInput, onProgress?: (progress: number) => void): Promise<Post>;
 }
 
-export const feedService: FeedService =
-  env.dataSource === "http" ? httpFeedService : mockFeedService;
+export const feedService: FeedService = __USE_HTTP__ ? httpFeedService : mockFeedService;

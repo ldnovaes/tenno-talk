@@ -1,5 +1,5 @@
-import { env } from "@/lib/env";
 import type { AiStatus, ProviderState, ReauthChallenge } from "@/types/admin";
+import type { Report, ReportStatus } from "@/types/moderation";
 
 import { httpAdminService } from "./http/httpAdminService";
 import { mockAdminService } from "./mock/implementations/mockAdminService";
@@ -9,7 +9,8 @@ export interface AdminService {
   getAiStatus(): Promise<AiStatus>;
   checkProvider(provider: string): Promise<{ ok: boolean; provider: ProviderState }>;
   startReauth(provider: string): Promise<ReauthChallenge>;
+  listReports(status: ReportStatus): Promise<Report[]>;
+  resolveReport(id: string, status: Exclude<ReportStatus, "open">): Promise<Report>;
 }
 
-export const adminService: AdminService =
-  env.dataSource === "http" ? httpAdminService : mockAdminService;
+export const adminService: AdminService = __USE_HTTP__ ? httpAdminService : mockAdminService;

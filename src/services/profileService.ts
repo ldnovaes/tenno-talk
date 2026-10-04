@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { CountryCode, LanguageCode } from "@/types/language";
 import type { UserPreferences } from "@/types/preferences";
 import type { CurrentUser, UserProfile } from "@/types/user";
@@ -48,9 +47,12 @@ export interface ProfileService {
   getBlockedUsers(): Promise<UserProfile[]>;
   block(userId: string): Promise<void>;
   unblock(userId: string): Promise<void>;
+  /** LGPD: everything stored about the account, as a JSON document. */
+  exportMyData(): Promise<unknown>;
   /** LGPD: removes the account and its personal data. */
   deleteAccount(): Promise<void>;
 }
 
-export const profileService: ProfileService =
-  env.dataSource === "http" ? httpProfileService : mockProfileService;
+export const profileService: ProfileService = __USE_HTTP__
+  ? httpProfileService
+  : mockProfileService;

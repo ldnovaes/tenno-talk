@@ -39,7 +39,10 @@ public class ProfileController {
     private final ProfileService profiles;
     private final SessionLogin sessionLogin;
 
-    public ProfileController(ProfileService profiles, SessionLogin sessionLogin) {
+    private final DataExportService exports;
+
+    public ProfileController(ProfileService profiles, SessionLogin sessionLogin, DataExportService exports) {
+        this.exports = exports;
         this.profiles = profiles;
         this.sessionLogin = sessionLogin;
     }
@@ -68,6 +71,15 @@ public class ProfileController {
     @PatchMapping("/me/preferences")
     public CurrentUserDto updatePreferences(@AuthenticationPrincipal AppPrincipal me, @RequestBody PreferencesPatch body) {
         return profiles.updatePreferences(me.userId(), body);
+    }
+
+    /** LGPD: a copy of everything stored about the account. */
+    @GetMapping("/me/export")
+    public org.springframework.http.ResponseEntity<tools.jackson.databind.node.ObjectNode> export(@AuthenticationPrincipal AppPrincipal me) {
+        return org.springframework.http.ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"tenno-talk-data.json\"")
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(exports.export(me.userId()));
     }
 
     @DeleteMapping("/me")

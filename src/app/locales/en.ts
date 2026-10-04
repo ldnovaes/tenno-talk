@@ -276,6 +276,7 @@ export const en = {
     loadMore: "Loading more people…",
   },
   feed: {
+    postMenu: "Post options",
     title: "Feed",
     empty: "No posts yet",
     emptyDescription: "Share your first moment.",
@@ -320,6 +321,7 @@ export const en = {
     yourStory: "Your story",
     addStory: "Add to your story",
     open: "Open {{name}}'s stories",
+    openOwn: "Open your stories",
     viewer: "Stories of {{name}}",
     close: "Close stories",
     pause: "Pause",
@@ -398,6 +400,11 @@ export const en = {
       connectedNo: "Not connected",
       legal: "Legal",
       termsAccepted: "Terms accepted (version {{version}})",
+      yourData: "Your data",
+      exportDescription:
+        "Download a copy of your account, messages you sent, posts and other data.",
+      exportData: "Download my data",
+      exporting: "Preparing…",
       dangerZone: "Account",
       deleteAccount: "Delete account",
       deleteTitle: "Delete your account?",
@@ -577,8 +584,39 @@ export const en = {
       empty: "No one found.",
     },
   },
+  moderation: {
+    report: "Report",
+    title: {
+      user: "Report this person",
+      message: "Report this message",
+      post: "Report this post",
+      comment: "Report this comment",
+      story: "Report this story",
+    },
+    description: "Your report is private. An administrator will review it.",
+    reasonLabel: "Reason",
+    reasons: {
+      spam: "Spam or scam",
+      harassment: "Harassment or bullying",
+      hate: "Hate speech",
+      sexual: "Sexual content",
+      violence: "Violence or threats",
+      other: "Something else",
+    },
+    submit: "Send report",
+    reported: "Thanks. We'll review your report.",
+  },
   admin: {
     notAllowed: "This page is for administrators.",
+    reports: {
+      title: "Reports",
+      empty: "No reports here.",
+      by: "Reported by @{{username}}",
+      target: "{{kind}} {{id}}",
+      reviewed: "Mark reviewed",
+      dismiss: "Dismiss",
+      statuses: { open: "Open", reviewed: "Reviewed", dismissed: "Dismissed" },
+    },
     ai: {
       title: "AI providers",
       description:

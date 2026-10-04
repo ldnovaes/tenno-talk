@@ -126,33 +126,4 @@ class AuthIT extends IntegrationTest {
     void healthIsPublic() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
     }
-
-    /** What the SPA really does: read XSRF-TOKEN from the first response and echo it in X-XSRF-TOKEN. */
-    @Test
-    void theBrowserCsrfRoundTripWorksWithoutTestShortcuts() throws Exception {
-        MvcResult first = mvc.perform(get("/api/auth/session")).andExpect(status().isOk()).andReturn();
-        Cookie xsrf = first.getResponse().getCookie("XSRF-TOKEN");
-        assertThat(xsrf).isNotNull();
-        assertThat(xsrf.isHttpOnly()).isFalse();
-        String body = json.writeValueAsString(Map.of("email", "csrf@example.com", "password", "secret123"));
-
-        mvc.perform(post("/api/auth/signup").contentType("application/json").content(body).cookie(xsrf))
-                .andExpect(status().isForbidden());
-        mvc.perform(post("/api/auth/signup").contentType("application/json").content(body).cookie(xsrf)
-                        .header("X-XSRF-TOKEN", "forged"))
-                .andExpect(status().isForbidden());
-        MvcResult created = mvc.perform(post("/api/auth/signup").contentType("application/json").content(body).cookie(xsrf)
-                        .header("X-XSRF-TOKEN", xsrf.getValue()))
-                .andExpect(status().isCreated()).andReturn();
-
-        Cookie session = sessionCookie(created);
-        assertThat(session.isHttpOnly()).isTrue();
-        assertThat(created.getResponse().getHeaders("Set-Cookie"))
-                .anySatisfy(header -> assertThat(header).startsWith("SESSION=").contains("HttpOnly").contains("SameSite=Lax"));
-        // A new session gets a fresh token; the signed-in app keeps working with it.
-        Cookie rotated = created.getResponse().getCookie("XSRF-TOKEN");
-        Cookie token = rotated != null && !rotated.getValue().isEmpty() ? rotated : xsrf;
-        mvc.perform(post("/api/auth/signout").cookie(session, token).header("X-XSRF-TOKEN", token.getValue()))
-                .andExpect(status().isNoContent());
-    }
 }

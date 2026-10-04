@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { Notification } from "@/types/notification";
 
 import { mockNotificationService } from "./mock/implementations/mockNotificationService";
@@ -10,5 +9,6 @@ export interface NotificationService {
   markAllRead(): Promise<void>;
 }
 
-export const notificationService: NotificationService =
-  env.dataSource === "http" ? httpNotificationService : mockNotificationService;
+export const notificationService: NotificationService = __USE_HTTP__
+  ? httpNotificationService
+  : mockNotificationService;

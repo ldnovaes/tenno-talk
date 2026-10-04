@@ -260,7 +260,14 @@ public class ProfileService {
                 AND EXISTS (SELECT 1 FROM conversation_members m WHERE m.conversation_id = c.id AND m.user_id = :id)
                 """).param("id", viewer).update();
         users.delete(viewer);
-        files.forEach(storage::delete);
+        // Files go only once the rows are gone for good: a rollback must not leave dangling media.
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        files.forEach(storage::delete);
+                    }
+                });
     }
 
     private void requireOtherVisibleUser(UUID viewer, UUID target) {

@@ -1,8 +1,6 @@
 import type { Notification } from "@/types/notification";
 import type { ContentTranslation, Message } from "@/types/message";
 
-import { env } from "@/lib/env";
-
 import { mockRealtimeClient } from "./mockRealtimeClient";
 import { wsRealtimeClient } from "./wsRealtimeClient";
 
@@ -42,5 +40,4 @@ export interface RealtimeClient {
   emitTyping(conversationId: string, isTyping: boolean): void;
 }
 
-export const realtimeClient: RealtimeClient =
-  env.dataSource === "http" ? wsRealtimeClient : mockRealtimeClient;
+export const realtimeClient: RealtimeClient = __USE_HTTP__ ? wsRealtimeClient : mockRealtimeClient;

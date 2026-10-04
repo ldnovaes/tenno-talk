@@ -1063,6 +1063,7 @@ Os hooks chamam `chatService.getConversations()` dentro de `queryFn`; nenhum com
 - **IDs estáveis e legíveis** no seed. Novos registros usam `crypto.randomUUID()`.
 - Persistência em `localStorage` (`tenno.mockdb.v1`), para que mensagens enviadas, follows e preferências sobrevivam ao reload. A versão na chave permite resetar ao mudar o seed.
 - Settings → (dev) "Reset demo data".
+- **Duas abas = dois processos.** O localStorage chega às outras abas de forma assíncrona e pode perder para o BroadcastChannel. Por isso: (1) cada escrita incrementa uma revisão (`tenno.mockdb.rev`), e um evento recebido espera, em ordem, até a aba enxergar a revisão em que foi publicado (ou 1 s); (2) `update()` usa concorrência otimista (refaz a mudança sobre dados novos se outra aba escreveu no meio); (3) leituras que não mudam nada não escrevem, então uma aba com visão atrasada não sobrescreve as outras. Sem isso, a demo a dois perdia mensagens e traduções de vez em quando.
 - O mock **simula a projeção do servidor**: guarda N traduções por mensagem e devolve só a do idioma de recebimento do usuário logado.
 
 ### 16.3 Realismo
@@ -1177,7 +1178,7 @@ Componente `EmptyState { icon, title, description, action? }`:
   - `↑`/`↓` navegam na lista de conversas;
   - setas e `Esc` no story viewer;
   - ações de mensagem acessíveis por foco (botão "⋯") e pela tecla de menu de contexto.
-- Contraste mínimo AA nos dois temas (validar tokens com ferramenta na Phase 1).
+- Contraste mínimo AA nos dois temas. **Auditado com axe na Phase 10** (`e2e/a11y.spec.ts`, WCAG 2.1 AA, 8 telas × 2 temas × desktop/celular, zero violações sérias ou críticas). O que a auditoria corrigiu: `--muted-foreground` mais escuro no claro (4,4:1 sobre o fundo do chat) e mais claro no escuro (4,1:1 sobre a linha selecionada); controles "em breve" viraram botões com `aria-disabled` (focáveis, com tooltip) em vez de `<span aria-label>`; input de arquivo do composer rotulado; combobox de país associado ao rótulo; rótulo do próprio story ("Open your stories").
 - Imagens com `alt` (avatar: nome da pessoa; mídia: `alt` do upload ou descrição genérica).
 - Respeito a `prefers-reduced-motion` e `prefers-reduced-transparency`.
 - Alvos de toque ≥ 44px.
@@ -1198,13 +1199,15 @@ Há três conceitos distintos de idioma, que não devem ser confundidos no códi
 
 ## 22. Performance
 
-- **Code splitting:** todas as páginas com `React.lazy`. StoryViewer, emoji picker, CreatePost e LearningPanel são carregados sob demanda.
+- **Code splitting:** páginas com `React.lazy`. StoryViewer, emoji picker, CreatePost e LearningPanel são carregados sob demanda. O **shell logado** (chat, realtime, navegação) também é lazy, para o welcome não baixá-lo; o **Welcome é eager** (a primeira tela de todo visitante, sem uma ida e volta a mais).
+- **Fonte de dados em tempo de build:** `__USE_HTTP__` (define do Vite) é um literal, então o bundler descarta a implementação não usada; com `VITE_DATA_SOURCE=http`, os módulos de mock são marcados sem efeitos colaterais e saem do build.
+- **Boot:** um splash estático em `index.html` pinta antes do JS. Visitantes que nunca entraram neste navegador (`tenno.has-session`, só uma dica, não credencial) veem `/welcome`, `/signin` e `/signup` sem esperar a checagem de sessão.
 - **Imagens:** `loading="lazy"`, `decoding="async"`, `width`/`height` ou `aspect-ratio` reservados (sem layout shift), thumbnails em grids.
 - **Listas:** infinite scroll no feed, no Discover e nas mensagens antigas.
-- **Virtualização:** preparada, mas não implementada de início. A `MessageList` é desenhada para aceitar react-virtuoso (boa com listas reversas e alturas variáveis) quando medirmos necessidade (> ~300 mensagens renderizadas ou frame drops).
+- **Virtualização:** medida na Phase 10 e **adiada**. Com 330 mensagens renderizadas e CPU 4× mais lenta, a rolagem fica a 60 fps (p95 17 ms por quadro). O gargalo real era outro: `retry`/`discard` de `useSendMessage` eram funções novas a cada render e estão no contexto das ações, então cada envio re-renderizava as 330 bolhas seis vezes (1.992 renders). Com `useCallback`, são 6 renders e a mensagem aparece em ~0,4 s (era 1,35 s). Um teste garante a estabilidade. Reavaliar react-virtuoso se conversas passarem de ~1.000 mensagens carregadas.
 - **Re-render:** seletores granulares no Zustand; `React.memo` só em `MessageBubble` e `ConversationListItem`; `upsertMessage` preserva a identidade dos objetos.
 - **Sem otimização prematura:** nada de `useMemo`/`useCallback` por reflexo, só quando há custo medido ou dependência de memo.
-- **Orçamento inicial:** JS do primeiro carregamento < 200KB gzip; LCP < 2.5s em 4G simulado (medir na Phase 10).
+- **Orçamento:** JS + CSS do primeiro carregamento < 200KB gzip. **Medido:** 182,6 KB (build `http`). Lighthouse em `/welcome` atrás do Caddy (HTTP/2, celular simulado): Performance 94–97, Accessibility 100, Best Practices 100, SEO 100; LCP 2,6 s. No `vite preview` (HTTP/1.1) a nota cai para 88 por causa do limite de conexões; a produção usa HTTP/2 e HTTP/3.
 
 ## 23. Testes
 
@@ -1213,8 +1216,12 @@ Há três conceitos distintos de idioma, que não devem ser confundidos no códi
 | Unitário | Vitest | `groupMessages`, `resolveMessageDisplay`, `upsertMessage`/`patchTranslation` (dedupe, versão), `conversationFilters`, formatação de datas, `mockTranslator` |
 | Componente | Vitest + Testing Library | `MessageBubble` (3 modos × estados de tradução), `Composer` (Enter/Shift+Enter, reply), guards de rota, `LanguagePicker`, formulários de settings |
 | Integração | Vitest + mocks reais | Fluxo enviar → otimista → sent → resposta automática |
-| E2E | Playwright (Phase 10) | Onboarding, chat entre duas contas, troca de modo de tradução, responsividade |
-| A11y | axe (Phase 10) | Páginas principais nos dois temas |
+| E2E | Playwright (`bun run e2e`, contra o mock) | Onboarding, chat entre duas contas em duas abas, modos de tradução, feed, stories, responsividade (desktop e celular) |
+| A11y | axe (`e2e/a11y.spec.ts`) | 8 telas nos dois temas, desktop e celular |
+| Pilha | Playwright (`bun run e2e:stack`) | Deploy real (Caddy + SPA + Java + Postgres): realtime por `wss://`, upload, CSP, cookie |
+| Backend | JUnit + Testcontainers (`./mvnw test`) | 400+ testes: regras, todos os endpoints (matriz de segurança), WebSocket real, pipeline de tradução, OAuth, backups de dados (export) |
+
+Detalhes e medições em `e2e/README.md`.
 
 Regra: toda função pura de domínio nasce com teste.
 
@@ -1301,6 +1308,7 @@ IDs malformados respondem 404, como IDs inexistentes. O OpenAPI fica em `/api/op
 - **Heartbeat de aplicação:** o navegador não envia frames de ping do WebSocket, então o cliente manda `{"type":"ping"}` a cada 25s e o servidor responde `{"type":"pong"}`. Sem pong em 10s, a conexão é considerada morta.
 - **Reconexão (`wsRealtimeClient`):** backoff exponencial com jitter (0,5–1× de min(30s, 1s·2ⁿ)). O evento `offline` do navegador derruba a conexão na hora, e `online` ou a volta à aba reconectam sem esperar o backoff. Um socket morto é **abandonado imediatamente**: numa rede caída, `close()` só dispara `close` depois que o handshake expira, e esperar por ele deixaria o app offline em silêncio.
 - **Recuperação de lacunas:** quando o status volta para `open`, a bridge invalida as queries do chat e das notificações (refetch). Isso cobre o que se perdeu sem um endpoint `?after=`; ele pode entrar se o volume crescer. A presença ao vivo é zerada ao desconectar, e os dados refeitos voltam a valer.
+- **Evento durante o carregamento:** se um evento chega enquanto a conversa ainda está carregando, a resposta em voo (anterior ao evento) o apagaria. A bridge então espera o carregamento terminar e busca de novo, uma vez por conversa (`refetchIfLoading`); o React Query não cancela um primeiro carregamento ao invalidar.
 - **Ordem dos eventos:** `message.created` vai para todos os membros **antes** de qualquer `message.delivered`, para o remetente nunca receber recibo de uma mensagem que ainda não conhece.
 - **UI:** o título "Chats" vira "Connecting…" durante a reconexão (na primeira conexão, não).
 - A sessão fica no Postgres, então reiniciar o backend não desloga ninguém: os clientes reconectam sozinhos.
@@ -1428,6 +1436,7 @@ As flags de login e de status de cada CLI serão confirmadas na Phase 8.
 
 - **Disco da VPS**, volume `/data/media`, atrás da interface `MediaStorage` (`LocalDiskMediaStorage`). S3 ou MinIO podem ser adicionados depois, sem mudar o resto.
 - Upload multipart pelo backend (`POST /api/media`): validação do MIME real (Apache Tika), nome sanitizado e remoção de EXIF/geolocalização (JPEG e PNG são recodificados). Tipos com script (HTML, SVG, JS) são recusados, e downloads saem com `X-Content-Type-Options: nosniff`. Thumbnails e transcodificação de vídeo ficam para depois.
+- Imagem que não pode ser decodificada é recusada (400): sem ler os pixels também não dá para tirar o EXIF, então ela nunca é guardada como veio.
 - **Quem pode baixar:** o dono; membros da conversa onde o arquivo foi enviado; quem pode ver o post; quem pode ver o story enquanto ele está ativo; qualquer pessoa autenticada, se for avatar. Por isso o avatar só pode ser uma imagem **do próprio usuário** enviada por `POST /api/media` (`/api/media/{id}`). Uma URL externa ou o arquivo de outra pessoa é recusado; senão um arquivo privado poderia virar público.
 - Leitura por `GET /api/media/{id}`, com checagem de permissão (membro da conversa, visibilidade do post) e suporte a `Range` (vídeo).
 - **Sem limite de mídia no produto** (decisão). Ainda assim, um **teto técnico** configurável e alto (ex.: 500 MB por arquivo; o padrão do Spring é 1 MB) protege a VPS. Uso de disco monitorado (R15).
@@ -1441,7 +1450,8 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
   - **email + senha**: argon2id, verificação de e-mail e redefinição de senha (exigem SMTP; ver §34).
 - **Sessão:** cookie `SESSION` `HttpOnly; Secure; SameSite=Lax` com sessão no servidor (Spring Session JDBC), declarado explicitamente em `SessionCookieConfig` (as propriedades `server.servlet.session.cookie.*` não chegavam ao cookie do Spring Session no Boot 4). `tenno.cookie-secure=false` só em desenvolvimento local. SPA e API ficam no mesmo domínio (Caddy), então não há CORS e **nenhum token fica em `localStorage`**. CSRF via `CookieCsrfTokenRepository` (cookie `XSRF-TOKEN` + header `X-XSRF-TOKEN`).
 - **Fluxo social:** SPA → `GET /oauth2/authorization/{google|facebook}` (redirect de página inteira) → provedor → `/login/oauth2/code/{provider}` → o backend cria ou vincula `users` + `oauth_accounts` → redireciona para `/onboarding/welcome` (conta nova) ou `/chats`.
-- **Vinculação:** o mesmo e-mail verificado em Google, Facebook e senha resulta na mesma conta. O Facebook pode não retornar e-mail; nesse caso, a conta nasce sem e-mail.
+- **Vinculação:** o mesmo e-mail verificado em Google, Facebook e senha resulta na mesma conta. O Facebook pode não retornar e-mail; nesse caso, a conta nasce sem e-mail. Um e-mail **não verificado** nunca vincula nem é gravado (testado em `OAuthAccountIT`).
+- **Provedores opcionais:** cada provedor só é registrado quando `GOOGLE_CLIENT_ID`/`FACEBOOK_CLIENT_ID` e o segredo estão definidos (`OAuthClients`). Sem nenhum, não há login social e o servidor sobe normalmente (antes, um valor vazio no `.env` impedia o boot). `GET /api/auth/providers` diz quais botões o welcome mostra.
 - **Termos de Uso e Política de Privacidade (LGPD):** o aceite é obrigatório na criação da conta, qualquer que seja o método, e acontece no **primeiro passo do onboarding**, antes de qualquer dado de perfil ser salvo. Ele fica registrado em `terms_acceptances` com a versão; uma nova versão exige novo aceite.
 - **Frontend:** o `authService` real expõe `startOAuth(provider)`, `signInWithPassword`, `signUp`, `signOut` e `getSession` (`GET /api/auth/session`). Falha no login social volta para `/welcome?error=oauth`, que mostra o aviso.
 - **Primeiro admin:** `UPDATE users SET role = 'admin' WHERE email = '…'` no Postgres; a role vale a partir do próximo login. O `sessionStore` continua sendo a única interface para a UI.
@@ -1457,13 +1467,14 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **Visibilidade:** perfil privado mostra posts e stories só a quem segue; bloqueio esconde conteúdo nos dois sentidos. A regra fica numa única função SQL (`Visibility.authorVisible`).
 - **Grupos:** no máximo 1 criado por pessoa (índice único parcial + checagem no serviço).
 - **Uploads:** MIME real, armazenamento fora da raiz web, servidos só por endpoint autorizado.
-- **Block e report:** estrutura no banco desde o início; UI em fase posterior.
+- **Block e report:** bloquear pelo perfil; denunciar pessoa, mensagem recebida ou post (`POST /api/reports`, motivos: spam, assédio, ódio, conteúdo sexual, violência, outro). Só se denuncia o que se pode ver; uma denúncia aberta por alvo e pessoa. Admins revisam em **Settings → Reports** (`/admin/reports`).
 - **LGPD:**
   - os Termos e a Política informam que as mensagens são processadas por IA de terceiros (Anthropic e OpenAI) para tradução, além da base legal, retenção e direitos do titular;
-  - acesso aos dados e **exclusão da conta** são obrigatórios antes do lançamento público;
+  - acesso aos dados e **exclusão da conta**: implementados. **Download my data** (`GET /api/me/export`, JSON montado pelo Postgres, sem hash de senha nem dados privados de outras pessoas) e exclusão da conta (os arquivos saem do disco só depois do commit);
   - treinamento desativado nas contas das IAs.
-- **Segredos** (client secrets OAuth, credenciais das CLIs, senha do banco) só no servidor: `.env` fora do git e volumes protegidos.
-- **Borda:** Caddy com HTTPS automático, HSTS, CSP (`script-src 'self'`; por isso o script de tema é o arquivo `public/theme-init.js`, e não inline), `X-Frame-Options: DENY` e demais headers.
+- **Segredos** (client secrets OAuth, credenciais das CLIs, senha do banco) só no servidor: `.env` fora do git (o `.gitignore` ignora qualquer `.env`, menos `.env.example`) e volumes protegidos.
+- **IP real e limite por IP:** o backend usa o `X-Forwarded-For` que o Caddy define, e o Caddy substitui o valor enviado pelo cliente. A porta do backend nunca é publicada. Testado: forjar o cabeçalho através do Caddy não fura o limite de login. Sob carga (300 tentativas simultâneas do mesmo IP): 10 passam, 290 recebem 429.
+- **Borda:** Caddy com HTTPS automático, HSTS, CSP (`connect-src` inclui `blob:` e `data:` porque a foto é lida da prévia local logo antes do upload; sem isso, nenhum upload funcionava em produção; `script-src 'self'`; por isso o script de tema é o arquivo `public/theme-init.js`, e não inline), `X-Frame-Options: DENY` e demais headers.
 - **Testes de segurança:** `SecurityMatrixIT` descobre todos os endpoints do Spring MVC e verifica que cada um responde 401 sem sessão, 403 sem CSRF nas escritas e 403 nas rotas de admin para quem não é admin. Nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário.
 - **VPS:** acesso SSH só por chave, firewall (apenas 80/443/22), fail2ban, atualizações automáticas, Postgres sem porta exposta.
 - **Backups:** `pg_dump` diário + cópia de `/data/media` para fora da VPS, com restauração testada.
@@ -1485,7 +1496,10 @@ Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.we
 - **Frontend:** `vite build` → `dist/` servido pelo Caddy, com fallback de SPA (`try_files {path} /index.html`) e cache imutável para assets com hash.
 - **Backend:** imagem multi-stage (build Maven → JRE 21 + Node + CLIs). Migrations Flyway no startup.
 - **Configuração:** `.env` não versionado (banco, client ids/secrets OAuth, URL pública, SMTP).
-- **CI (GitHub Actions):** lint, typecheck, test e build do frontend (mock e http); `./mvnw test` do backend, que roda unitários **e** integração (`*IT`, Testcontainers). CD (GHCR → deploy via SSH) na Phase 10.
+- **CI (GitHub Actions):** lint, typecheck, test e build do frontend (mock e http); `./mvnw test` do backend, que roda unitários **e** integração (`*IT`, Testcontainers).
+- **CD:** workflow manual **Deploy** (`.github/workflows/deploy.yml`): SSH na VPS, `git checkout` da ref, `docker compose up -d --build` e espera o health. Passo a passo da VPS (hardening, login das IAs, admin, backups, monitoramento) em `deploy/VPS.md`.
+- **Backups:** `deploy/backup.sh` (pg_dump custom + mídia, 14 dias, confere o dump) e `deploy/restore.sh`. **Restauração testada** na pilha de produção local: dados e fotos apagados voltaram, e o usuário restaurado entrou e viu a conversa com a foto.
+- **PWA:** `manifest.webmanifest` com ícones (inclusive maskable) e `apple-touch-icon`: instalável na tela inicial. Sem service worker (offline não é objetivo).
 - **Ambientes:** local (`docker compose` de desenvolvimento) e produção. Staging é opcional por enquanto.
 - **Observabilidade:** logs JSON (`docker logs`), Spring Actuator (health, incluindo as CLIs de IA), monitor de uptime externo; Sentry é opcional.
 
@@ -1537,6 +1551,9 @@ Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.we
 | 14 | Stories | Duram **24 horas**; o tray mostra autores visíveis (eu → não vistos → vistos) |
 | 15 | Notificações | `follow`, `like`, `comment` e `story_reaction`, respeitando as preferências e nunca para a própria ação. Mensagens novas não geram notificação (o chat já tem contador de não lidas) |
 | 16 | Avatar | Só uma imagem do próprio usuário enviada ao backend (§29) |
+| 17 | Virtualização da lista de mensagens | Adiada: medido sem necessidade com 330 mensagens (§22) |
+| 18 | Moderação | Denúncias de pessoa, mensagem e post, revisadas por admin (§31) |
+| 19 | Login social | Opcional por provedor; o app funciona só com e-mail e senha (§30) |
 
 ### 34.2 Ainda em aberto
 

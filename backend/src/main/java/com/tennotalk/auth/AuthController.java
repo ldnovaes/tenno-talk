@@ -37,13 +37,24 @@ public class AuthController {
     private final SessionLogin sessionLogin;
     private final UserRepository users;
 
-    public AuthController(AuthService auth, SessionLogin sessionLogin, UserRepository users) {
+    public AuthController(AuthService auth, SessionLogin sessionLogin, UserRepository users, OAuthClients oauthClients) {
+        this.oauthClients = oauthClients;
         this.auth = auth;
         this.sessionLogin = sessionLogin;
         this.users = users;
     }
 
     /** Anonymous callers get {@code userId: null} (also primes the CSRF cookie). */
+    private final OAuthClients oauthClients;
+
+    public record Providers(java.util.List<String> providers) {}
+
+    /** Which "Continue with …" buttons to show. */
+    @GetMapping("/providers")
+    public Providers providers() {
+        return new Providers(oauthClients.enabled());
+    }
+
     @GetMapping("/session")
     public SessionDto session(@AuthenticationPrincipal AppPrincipal principal) {
         if (principal == null || users.findById(principal.userId()).isEmpty()) return new SessionDto(null);

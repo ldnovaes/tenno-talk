@@ -9,6 +9,11 @@ export const httpAuthService: AuthService = {
     return session.userId ? { userId: session.userId } : null;
   },
 
+  async getOAuthProviders() {
+    const { providers } = await http<{ providers: string[] }>("GET", "/api/auth/providers");
+    return providers.filter((p): p is OAuthProvider => p === "google" || p === "facebook");
+  },
+
   startOAuth(provider: OAuthProvider) {
     // Full-page round-trip through the backend; the app reloads signed in.
     window.location.assign(`/oauth2/authorization/${provider}`);

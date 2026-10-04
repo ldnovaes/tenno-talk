@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { LanguageCode } from "@/types/language";
 import type { ContentTranslation, TranslationInsight } from "@/types/message";
 
@@ -23,5 +22,6 @@ export interface TranslationService {
   ): Promise<ContentTranslation>;
 }
 
-export const translationService: TranslationService =
-  env.dataSource === "http" ? httpTranslationService : mockTranslationService;
+export const translationService: TranslationService = __USE_HTTP__
+  ? httpTranslationService
+  : mockTranslationService;

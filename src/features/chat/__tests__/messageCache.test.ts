@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   applyReceipt,
@@ -6,12 +7,14 @@ import {
   flattenMessages,
   mergeMessage,
   patchInPages,
+  refetchIfLoading,
   removeFromPages,
   upsertInPages,
   withConversationPreview,
   withUnreadCount,
   type MessagesData,
 } from "@/features/chat/lib/messageCache";
+import { chatKeys } from "@/features/chat/lib/queryKeys";
 import type { ContentTranslation } from "@/types/message";
 
 import { makeConversation, makeMessage } from "./fixtures";
@@ -195,5 +198,40 @@ describe("conversation previews", () => {
       }),
     ).toBe(list);
     expect(withUnreadCount(list, "c1", 5)[0]?.unreadCount).toBe(5);
+  });
+});
+
+describe("refetchIfLoading", () => {
+  it("fetches again when an event arrives during the first load, and only then", async () => {
+    const client = new QueryClient();
+    let calls = 0;
+    const releases: (() => void)[] = [];
+    const observer = new QueryObserver(client, {
+      queryKey: chatKeys.messages("c1"),
+      queryFn: () => {
+        calls += 1;
+        return new Promise<MessagesData>((resolve) =>
+          releases.push(() => resolve({ pages: [], pageParams: [] })),
+        );
+      },
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+    expect(calls).toBe(1);
+
+    // Two events during the first load: one extra fetch once it settles.
+    refetchIfLoading(client, "c1");
+    refetchIfLoading(client, "c1");
+    expect(calls).toBe(1);
+    releases.shift()?.();
+    await vi.waitFor(() => expect(calls).toBe(2));
+
+    releases.shift()?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Nothing loading: events are applied to the cache directly, no fetch.
+    refetchIfLoading(client, "c1");
+    refetchIfLoading(client, "unknown");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(calls).toBe(2);
+    unsubscribe();
   });
 });

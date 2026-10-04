@@ -1,4 +1,4 @@
-import { Bot, LogOut } from "lucide-react";
+import { Bot, Flag, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 
@@ -37,10 +37,20 @@ export default function SettingsPage() {
       <SettingsNav onSelect={goTo} />
       <div className="mt-auto space-y-2 p-4">
         {me.role === "admin" && (
-          <Button variant="outline" className="w-full" onClick={() => navigate(paths.adminAi())}>
-            <Bot className="size-4" aria-hidden />
-            {t("admin.ai.title")}
-          </Button>
+          <>
+            <Button variant="outline" className="w-full" onClick={() => navigate(paths.adminAi())}>
+              <Bot className="size-4" aria-hidden />
+              {t("admin.ai.title")}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate(paths.adminReports())}
+            >
+              <Flag className="size-4" aria-hidden />
+              {t("admin.reports.title")}
+            </Button>
+          </>
         )}
         <Button
           variant="outline"

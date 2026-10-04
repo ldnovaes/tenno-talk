@@ -16,7 +16,7 @@ describe("stories", () => {
     renderApp("/chats");
     const tray = await screen.findByRole("region", { name: "Stories" });
     const links = await within(tray).findAllByRole("link");
-    expect(links[0]).toHaveAccessibleName("Open Your story's stories");
+    expect(links[0]).toHaveAccessibleName("Open your stories");
     expect(
       within(tray).getByRole("link", { name: "Open Cam Nguyen's stories" }),
     ).toBeInTheDocument();

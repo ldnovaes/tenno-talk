@@ -12,6 +12,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import com.tennotalk.auth.CsrfConfig;
 import com.tennotalk.auth.OAuth2LoginSuccessHandler;
+import com.tennotalk.auth.OAuthClients;
 import com.tennotalk.common.ErrorCode;
 import com.tennotalk.common.ProblemWriter;
 
@@ -26,14 +27,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain api(HttpSecurity http, OAuth2LoginSuccessHandler oauthSuccess, TennoProperties properties)
+    SecurityFilterChain api(HttpSecurity http, OAuth2LoginSuccessHandler oauthSuccess, TennoProperties properties,
+            OAuthClients oauthClients)
             throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"));
         http
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository).csrfTokenRequestHandler(CsrfConfig.spaHandler()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/session", "/api/auth/signup", "/api/auth/signin").permitAll()
+                        .requestMatchers("/api/auth/session", "/api/auth/signup", "/api/auth/signin", "/api/auth/providers").permitAll()
                         .requestMatchers("/actuator/health", "/api/openapi/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/**", "/ws").authenticated()
@@ -43,13 +45,17 @@ public class SecurityConfig {
                                 ProblemWriter.write(response, ErrorCode.UNAUTHENTICATED, "Sign in to continue."))
                         .accessDeniedHandler((request, response, exception) ->
                                 ProblemWriter.write(response, ErrorCode.FORBIDDEN, "You can't do this.")))
-                .oauth2Login(oauth -> oauth
-                        .successHandler(oauthSuccess)
-                        .failureHandler((request, response, exception) ->
-                                response.sendRedirect(properties.publicUrl() + "/welcome?error=oauth")))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable);
+        // Social login only for the providers that are configured (OAuthClients).
+        if (oauthClients.repository().isPresent()) {
+            http.oauth2Login(oauth -> oauth
+                    .clientRegistrationRepository(oauthClients.repository().get())
+                    .successHandler(oauthSuccess)
+                    .failureHandler((request, response, exception) ->
+                            response.sendRedirect(properties.publicUrl() + "/welcome?error=oauth")));
+        }
         return http.build();
     }
 }

@@ -1,11 +1,9 @@
-import { env } from "@/lib/env";
-
-import { mockDb } from "./mock/db";
-
 /** Developer helpers, only meaningful with the mock data source. */
 export const devService = {
-  available: env.dataSource === "mock",
-  resetDemoData(): void {
+  available: !__USE_HTTP__,
+  /** Loaded on demand, so the mock database never ships with the real build. */
+  async resetDemoData(): Promise<void> {
+    const { mockDb } = await import("./mock/db");
     mockDb.reset();
   },
 };

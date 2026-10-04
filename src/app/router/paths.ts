@@ -45,4 +45,5 @@ export const paths = {
   editProfile: (username: string) => `/u/${encodeURIComponent(username)}/edit`,
   settings: (section?: SettingsSection) => (section ? `/settings/${section}` : "/settings"),
   adminAi: () => "/admin/ai",
+  adminReports: () => "/admin/reports",
 } as const;

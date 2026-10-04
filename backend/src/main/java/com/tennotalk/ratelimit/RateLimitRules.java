@@ -24,6 +24,8 @@ public final class RateLimitRules {
             new Rule("translate", null, Pattern.compile("/api/messages/[^/]+/(translation/retry|insight)|/api/translations/.*"), 60, Duration.ofMinutes(1)),
             new Rule("social", null, Pattern.compile("/api/profiles/[^/]+/(follow|block)|/api/posts/[^/]+/(like|comments)|/api/stories/[^/]+/reactions"), 120, Duration.ofMinutes(1)),
             new Rule("create", "POST", Pattern.compile("/api/posts|/api/stories|/api/conversations/(direct|groups)"), 30, Duration.ofMinutes(1)),
+            new Rule("report", "POST", Pattern.compile("/api/reports"), 20, Duration.ofHours(1)),
+            new Rule("export", "GET", Pattern.compile("/api/me/export"), 5, Duration.ofHours(1)),
             new Rule("admin", "POST", Pattern.compile("/api/admin/.*"), 10, Duration.ofMinutes(1)));
 
     private RateLimitRules() {}

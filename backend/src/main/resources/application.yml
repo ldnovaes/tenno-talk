@@ -16,18 +16,6 @@ spring:
       # No product limit on media (PLAN.md §34); a high technical ceiling protects the VPS (R15).
       max-file-size: ${MAX_UPLOAD_SIZE:500MB}
       max-request-size: ${MAX_UPLOAD_SIZE:500MB}
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID:unset}
-            client-secret: ${GOOGLE_CLIENT_SECRET:unset}
-            scope: openid,email,profile
-          facebook:
-            client-id: ${FACEBOOK_CLIENT_ID:unset}
-            client-secret: ${FACEBOOK_CLIENT_SECRET:unset}
-            scope: email,public_profile
 
 server:
   forward-headers-strategy: framework
@@ -40,6 +28,12 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    # Media has no product limit (R15): the public health turns DOWN before the disk is full,
+    # so an external uptime monitor alerts in time.
+    diskspace:
+      path: ${tenno.media.root}
+      threshold: ${DISK_ALERT_THRESHOLD:2GB}
 
 springdoc:
   api-docs:
@@ -50,6 +44,14 @@ springdoc:
 tenno:
   public-url: ${PUBLIC_URL:http://localhost:5173}
   terms-version: "2026-10-03"
+  # Social login: a provider is offered only when its client id is set (OAuthClients).
+  oauth:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    facebook:
+      client-id: ${FACEBOOK_CLIENT_ID:}
+      client-secret: ${FACEBOOK_CLIENT_SECRET:}
   # Session cookie over HTTPS only (SessionCookieConfig); false only for local http development.
   cookie-secure: ${COOKIE_SECURE:true}
   media:

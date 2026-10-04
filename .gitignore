@@ -30,3 +30,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+playwright-report
+test-results
+
+# Secrets (deploy/.env holds the database password and OAuth secrets)
+.env
+.env.*
+!.env.example

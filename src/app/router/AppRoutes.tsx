@@ -10,13 +10,14 @@ import { Navigate, Route, Routes, useLocation } from "react-router";
 import { PageSkeleton } from "@/components/common/PageSkeleton";
 import { RouteErrorBoundary } from "@/components/common/RouteErrorBoundary";
 import { ChatLayout } from "@/layouts/ChatLayout";
+// Eager: the first screen of every new visitor (no extra round trip before it paints).
+import WelcomePage from "@/pages/WelcomePage";
 import { SidePanel } from "@/layouts/SidePanel";
 
 import { OverlayGate, RedirectIfAuthed, RequireAuth, RequireOnboarded } from "./guards";
 import { useBackgroundLocation } from "./overlay";
 import { paths } from "./paths";
 
-const WelcomePage = lazy(() => import("@/pages/WelcomePage"));
 const SignInPage = lazy(() => import("@/pages/SignInPage"));
 const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
@@ -34,10 +35,11 @@ const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const EditProfilePage = lazy(() => import("@/pages/EditProfilePage"));
 const SettingsPage = lazy(() => import("@/pages/SettingsPage"));
 const AdminAiPage = lazy(() => import("@/pages/AdminAiPage"));
+const AdminReportsPage = lazy(() => import("@/pages/AdminReportsPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 
 function page(
-  Component: LazyExoticComponent<ComponentType>,
+  Component: ComponentType | LazyExoticComponent<ComponentType>,
   fallback: ReactNode = <PageSkeleton />,
 ) {
   return (
@@ -83,6 +85,7 @@ export function AppRoutes({ shell }: { shell: ReactNode }) {
               <Route path="settings" element={page(SettingsPage)} />
               <Route path="settings/:section" element={page(SettingsPage)} />
               <Route path="admin/ai" element={page(AdminAiPage)} />
+              <Route path="admin/reports" element={page(AdminReportsPage)} />
             </Route>
             <Route path="stories/:userId" element={page(StoryViewerPage)} />
           </Route>

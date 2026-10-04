@@ -1,4 +1,12 @@
-import { Copy, Forward, GraduationCap, Languages, Reply, type LucideIcon } from "lucide-react";
+import {
+  Copy,
+  Flag,
+  Forward,
+  GraduationCap,
+  Languages,
+  Reply,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { MessageTranslationState } from "@/features/translation/hooks/useMessageTranslation";
@@ -85,6 +93,14 @@ export function useMessageActionItems(
       label: t("chat.actions.forward"),
       icon: Forward,
       onSelect: () => actions.forward(message),
+    });
+  }
+  if (!pending && !own) {
+    items.push({
+      key: "report",
+      label: t("moderation.report"),
+      icon: Flag,
+      onSelect: () => actions.report(message),
     });
   }
   return items;

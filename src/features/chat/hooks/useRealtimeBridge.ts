@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { realtimeClient } from "@/services/realtime/realtimeClient";
 import { usePresenceStore } from "@/stores/presenceStore";
 
-import { setReceipt, setTranslation, upsertMessage } from "../lib/messageCache";
+import { refetchIfLoading, setReceipt, setTranslation, upsertMessage } from "../lib/messageCache";
 import { chatKeys } from "../lib/queryKeys";
 
 const TYPING_TIMEOUT_MS = 6_000;
@@ -32,21 +32,27 @@ export function useRealtimeBridge(viewerId: string) {
       realtimeClient.subscribe("message.created", ({ message }) => {
         if (message.senderId !== viewerId) stopTyping(message.conversationId, message.senderId);
         upsertMessage(queryClient, message, { incrementUnread: message.senderId !== viewerId });
+        refetchIfLoading(queryClient, message.conversationId);
       }),
-      realtimeClient.subscribe("message.updated", ({ message }) =>
-        upsertMessage(queryClient, message),
-      ),
+      realtimeClient.subscribe("message.updated", ({ message }) => {
+        upsertMessage(queryClient, message);
+        refetchIfLoading(queryClient, message.conversationId);
+      }),
       realtimeClient.subscribe(
         "translation.updated",
-        ({ conversationId, messageId, translation }) =>
-          setTranslation(queryClient, conversationId, messageId, translation),
+        ({ conversationId, messageId, translation }) => {
+          setTranslation(queryClient, conversationId, messageId, translation);
+          refetchIfLoading(queryClient, conversationId);
+        },
       ),
-      realtimeClient.subscribe("message.delivered", ({ conversationId, upToMessageId }) =>
-        setReceipt(queryClient, conversationId, viewerId, upToMessageId, "delivered"),
-      ),
-      realtimeClient.subscribe("message.read", ({ conversationId, upToMessageId }) =>
-        setReceipt(queryClient, conversationId, viewerId, upToMessageId, "read"),
-      ),
+      realtimeClient.subscribe("message.delivered", ({ conversationId, upToMessageId }) => {
+        setReceipt(queryClient, conversationId, viewerId, upToMessageId, "delivered");
+        refetchIfLoading(queryClient, conversationId);
+      }),
+      realtimeClient.subscribe("message.read", ({ conversationId, upToMessageId }) => {
+        setReceipt(queryClient, conversationId, viewerId, upToMessageId, "read");
+        refetchIfLoading(queryClient, conversationId);
+      }),
       realtimeClient.subscribe("typing.started", ({ conversationId, userId }) => {
         const key = `${conversationId}:${userId}`;
         window.clearTimeout(typingTimers.get(key));

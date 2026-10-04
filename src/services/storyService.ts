@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { Story, StoryTrayItem } from "@/types/story";
 
 import type { MediaInput } from "./chatService";
@@ -16,5 +15,4 @@ export interface StoryService {
   createStory(input: { media: MediaInput; text: string }): Promise<Story>;
 }
 
-export const storyService: StoryService =
-  env.dataSource === "http" ? httpStoryService : mockStoryService;
+export const storyService: StoryService = __USE_HTTP__ ? httpStoryService : mockStoryService;

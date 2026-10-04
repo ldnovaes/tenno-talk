@@ -18,6 +18,21 @@ jobs:
       - run: bun run build
       - run: VITE_DATA_SOURCE=http bun run build
 
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      # Mock data source: no backend needed (e2e/README.md).
+      - run: bun run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results
+
   backend:
     runs-on: ubuntu-latest
     defaults:

@@ -1,4 +1,4 @@
-import { ImagePlus, MoreHorizontal, Settings, UserX } from "lucide-react";
+import { Flag, ImagePlus, MoreHorizontal, Settings, UserX } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
+import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { useStartConversation } from "@/features/chat/hooks/useMessageMutations";
 import { PostsGrid } from "@/features/feed/components/PostsGrid";
 import { BlockUserDialog } from "@/features/profile/components/BlockUserDialog";
@@ -38,6 +39,7 @@ export default function ProfilePage() {
   const start = useStartConversation();
   const block = useBlockUser();
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const isOwn = profile.data?.id === me.id;
 
   const onBack = panel ? panel.close : isOwn ? undefined : () => navigate(-1);
@@ -56,6 +58,10 @@ export default function ProfilePage() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setReporting(true)}>
+            <Flag className="size-4" aria-hidden />
+            {t("moderation.report")}
+          </DropdownMenuItem>
           <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmBlock(true)}>
             <UserX className="size-4" aria-hidden />
             {t("profile.block", { name: profile.data.displayName })}
@@ -114,6 +120,10 @@ export default function ProfilePage() {
                 }
               />
             }
+          />
+          <ReportDialog
+            target={reporting ? { kind: "user", id: profile.data.id } : null}
+            onClose={() => setReporting(false)}
           />
           <BlockUserDialog
             name={profile.data.displayName}

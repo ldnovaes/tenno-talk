@@ -1,6 +1,7 @@
 package com.tennotalk.auth;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,13 +44,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     static OAuthAccountService.ProviderIdentity identity(String provider, OAuth2User user) {
+        // Attributes are read as Object first: with a generic getAttribute, String.valueOf(...) would
+        // resolve to the char[] overload and throw ClassCastException.
+        Map<String, Object> attributes = user.getAttributes();
+        String email = attributes.get("email") instanceof String value ? value : null;
         if ("google".equals(provider)) {
-            Object verified = user.getAttribute("email_verified");
-            return new OAuthAccountService.ProviderIdentity(provider, String.valueOf(user.getAttribute("sub")),
-                    user.getAttribute("email"), Boolean.TRUE.equals(verified) || "true".equals(String.valueOf(verified)));
+            Object verified = attributes.get("email_verified");
+            return new OAuthAccountService.ProviderIdentity(provider, String.valueOf(attributes.get("sub")), email,
+                    Boolean.TRUE.equals(verified) || "true".equals(String.valueOf(verified)));
         }
         // Facebook only returns confirmed emails, when it returns one at all.
-        String email = user.getAttribute("email");
-        return new OAuthAccountService.ProviderIdentity(provider, String.valueOf(user.getAttribute("id")), email, email != null);
+        return new OAuthAccountService.ProviderIdentity(provider, String.valueOf(attributes.get("id")), email, email != null);
     }
 }

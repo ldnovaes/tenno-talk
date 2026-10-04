@@ -1,5 +1,6 @@
 import type { AdminService } from "@/services/adminService";
 import type { AiStatus, ProviderState, ReauthChallenge } from "@/types/admin";
+import type { Report } from "@/types/moderation";
 
 import { http } from "./httpClient";
 
@@ -10,4 +11,7 @@ export const httpAdminService: AdminService = {
   checkProvider: (id) =>
     http<{ ok: boolean; provider: ProviderState }>("POST", `${provider(id)}/check`),
   startReauth: (id) => http<ReauthChallenge>("POST", `${provider(id)}/reauth`),
+  listReports: (status) => http<Report[]>("GET", "/api/admin/reports", { query: { status } }),
+  resolveReport: (id, status) =>
+    http<Report>("PATCH", `/api/admin/reports/${encodeURIComponent(id)}`, { body: { status } }),
 };

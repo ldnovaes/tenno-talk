@@ -18,6 +18,7 @@ bun run test       # Vitest
 bun run lint
 bun run typecheck
 bun run build
+bun run e2e        # Playwright contra o mock (e2e/README.md)
 ```
 
 Por padrão o frontend usa a camada de mock (`VITE_DATA_SOURCE=mock`).
@@ -51,6 +52,8 @@ VITE_DATA_SOURCE=http bun run dev   # o Vite repassa /api, /oauth2, /login/oauth
 As traduções usam as CLIs `codex` (ChatGPT, principal) e `claude` (reserva), logadas com os planos de assinatura, nunca com chaves de API (PLAN.md §28). Sem as CLIs, as mensagens continuam funcionando e as traduções esperam na fila.
 
 ## Produção (uma VPS)
+
+Guia completo: [deploy/VPS.md](deploy/VPS.md) (servidor, primeiro deploy, backups, monitoramento).
 
 ```sh
 cd deploy

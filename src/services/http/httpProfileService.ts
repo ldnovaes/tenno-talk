@@ -47,5 +47,7 @@ export const httpProfileService: ProfileService = {
 
   unblock: (userId) => http<void>("DELETE", `${user(userId)}/block`),
 
+  exportMyData: () => http<unknown>("GET", "/api/me/export"),
+
   deleteAccount: () => http<void>("DELETE", "/api/me"),
 };

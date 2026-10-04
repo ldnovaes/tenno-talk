@@ -86,11 +86,16 @@ export function ConversationHeader({
       </button>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span tabIndex={0} aria-label={t("chat.header.callSoon")}>
-            <Button variant="ghost" size="icon" disabled aria-hidden tabIndex={-1}>
-              <Phone className="size-5" />
-            </Button>
-          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-disabled="true"
+            aria-label={t("chat.header.callSoon")}
+            onClick={(event) => event.preventDefault()}
+            className="cursor-not-allowed opacity-50"
+          >
+            <Phone className="size-5" />
+          </Button>
         </TooltipTrigger>
         <TooltipContent>{t("chat.header.callSoon")}</TooltipContent>
       </Tooltip>

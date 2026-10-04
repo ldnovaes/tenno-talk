@@ -61,6 +61,10 @@ function startSession(userId: string): Session {
 }
 
 export const mockAuthService: AuthService = {
+  getOAuthProviders() {
+    return mockRequest((): OAuthProvider[] => ["google", "facebook"]);
+  },
+
   getSession() {
     return mockRequest(() => {
       const session = readMockSession();

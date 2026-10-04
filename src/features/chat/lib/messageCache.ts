@@ -199,6 +199,29 @@ export function withUnreadCount(list: Conversation[], conversationId: string, un
 
 // ---- QueryClient wrappers -------------------------------------------------
 
+const pendingRefetch = new WeakMap<QueryClient, Set<string>>();
+
+/**
+ * A server event that arrives while the conversation is still loading is overwritten by the
+ * response in flight (fetched before the event). React Query does not cancel a first load on
+ * invalidation, so wait for it to settle and fetch once more. Several events share one refetch.
+ */
+export function refetchIfLoading(queryClient: QueryClient, conversationId: string): void {
+  const key = chatKeys.messages(conversationId);
+  const query = queryClient.getQueryCache().find({ queryKey: key, exact: true });
+  if (!query || query.state.fetchStatus !== "fetching") return;
+  const pending = pendingRefetch.get(queryClient) ?? new Set<string>();
+  pendingRefetch.set(queryClient, pending);
+  if (pending.has(query.queryHash)) return;
+  pending.add(query.queryHash);
+  const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+    if (event.query !== query || query.state.fetchStatus !== "idle") return;
+    unsubscribe();
+    pending.delete(query.queryHash);
+    void queryClient.invalidateQueries({ queryKey: key, exact: true });
+  });
+}
+
 export function upsertMessage(
   queryClient: QueryClient,
   message: Message,

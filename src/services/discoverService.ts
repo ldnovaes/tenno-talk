@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import type { Page } from "@/types/api";
 import type { LanguageCode } from "@/types/language";
 import type { UserProfile } from "@/types/user";
@@ -14,5 +13,6 @@ export interface DiscoverService {
   getPeople(filters: DiscoverFilters, cursor: string | null): Promise<Page<UserProfile>>;
 }
 
-export const discoverService: DiscoverService =
-  env.dataSource === "http" ? httpDiscoverService : mockDiscoverService;
+export const discoverService: DiscoverService = __USE_HTTP__
+  ? httpDiscoverService
+  : mockDiscoverService;

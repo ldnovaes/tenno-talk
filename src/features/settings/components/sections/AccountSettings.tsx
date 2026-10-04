@@ -12,6 +12,7 @@ import { devService } from "@/services/devService";
 
 import { ChangePasswordDialog } from "../ChangePasswordDialog";
 import { DeleteAccountButton } from "../DeleteAccountButton";
+import { ExportDataButton } from "../ExportDataButton";
 import { SettingsGroup } from "../SettingsRow";
 import { SettingsItem } from "../SettingsItem";
 
@@ -91,17 +92,26 @@ export function AccountSettings() {
           }
         />
       </SettingsGroup>
+      <SettingsGroup title={t("settings.accountSection.yourData")}>
+        <div className="space-y-2 px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            {t("settings.accountSection.exportDescription")}
+          </p>
+          <ExportDataButton />
+        </div>
+      </SettingsGroup>
       <SettingsGroup title={t("settings.accountSection.dangerZone")}>
         <div className="space-y-2 px-4 py-3">
           {devService.available && (
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => {
-                devService.resetDemoData();
-                toast.success(t("settings.accountSection.resetDemoDone"));
-                window.setTimeout(() => window.location.reload(), 400);
-              }}
+              onClick={() =>
+                void devService.resetDemoData().then(() => {
+                  toast.success(t("settings.accountSection.resetDemoDone"));
+                  window.setTimeout(() => window.location.reload(), 400);
+                })
+              }
             >
               {t("settings.accountSection.resetDemo")}
             </Button>

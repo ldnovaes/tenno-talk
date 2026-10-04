@@ -25,10 +25,7 @@ export function StoriesTray({ me }: { me: User }) {
         <li className="flex w-16 shrink-0 flex-col items-center gap-1">
           <div className="relative">
             {own ? (
-              <OverlayLink
-                to={paths.story(me.id)}
-                aria-label={t("stories.open", { name: t("stories.yourStory") })}
-              >
+              <OverlayLink to={paths.story(me.id)} aria-label={t("stories.openOwn")}>
                 <UserAvatar user={me} size="lg" storyRing={own.hasUnseen ? "unseen" : "seen"} />
               </OverlayLink>
             ) : (

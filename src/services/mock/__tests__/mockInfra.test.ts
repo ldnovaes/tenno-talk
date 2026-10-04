@@ -42,3 +42,22 @@ describe("mockRequest", () => {
     await expect(mockRequest(() => 1)).rejects.toMatchObject({ code: "network" });
   });
 });
+
+describe("createMockStore across tabs", () => {
+  it("re-applies a change when another tab wrote in the meantime", () => {
+    const seed = () => ({ items: ["a"] });
+    const tabA = createMockStore({ key: "test.concurrent", version: 1, seed });
+    const tabB = createMockStore({ key: "test.concurrent", version: 1, seed });
+    tabA.update((s) => s.items.push("from A"));
+    let runs = 0;
+    tabB.update((s) => {
+      runs += 1;
+      // Tab A writes while tab B is in the middle of its change.
+      if (runs === 1) tabA.update((a) => a.items.push("A again"));
+      s.items.push("from B");
+    });
+    expect(runs).toBe(2);
+    const fresh = createMockStore({ key: "test.concurrent", version: 1, seed });
+    expect(fresh.read().items).toEqual(["a", "from A", "A again", "from B"]);
+  });
+});

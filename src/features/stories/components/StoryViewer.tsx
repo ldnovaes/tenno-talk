@@ -42,13 +42,12 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
   const item = position ? tray[position.userIndex] : undefined;
   const story = position && item ? item.stories[position.storyIndex] : undefined;
 
+  // Side effects (closing navigates) stay out of the state updater: updaters may run twice.
   const goNext = useCallback(() => {
-    setPosition((current) => {
-      const next = current ? nextPosition(tray, current) : null;
-      if (!next) onClose();
-      return next ?? current;
-    });
-  }, [tray, onClose]);
+    const next = position ? nextPosition(tray, position) : null;
+    if (next) setPosition(next);
+    else onClose();
+  }, [tray, position, onClose]);
 
   const goPrevious = useCallback(() => {
     setPosition((current) => (current ? (previousPosition(tray, current) ?? current) : current));
@@ -67,9 +66,10 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // Escape always leaves, even from the reply box; the other keys belong to the text there.
+      if (event.key === "Escape") return onClose();
       if (typing) return;
-      if (event.key === "Escape") onClose();
-      else if (event.key === "ArrowRight") goNext();
+      if (event.key === "ArrowRight") goNext();
       else if (event.key === "ArrowLeft") goPrevious();
       else if (event.key === " ") {
         event.preventDefault();

@@ -67,8 +67,15 @@ public class MediaService {
         Integer height = null;
         long size = file.getSize();
         if ("image".equals(kind) && (mime.equals("image/jpeg") || mime.equals("image/png"))) {
-            byte[] cleaned = stripMetadata(file.getBytes(), mime.equals("image/jpeg") ? "jpg" : "png");
-            BufferedImage image = ImageIO.read(new ByteArrayInputStream(cleaned));
+            byte[] cleaned;
+            BufferedImage image;
+            try {
+                cleaned = stripMetadata(file.getBytes(), mime.equals("image/jpeg") ? "jpg" : "png");
+                image = ImageIO.read(new ByteArrayInputStream(cleaned));
+            } catch (IOException damaged) {
+                // Unreadable pixels also mean the metadata can't be removed: never store it as is.
+                throw ApiException.validation("This image is damaged or not supported.");
+            }
             if (image != null) {
                 width = image.getWidth();
                 height = image.getHeight();

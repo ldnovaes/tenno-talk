@@ -20,8 +20,10 @@ public class LocalDiskMediaStorage implements MediaStorage {
 
     private final Path root;
 
-    public LocalDiskMediaStorage(TennoProperties properties) {
+    public LocalDiskMediaStorage(TennoProperties properties) throws IOException {
         this.root = Path.of(properties.media().root()).toAbsolutePath().normalize();
+        // Exists from the start: the disk-space health check watches this folder.
+        Files.createDirectories(root);
     }
 
     @Override

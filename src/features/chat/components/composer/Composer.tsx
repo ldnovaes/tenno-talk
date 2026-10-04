@@ -131,6 +131,7 @@ export function Composer({ conversationId, senderName, viewerId }: ComposerProps
             multiple
             className="sr-only"
             tabIndex={-1}
+            aria-label={t("chat.composer.attach")}
             onChange={(event) => {
               void addFiles(event.target.files);
               event.target.value = "";
@@ -159,19 +160,18 @@ export function Composer({ conversationId, senderName, viewerId }: ComposerProps
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span tabIndex={0} aria-label={t("chat.composer.voiceSoon")} className="shrink-0">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="secondary"
-                  disabled
-                  className="size-11 rounded-full"
-                  aria-hidden
-                  tabIndex={-1}
-                >
-                  <Mic className="size-5" />
-                </Button>
-              </span>
+              {/* aria-disabled (not disabled) keeps it focusable, so the tooltip explains why. */}
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                aria-disabled="true"
+                aria-label={t("chat.composer.voiceSoon")}
+                onClick={(event) => event.preventDefault()}
+                className="size-11 shrink-0 cursor-not-allowed rounded-full opacity-50"
+              >
+                <Mic className="size-5" />
+              </Button>
             </TooltipTrigger>
             <TooltipContent>{t("chat.composer.voiceSoon")}</TooltipContent>
           </Tooltip>

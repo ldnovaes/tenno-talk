@@ -233,6 +233,30 @@ export const mockProfileService: ProfileService = {
     );
   },
 
+  exportMyData() {
+    // Same sections as the server export, from the mock database (never the password).
+    return mockRequest(() => {
+      const db = mockDb.read();
+      const viewerId = requireViewerId();
+      const { password: _password, ...account } = db.users[viewerId] ?? {};
+      const username = (id: string) => db.users[id]?.username ?? "";
+      return {
+        format: "tenno-talk-export/1",
+        account,
+        following: db.follows
+          .filter((f) => f.followerId === viewerId)
+          .map((f) => username(f.followeeId)),
+        followers: db.follows
+          .filter((f) => f.followeeId === viewerId)
+          .map((f) => username(f.followerId)),
+        messagesSent: Object.values(db.messages).filter((m) => m.senderId === viewerId),
+        posts: Object.values(db.posts).filter((p) => p.authorId === viewerId),
+        comments: Object.values(db.comments).filter((c) => c.authorId === viewerId),
+        stories: Object.values(db.stories).filter((st) => st.authorId === viewerId),
+      };
+    });
+  },
+
   deleteAccount() {
     return mockRequest(() => {
       mockDb.update((db) => {

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { createClientId } from "@/lib/ids";
@@ -78,31 +79,43 @@ export function useSendMessage(conversationId: string) {
     meta: { silent: true },
   });
 
-  function send(text: string, media: MediaInput[], replyTo: MessageReference | null) {
-    mutation.mutate({
-      conversationId,
-      clientId: createClientId(),
-      text,
-      media,
-      replyToId: replyTo?.messageId ?? null,
-    });
-  }
+  // Stable callbacks: they go into the message actions context, and a new function there would
+  // re-render every bubble of the conversation on each mutation state change.
+  const { mutate } = mutation;
+
+  const send = useCallback(
+    (text: string, media: MediaInput[], replyTo: MessageReference | null) =>
+      mutate({
+        conversationId,
+        clientId: createClientId(),
+        text,
+        media,
+        replyToId: replyTo?.messageId ?? null,
+      }),
+    [mutate, conversationId],
+  );
 
   /** Resends with the same clientId: the server deduplicates (idempotency). */
-  function retry(clientId: string) {
-    const input = failedSends.get(clientId);
-    if (!input) return;
-    patchMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId }, (m) => ({
-      ...m,
-      deliveryStatus: "sending",
-    }));
-    mutation.mutate(input);
-  }
+  const retry = useCallback(
+    (clientId: string) => {
+      const input = failedSends.get(clientId);
+      if (!input) return;
+      patchMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId }, (m) => ({
+        ...m,
+        deliveryStatus: "sending",
+      }));
+      mutate(input);
+    },
+    [mutate, queryClient, conversationId],
+  );
 
-  function discard(clientId: string) {
-    failedSends.delete(clientId);
-    removeMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId });
-  }
+  const discard = useCallback(
+    (clientId: string) => {
+      failedSends.delete(clientId);
+      removeMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId });
+    },
+    [queryClient, conversationId],
+  );
 
   return { send, retry, discard };
 }

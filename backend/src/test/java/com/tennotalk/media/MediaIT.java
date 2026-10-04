@@ -107,6 +107,16 @@ class MediaIT extends IntegrationTest {
     }
 
     @Test
+    void damagedImagesAreRejectedNotStoredWithTheirMetadata() throws Exception {
+        byte[] png = image("png", 4, 4);
+        byte[] damaged = java.util.Arrays.copyOf(png, png.length);
+        for (int i = 40; i < damaged.length - 12; i++) damaged[i] = (byte) 0x5A;
+        upload(lucas, "broken.png", "image/png", damaged)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation"));
+        assertThat(jdbc.sql("SELECT count(*) FROM media").query(Long.class).single()).isZero();
+    }
+
+    @Test
     void emptyFilesAreRejected() throws Exception {
         upload(lucas, "empty.png", "image/png", new byte[0]).andExpect(status().isBadRequest());
     }
@@ -210,6 +220,19 @@ class MediaIT extends IntegrationTest {
         String id = uploadOk(lucas, "me.png", image("png", 2, 2));
         jdbc.sql("UPDATE users SET avatar_url = :url WHERE id = :id").param("url", "/api/media/" + id).param("id", lucas).update();
         download(ana, id).andExpect(status().isOk());
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    MediaStorage storage;
+
+    @Test
+    void deletingTheAccountRemovesItsFilesFromDisk() throws Exception {
+        String id = uploadOk(lucas, "a.png", image("png", 2, 2));
+        String path = jdbc.sql("SELECT storage_path FROM media WHERE id = :id").param("id", UUID.fromString(id)).query(String.class).single();
+        assertThat(java.nio.file.Files.exists(storage.resolve(path))).isTrue();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/me").with(as(lucas)).with(csrf()))
+                .andExpect(status().isNoContent());
+        assertThat(java.nio.file.Files.exists(storage.resolve(path))).isFalse();
     }
 
     @Test

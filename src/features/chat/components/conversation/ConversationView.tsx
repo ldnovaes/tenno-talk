@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { LearningPanel } from "@/features/translation/components/LearningPanel";
 import { useTranslationPreferences } from "@/features/translation/hooks/useTranslationPreferences";
 import type { Conversation } from "@/types/conversation";
@@ -28,6 +29,7 @@ export function ConversationView({
   const { t } = useTranslation();
   const [forwarding, setForwarding] = useState<Message | null>(null);
   const [learning, setLearning] = useState<Message | null>(null);
+  const [reporting, setReporting] = useState<Message | null>(null);
   const { displayMode } = useTranslationPreferences();
   const setReplyTo = useComposerStore((state) => state.setReplyTo);
   const react = useReactToMessage();
@@ -51,6 +53,7 @@ export function ConversationView({
         }),
       forward: setForwarding,
       learn: setLearning,
+      report: setReporting,
       react: (message, emoji) => react.mutate({ message, emoji }),
       copy: (text) =>
         void navigator.clipboard
@@ -83,6 +86,10 @@ export function ConversationView({
         original={learning ? originalOf(learning) : null}
         targetLanguage={learning?.translation?.targetLanguage ?? null}
         onClose={() => setLearning(null)}
+      />
+      <ReportDialog
+        target={reporting ? { kind: "message", id: reporting.id } : null}
+        onClose={() => setReporting(null)}
       />
     </MessageActionsContext.Provider>
   );

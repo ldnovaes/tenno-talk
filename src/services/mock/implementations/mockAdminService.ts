@@ -1,7 +1,10 @@
 import type { AdminService } from "@/services/adminService";
 import type { ProviderState } from "@/types/admin";
 
+import { AppError } from "@/lib/errors";
+
 import { mockRequest } from "../latency";
+import { mockReports } from "../mockReports";
 
 /** The mock has no real providers: both are healthy and a login "completes" immediately. */
 function healthy(provider: string): ProviderState {
@@ -28,4 +31,12 @@ export const mockAdminService: AdminService = {
       userCode: "DEMO-0000",
       output: [],
     })),
+  listReports: (status) => mockRequest(() => mockReports.filter((r) => r.status === status)),
+  resolveReport: (id, status) =>
+    mockRequest(() => {
+      const report = mockReports.find((r) => r.id === id);
+      if (!report) throw new AppError("not_found", "Report not found.");
+      report.status = status;
+      return { ...report };
+    }),
 };

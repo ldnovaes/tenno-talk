@@ -1,3 +1,7 @@
+export const authKeys = {
+  oauthProviders: () => ["auth", "oauth-providers"] as const,
+};
+
 export const profileKeys = {
   me: () => ["me"] as const,
   all: ["profiles"] as const,

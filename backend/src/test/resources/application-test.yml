@@ -11,3 +11,7 @@ tenno:
 logging:
   level:
     org.springframework.security: WARN
+management:
+  health:
+    diskspace:
+      threshold: 1MB

@@ -31,25 +31,58 @@ type Listener = (event: ServerEvent) => void;
 
 const listeners = new Set<Listener>();
 const CHANNEL = "tenno-mock-server";
+/** How long an event may wait for this tab to see the data it refers to. */
+const CATCH_UP_TIMEOUT_MS = 1_000;
+
+/** On the channel, each event says which database revision it describes. */
+interface Envelope {
+  event: ServerEvent;
+  revision: number;
+}
 
 const channel: BroadcastChannel | null =
   typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(CHANNEL);
 
-channel?.addEventListener("message", (message: MessageEvent<ServerEvent>) => {
-  // Another tab changed the database before emitting: refresh our copy first.
-  mockDb.reload();
-  listeners.forEach((listener) => listener(message.data));
+/**
+ * Each tab is a separate process and localStorage reaches other processes asynchronously, so an
+ * event may arrive before this tab can read its data. Such events wait (in order) until the
+ * revision shows up here; handling them early would drop them or write a stale copy back.
+ */
+const waiting: Envelope[] = [];
+let timeout: ReturnType<typeof setTimeout> | null = null;
+
+function deliver(event: ServerEvent) {
+  listeners.forEach((listener) => listener(event));
+}
+
+function drain(force = false) {
+  while (waiting.length > 0) {
+    const next = waiting[0];
+    if (!next || (!force && mockDb.revision() < next.revision)) break;
+    waiting.shift();
+    // Another tab changed the database before emitting: refresh our copy first.
+    mockDb.reload();
+    deliver(next.event);
+  }
+  if (timeout) clearTimeout(timeout);
+  timeout = waiting.length > 0 ? setTimeout(() => drain(true), CATCH_UP_TIMEOUT_MS) : null;
+}
+
+channel?.addEventListener("message", (message: MessageEvent<Envelope>) => {
+  waiting.push(message.data);
+  drain();
 });
 
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
     if (event.key === "tenno.mockdb") mockDb.reload();
+    if (event.key === mockDb.revisionKey) drain();
   });
 }
 
 export function publish(event: ServerEvent): void {
-  listeners.forEach((listener) => listener(event));
-  channel?.postMessage(event);
+  deliver(event);
+  channel?.postMessage({ event, revision: mockDb.revision() } satisfies Envelope);
 }
 
 export function onServerEvent(listener: Listener): () => void {

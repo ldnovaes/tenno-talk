@@ -418,20 +418,43 @@ Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
 ## Phase 10 — Production hardening
 
-- [ ] Medir a `MessageList`; adotar react-virtuoso se necessário
-- [ ] Orçamento de bundle (< 200KB gzip no primeiro carregamento) e análise de chunks
-- [ ] Lighthouse (performance, a11y, best practices) ≥ 90 nas telas principais
-- [ ] Auditoria axe sem violações críticas nos dois temas
-- [ ] Playwright e2e: onboarding, chat entre duas contas, modos de tradução, feed, stories, responsividade
-- [ ] Block/report de ponta a ponta
-- [ ] Exclusão de conta e exportação de dados (LGPD)
-- [ ] Termos de Uso e Política de Privacidade definitivos (uso de IA de terceiros, retenção, direitos do titular)
-- [ ] Rate limits validados sob carga
-- [ ] Monitoramento: uptime, disco, cotas e falhas das CLIs de IA; Sentry opcional
-- [ ] Headers de segurança no Caddy (CSP, HSTS), revisão de dependências
-- [ ] PWA opcional (manifest, ícones, instalação)
+> Concluída em 2026-10-04 no que depende de código. Abertos: itens que exigem a VPS, contas reais ou texto jurídico.
+
+### Performance
+- [x] Medir a `MessageList`: 330 mensagens a 60 fps com CPU 4×; react-virtuoso adiado (PLAN.md §22). A medição achou re-renders de todas as bolhas a cada envio (callbacks instáveis no contexto): corrigido, 1.992 → 6 renders, envio 1,35 s → 0,4 s, com teste
+- [x] Orçamento de bundle: 182,6 KB gzip no primeiro carregamento (shell logado lazy, welcome eager, sem mock no build real)
+- [x] Lighthouse em `/welcome` atrás do Caddy: Performance 94–97, Accessibility 100, Best Practices 100, SEO 100 (splash estático, sessão não bloqueia páginas públicas)
+
+### Qualidade e acessibilidade
+- [x] Auditoria axe sem violações sérias/críticas em 8 telas, dois temas, desktop e celular (corrigidos: contraste do texto secundário, `aria` dos botões "em breve", rótulos)
+- [x] Playwright e2e (mock): onboarding, chat entre duas contas, modos de tradução, feed, stories, responsividade; estável em execuções repetidas
+- [x] Playwright da pilha de produção (`e2e:stack`): Caddy + SPA + Java + Postgres, `wss://`, upload, CSP, cookie
+- [x] Mock confiável com duas abas: revisões, entrega ordenada de eventos, concorrência otimista, sem escrita em leitura
+
+### Produto e LGPD
+- [x] Block/report de ponta a ponta: denúncia de pessoa, mensagem e post; revisão em `/admin/reports`
+- [x] Exclusão de conta (arquivos removidos só após o commit) e exportação de dados (Download my data)
+- [ ] Termos de Uso e Política de Privacidade definitivos (revisão jurídica, §34.2)
+
+### Segurança e operação
+- [x] Rate limits validados sob carga (300 tentativas: 10 passam, 290 recebem 429) e sem bypass por `X-Forwarded-For` forjado através do Caddy; 1.000 leituras simultâneas sem erro
+- [x] Headers no Caddy (CSP, HSTS, frame-ancestors, nosniff), CSP validada na pilha real (corrigido: `connect-src` bloqueava todos os uploads)
+- [x] Revisão de dependências: `bun audit` limpo após atualização compatível; vulnerabilidades eram só de ferramentas de build
+- [x] Login social opcional por provedor (antes, um `.env` com OAuth vazio impedia o boot) e correção do `ClassCastException` no login Google/Facebook, com testes de OAuth (identidade, vinculação, e-mail não verificado)
+- [x] Imagem corrompida → 400 (antes 500; nunca guardada sem remover o EXIF)
+- [x] `.env` ignorado pelo git em qualquer pasta
+- [x] Monitoramento: health público cai para DOWN com pouco disco (testado); estado das IAs e fila em `/admin/ai`; guia de uptime em `deploy/VPS.md`
+- [ ] Sentry (opcional)
+- [x] PWA: manifest, ícones e instalação (sem service worker)
+
+### Deploy
+- [x] Deploy reproduzível: a pilha de produção sobe do zero a partir do repositório (`docker compose up -d --build`)
+- [x] Backup e restauração: `backup.sh`/`restore.sh`, **restauração testada** (dados e fotos voltaram, usuário restaurado entrou e viu a conversa)
+- [x] CD: workflow manual **Deploy** por SSH, com espera do health
+- [x] Guia da VPS (`deploy/VPS.md`): hardening, login das IAs, admin, OAuth, backups, monitoramento
+- [ ] Executar na VPS real: domínio/DNS, hardening, login das CLIs, cron de backup com cópia externa, monitor de uptime
 
 **Done when**
-- [ ] Metas de performance e acessibilidade atingidas
-- [ ] Deploy reproduzível na VPS, com backup restaurado com sucesso pelo menos uma vez
-- [ ] Checklist de segurança do PLAN.md §31 verificado
+- [x] Metas de performance e acessibilidade atingidas
+- [x] Deploy reproduzível, com backup restaurado com sucesso pelo menos uma vez (pilha local; repetir na VPS)
+- [x] Checklist de segurança do PLAN.md §31 verificado (exceto o que depende da VPS e do texto jurídico)

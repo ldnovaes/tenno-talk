@@ -82,7 +82,8 @@
   --secondary: oklch(0.963 0.003 247.9); /* #F1F3F5 */
   --secondary-foreground: oklch(0.188 0.013 248.5);
   --muted: oklch(0.963 0.003 247.9);
-  --muted-foreground: oklch(0.546 0.012 248); /* #6B7177 */
+  /* AA (≥ 4.5:1) also on the chat background #EEF2F5, not only on white. */
+  --muted-foreground: oklch(0.52 0.012 248); /* #63696F */
   --accent: oklch(0.96 0.017 250.8); /* #EAF3FD */
   --accent-foreground: oklch(0.483 0.131 253.7); /* #1D5FA6 */
   --destructive: oklch(0.578 0.206 29); /* #D93025 */
@@ -113,7 +114,8 @@
   --secondary: oklch(0.297 0.03 254.7); /* #232E3C */
   --secondary-foreground: oklch(0.97 0 0);
   --muted: oklch(0.284 0.025 248.7); /* #202B36 */
-  --muted-foreground: oklch(0.667 0.032 251.4); /* #8696A8 */
+  /* AA (≥ 4.5:1) also on the selected row (#22364B), not only on the background. */
+  --muted-foreground: oklch(0.71 0.03 251.4); /* #93A3B5 */
   --accent: oklch(0.326 0.046 250.5); /* #22364B */
   --accent-foreground: oklch(0.795 0.092 247.6); /* #8CC2F5 */
   --destructive: oklch(0.687 0.165 25.8); /* #EF6B63 */

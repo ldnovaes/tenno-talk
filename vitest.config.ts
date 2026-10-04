@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
+  define: { __USE_HTTP__: "false" },
   test: {
     environment: "jsdom",
     globals: true,

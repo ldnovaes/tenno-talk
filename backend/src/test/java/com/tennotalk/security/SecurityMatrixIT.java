@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** Every API endpoint, discovered from Spring MVC, against the access rules (PLAN.md §31). */
 class SecurityMatrixIT extends IntegrationTest {
 
-    private static final Set<String> PUBLIC = Set.of("/api/auth/session", "/api/auth/signup", "/api/auth/signin");
+    private static final Set<String> PUBLIC = Set.of("/api/auth/session", "/api/auth/signup", "/api/auth/signin", "/api/auth/providers");
 
     record Endpoint(HttpMethod method, String pattern) {
         String path() {
