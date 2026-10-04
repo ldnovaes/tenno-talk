@@ -50,6 +50,7 @@
 33. [Riscos técnicos](#33-riscos-técnicos)
 34. [Decisões de backend](#34-decisões-de-backend)
 35. [Regras de desenvolvimento](#35-regras-de-desenvolvimento)
+36. [Revisão da experiência social](#36-revisão-da-experiência-social-2026-10-04)
 
 ---
 
@@ -1064,7 +1065,7 @@ Os hooks chamam `chatService.getConversations()` dentro de `queryFn`; nenhum com
 - Persistência em `localStorage` (`tenno.mockdb.v1`), para que mensagens enviadas, follows e preferências sobrevivam ao reload. A versão na chave permite resetar ao mudar o seed.
 - Settings → (dev) "Reset demo data".
 - **Duas abas = dois processos.** O localStorage chega às outras abas de forma assíncrona e pode perder para o BroadcastChannel. Por isso: (1) cada escrita incrementa uma revisão (`tenno.mockdb.rev`), e um evento recebido espera, em ordem, até a aba enxergar a revisão em que foi publicado (ou 1 s); (2) `update()` usa concorrência otimista (refaz a mudança sobre dados novos se outra aba escreveu no meio); (3) leituras que não mudam nada não escrevem, então uma aba com visão atrasada não sobrescreve as outras. Sem isso, a demo a dois perdia mensagens e traduções de vez em quando.
-- O mock **simula a projeção do servidor**: guarda N traduções por mensagem e devolve só a do idioma de recebimento do usuário logado.
+- O mock **simula a projeção do servidor**: guarda N traduções por mensagem e devolve só a do idioma de recebimento que o usuário logado tinha quando a mensagem foi enviada.
 
 ### 16.3 Realismo
 
@@ -1190,9 +1191,10 @@ Há três conceitos distintos de idioma, que não devem ser confundidos no códi
 | Conceito | Campo | Afeta |
 |---|---|---|
 | Idioma nativo | `profile.nativeLanguage` | Idioma em que o usuário escreve e origem das traduções; pré-selecionado a partir do idioma do sistema; mostrado no perfil. |
-| Idioma de recebimento | `preferences.translation.receivingLanguage` | Para qual idioma o **backend** traduz o conteúdo dos outros. |
+| Idioma de recebimento | `preferences.translation.receivingLanguage` | Para qual idioma o **backend** traduz o conteúdo dos outros. Uma troca vale **só para as mensagens que chegarem depois dela** (abaixo). |
 | Idioma da interface | `preferences.interfaceLanguage` | Textos de botões e menus (i18next) e formatação de datas. |
 
+- **Trocar o idioma de recebimento não retraduz o passado** (decisão de 2026-10-04). Cada mensagem de chat é traduzida uma vez, no envio, para o idioma de recebimento que cada membro tinha **naquele momento**, e é sempre mostrada nesse idioma. As mensagens anteriores à troca continuam no idioma antigo, e nenhuma chamada à IA é feita por abrir uma conversa ou rolar o histórico. O servidor guarda as trocas em `receiving_language_history (user_id, language, since)`, e a projeção usa o idioma vigente em `message.created_at`. A mensagem sem tradução gravada para esse idioma (anomalia de dados antigos) aparece só no original. O "Retry" de uma tradução que falhou usa o mesmo idioma da época. Posts, comentários e stories seguem sob demanda (§28.3, custo).
 - i18next configurado na Phase 1 com namespace por feature e **apenas `en`** inicialmente. Todas as strings de UI passam por `t()` desde o início, porque adicionar i18n depois é caro.
 - O seletor de idioma da interface aparece em Settings já no MVP (com `en` e, possivelmente, `pt-BR`).
 - Os nomes de idiomas usam `Intl.DisplayNames`, com o catálogo de `lib/languages.ts` como fallback.
@@ -1323,6 +1325,7 @@ PostgreSQL com migrations Flyway. As sessões HTTP ficam nas tabelas do Spring S
 | `oauth_accounts` | `user_id`, `provider (google \| facebook)`, `provider_user_id`, `email` — único `(provider, provider_user_id)` |
 | `terms_acceptances` | `user_id`, `terms_version`, `privacy_version`, `accepted_at`, `ip`, `user_agent` |
 | `user_preferences` | `user_id`, `receiving_language`, `interface_language`, `display_mode`, `auto_translate_posts`, `auto_translate_stories`, `learning_mode`, privacidade e notificações |
+| `receiving_language_history` | `user_id`, `language`, `since` — PK `(user_id, since)`; uma linha por troca do idioma de recebimento (§21: a tradução de cada mensagem usa o idioma vigente no envio) |
 | `user_learning_languages` | `user_id`, `language` |
 | `languages` | `code (pk)`, `english_name`, `native_name`, `dir`, `enabled` |
 | `conversations` | `id`, `kind (direct \| group)`, `title`, `avatar_media_id`, `created_by`, `direct_key (unique: par ordenado de user ids)`, `updated_at` — **índice único parcial `(created_by) WHERE kind = 'group'`**: no máximo 1 grupo criado por pessoa |
@@ -1580,3 +1583,19 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 - Strings de UI sempre via `t()`.
 - Cores só por tokens semânticos.
 - Antes de implementar algo grande, atualizar o **PLAN.md**. Ao concluir uma etapa, atualizar o **IMPLEMENTATION.md**.
+
+## 36. Revisão da experiência social (2026-10-04)
+
+Status: planejado, sem alteração do comportamento atual. Plano detalhado em [PLANO_UX.md](PLANO_UX.md); execução na Phase 11 do [IMPLEMENTATION.md](IMPLEMENTATION.md#phase-11--notificações-e-experiência-social).
+
+Esta revisão evolui as decisões das seções 6, 8, 9, 17 e 26 para resolver notificações ausentes, espaçamento, comentários/respostas e retorno entre telas:
+
+- Persistir notificações de mensagens e respostas de stories, hoje ausentes no fluxo real do chat; manter uma conexão realtime por sessão autenticada, inclusive durante stories.
+- Substituir leitura automática de toda a central por leitura individual e ação explícita de leitura em lote, com recuperação em falha e sincronização entre dispositivos. Distinguir contador de Chats e contador de atividades.
+- Aplicar espaçamento consistente a chat/formulários e somar safe area ao padding base quando necessário.
+- Padronizar retorno com origem interna e fallback por rota, incluindo estados de carregamento/erro e entrada por URL direta.
+- Introduzir `/posts/:postId` e destino de comentário; usar uma única superfície de post/comentários. Mobile com painel inferior contextual; desktop com mídia e comentários lado a lado quando houver espaço.
+- Melhorar resposta privada dentro do story, pausando progresso/vídeo durante interação; permitir destino de story específico e preservar drafts/retry.
+- Corrigir destinos das notificações e validar ponta a ponta com backend real e duas contas.
+
+Premissas iniciais: notificações internas e respostas privadas em stories. Push com o app fechado e comentários públicos em stories têm extensões explícitas no plano detalhado, a incorporar conforme definição de escopo. As fases anteriores do checklist registram entregas históricas; seus itens concluídos não comprovam os novos critérios de aceite.

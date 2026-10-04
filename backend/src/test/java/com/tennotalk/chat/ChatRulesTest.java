@@ -81,7 +81,7 @@ class ChatRulesTest {
     void ownMessagesInGroupsHaveNoSingleTarget() {
         UUID me = UUID.randomUUID();
         var message = new MessageRow(UUID.randomUUID(), UUID.randomUUID(), me, "c", "text", "Oi", "pt-BR", null, null, at);
-        var scope = new ChatProjector.Scope("group", List.of());
+        var scope = new ChatProjector.Scope("group", List.of(), ReceivingLanguages.NONE);
         assertThat(ChatProjector.targetFor(message, me, scope)).isNull();
     }
 }

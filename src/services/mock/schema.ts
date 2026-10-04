@@ -27,6 +27,8 @@ export interface UserRecord {
   termsAcceptedVersion: string | null;
   onboardingCompletedAt: ISODateString | null;
   preferences: UserPreferences;
+  /** Receiving-language changes, oldest first: each applies only to later messages (PLAN.md §21). */
+  receivingLanguageHistory: { language: LanguageCode; since: ISODateString }[];
   isOnline: boolean;
   lastSeenAt: ISODateString | null;
   blockedUserIds: string[];

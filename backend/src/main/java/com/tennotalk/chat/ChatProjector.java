@@ -30,18 +30,19 @@ import com.tennotalk.translation.MessageTranslationRepository;
 
 /**
  * Projects messages for ONE viewer (PLAN.md §12): the translation is the one into the
- * viewer's receiving language (or, for own messages, what the other person received),
- * and ticks come from the other members' cursors.
+ * receiving language the viewer had when the message was sent (or, for own messages, what
+ * the other person received), and ticks come from the other members' cursors.
  */
 @Component
 public class ChatProjector {
 
     /** Conversation data needed to project its messages. */
-    public record Scope(String kind, List<MemberRow> members) {
+    public record Scope(String kind, List<MemberRow> members, ReceivingLanguages languages) {
 
         MemberRow member(UUID userId) {
             return members.stream().filter(m -> m.user().id().equals(userId)).findFirst().orElse(null);
         }
+
     }
 
     private final ChatRepository chat;
@@ -54,16 +55,19 @@ public class ChatProjector {
         this.translations = translations;
     }
 
-    /** Language this viewer should read the message in; null when there is nothing to show. */
+    /**
+     * Language this viewer should read the message in: the receiving language in effect when it
+     * was sent, so a later change never re-translates the past. Null when there is nothing to show.
+     */
     public static String targetFor(MessageRow message, UUID viewer, Scope scope) {
         if (!message.senderId().equals(viewer)) {
             MemberRow me = scope.member(viewer);
-            return me == null ? null : me.receivingLanguage();
+            return me == null ? null : scope.languages().of(me, message.createdAt());
         }
         if ("group".equals(scope.kind())) return null;
         return scope.members().stream()
                 .filter(m -> !m.user().id().equals(viewer))
-                .map(MemberRow::receivingLanguage)
+                .map(m -> scope.languages().of(m, message.createdAt()))
                 .findFirst()
                 .orElse(null);
     }
@@ -115,8 +119,9 @@ public class ChatProjector {
         if (Languages.same(message.originalLanguage(), target)) {
             return new ContentTranslationDto(target, null, "not_needed", 0, message.createdAt());
         }
+        // Every target gets its row when the message is sent; no row means old data: show the original.
         MessageTranslationRepository.Row row = translated.get(MessageTranslationRepository.key(message.id(), target));
-        return row != null ? row.toDto() : new ContentTranslationDto(target, null, "pending", 0, message.createdAt());
+        return row != null ? row.toDto() : null;
     }
 
     static String deliveryStatus(MessageRow message, UUID viewer, Scope scope) {

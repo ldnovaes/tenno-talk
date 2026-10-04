@@ -3,6 +3,7 @@ package com.tennotalk.chat;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -101,21 +102,8 @@ public class ChatService {
         List<MessageRow> page = new ArrayList<>(more ? newestFirst.subList(0, PAGE_SIZE) : newestFirst);
         java.util.Collections.reverse(page);
         ChatProjector.Scope scope = scope(conversation);
-        ensureViewerTranslations(viewer, page, scope);
         String next = more ? new Cursor(page.getFirst().createdAt(), page.getFirst().id()).encode() : null;
         return new PageDto<>(projector.many(viewer, page, Map.of(conversationId, scope)), next);
-    }
-
-    /** The viewer may have switched receiving language: translate on demand. */
-    private void ensureViewerTranslations(UUID viewer, List<MessageRow> page, ChatProjector.Scope scope) {
-        for (MessageRow message : page) {
-            String target = ChatProjector.targetFor(message, viewer, scope);
-            if (message.senderId().equals(viewer) || message.originalText() == null || target == null) continue;
-            if (com.tennotalk.common.Languages.same(message.originalLanguage(), target)) continue;
-            if (translations.insertPending(message.id(), target)) {
-                jobs.enqueue("message", message.id(), target, clock.instant(), true);
-            }
-        }
     }
 
     // ---- sending ---------------------------------------------------------
@@ -164,7 +152,10 @@ public class ChatService {
         chat.touch(message.conversationId(), message.createdAt());
         chat.advanceCursor(message.conversationId(), message.senderId(), message.id(), true);
         if (message.originalText() != null) {
-            List<String> languages = chat.members(message.conversationId()).stream().map(MemberRow::receivingLanguage).toList();
+            // Same rule as the projection: the language each member has at the moment of sending.
+            List<MemberRow> members = chat.members(message.conversationId());
+            ReceivingLanguages history = chat.receivingLanguages(userIds(members));
+            List<String> languages = members.stream().map(member -> history.of(member, message.createdAt())).toList();
             for (String target : TranslationTargets.compute(message.originalLanguage(), languages)) {
                 translations.insertPending(message.id(), target);
                 jobs.enqueue("message", message.id(), target, clock.instant(), true);
@@ -303,15 +294,21 @@ public class ChatService {
     }
 
     public ChatProjector.Scope scope(ConversationRow conversation) {
-        return new ChatProjector.Scope(conversation.kind(), chat.members(conversation.id()));
+        List<MemberRow> members = chat.members(conversation.id());
+        return new ChatProjector.Scope(conversation.kind(), members, chat.receivingLanguages(userIds(members)));
+    }
+
+    private static List<UUID> userIds(Collection<MemberRow> members) {
+        return members.stream().map(member -> member.user().id()).distinct().toList();
     }
 
     private List<ConversationDto> project(UUID viewer, List<ConversationRow> rows) {
         Map<UUID, List<MemberRow>> members = chat.members(rows.stream().map(ConversationRow::id).toList());
+        ReceivingLanguages languages = chat.receivingLanguages(userIds(members.values().stream().flatMap(List::stream).toList()));
         Map<UUID, ChatProjector.Scope> scopes = new HashMap<>();
         List<MessageRow> lasts = new ArrayList<>();
         for (ConversationRow row : rows) {
-            scopes.put(row.id(), new ChatProjector.Scope(row.kind(), members.getOrDefault(row.id(), List.of())));
+            scopes.put(row.id(), new ChatProjector.Scope(row.kind(), members.getOrDefault(row.id(), List.of()), languages));
             chat.lastMessage(row.id()).ifPresent(lasts::add);
         }
         Map<UUID, MessageDto> lastByConversation = new HashMap<>();

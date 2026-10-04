@@ -152,6 +152,9 @@ export function seedUsers(now = Date.now()): Record<string, UserRecord> {
           receivingLanguage: seed.nativeLanguage,
         },
       },
+      receivingLanguageHistory: [
+        { language: seed.nativeLanguage, since: daysAgo(60 - index, now) },
+      ],
       isOnline,
       lastSeenAt: isOnline ? null : minutesAgo(15 + index * 47, now),
       blockedUserIds: [],

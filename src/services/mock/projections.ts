@@ -34,18 +34,35 @@ export function receivingLanguageOf(db: MockDatabase, userId: string): LanguageC
   return db.users[userId]?.preferences.translation.receivingLanguage ?? null;
 }
 
-/** Language the viewer should see this message in. */
+/**
+ * Receiving language the user had at `at` (PLAN.md §21): changing it never re-translates the
+ * past. Falls back to the current language when the history does not cover `at`.
+ */
+export function receivingLanguageAt(
+  db: MockDatabase,
+  userId: string,
+  at: string,
+): LanguageCode | null {
+  let language: LanguageCode | null = null;
+  for (const period of db.users[userId]?.receivingLanguageHistory ?? []) {
+    if (period.since > at) break;
+    language = period.language;
+  }
+  return language ?? receivingLanguageOf(db, userId);
+}
+
+/** Language the viewer should see this message in: the one in effect when it was sent. */
 export function targetLanguageFor(
   db: MockDatabase,
   message: MessageRecord,
   viewerId: string,
 ): LanguageCode | null {
-  if (message.senderId !== viewerId) return receivingLanguageOf(db, viewerId);
-  // Own message: show what the other person receives (groups have many languages).
+  if (message.senderId !== viewerId) return receivingLanguageAt(db, viewerId, message.createdAt);
+  // Own message: show what the other person received (groups have many languages).
   const conversation = db.conversations[message.conversationId];
   if (conversation?.kind === "group") return null;
   const other = conversation?.memberIds.find((id) => id !== viewerId);
-  return other ? receivingLanguageOf(db, other) : null;
+  return other ? receivingLanguageAt(db, other, message.createdAt) : null;
 }
 
 export function needsTranslation(original: OriginalText, target: LanguageCode): boolean {
@@ -67,15 +84,8 @@ function projectTranslation(
       updatedAt: message.createdAt,
     };
   }
-  return (
-    message.translations[target] ?? {
-      targetLanguage: target,
-      text: null,
-      status: "pending",
-      version: 0,
-      updatedAt: message.createdAt,
-    }
-  );
+  // Every target gets its entry when the message is sent; none means old data: original only.
+  return message.translations[target] ?? null;
 }
 
 function createdAtOf(db: MockDatabase, messageId: string | null): string | null {

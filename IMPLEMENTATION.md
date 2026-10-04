@@ -5,6 +5,8 @@
 
 Legenda: `[ ]` pendente · `[x]` concluído · `[~]` parcial/adiado (com nota)
 
+Próxima revisão de experiência: [Phase 11 — Notificações e experiência social](#phase-11--notificações-e-experiência-social), detalhada em [PLANO_UX.md](PLANO_UX.md).
+
 ---
 
 ## Phase 0 — Planning
@@ -496,3 +498,44 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 - [x] Smoke em produção: jobs parados retomados e traduzidos com `provider=openai` (`AI usage` ~230 tokens de entrada / ~20 de saída); os dois provedores em `ok`; as duas chaves aceitas (modelo consultado, HTTP 200)
 - [ ] Primeira tradução real pela Anthropic (só acontece quando a OpenAI falhar)
 - [x] Limpar `/opt/tenno-talk/{node,cli}` e `/var/lib/tenno-talk/{.codex,.claude}` na VPS (~1 GB)
+
+---
+
+## Phase 11 — Notificações e experiência social
+
+> Planejada em 2026-10-04. Decisões em [PLAN.md §36](PLAN.md#36-revisão-da-experiência-social-2026-10-04), diagnóstico, contratos e aceite em [PLANO_UX.md](PLANO_UX.md). Nenhuma correção desta fase foi implementada ainda.
+
+- [x] Inspecionar os fluxos atuais e documentar o plano de implementação
+- [ ] 11.0 — Reproduzir os problemas com duas contas, registrar evidências visuais e fechar escopo de push/comentários públicos em stories
+- [ ] 11.1 — Criar notificações de mensagens/respostas com idempotência e paridade HTTP/mock
+- [ ] 11.1 — Manter conexão e assinantes no escopo autenticado, inclusive em stories, e recuperar eventos após reconexão
+- [ ] 11.1 — Implementar leitura individual/em lote segura, paginação, recuperação em falha, integração com leitura do chat e sincronização entre dispositivos
+- [ ] 11.2 — Padronizar retorno por origem interna/fallback, incluindo links diretos e estados de loading/erro
+- [ ] 11.2 — Aplicar escala de espaçamento a chat, campos e formulários; corrigir composição de safe area e validar teclado
+- [ ] 11.3 — Criar rota de post/comentário e visualizador único reutilizado pelo Feed, perfil e notificações
+- [ ] 11.3 — Paginar/localizar comentários, implementar envio otimista idempotente, drafts e erros/retry sem duplicação
+- [ ] 11.4 — Melhorar respostas privadas a stories: pausa de timer/vídeo, gestos, teclado, drafts por story e confirmação inline
+- [ ] 11.4 — Implementar destino exato de story e estados de conteúdo expirado/indisponível
+- [ ] 11.5 — Conectar todos os tipos de notificação ao alvo correto, sino nos headers mobile e avisos discretos acessíveis
+- [ ] 11.6 — Executar verificações de frontend/backend e E2E com duas contas, incluindo offline, leitura concorrente e múltiplas abas
+- [ ] 11.6 — Validar visual, acessibilidade, navegação e teclado/safe area em dispositivos; registrar evidências e pendências
+
+**Done when**
+
+- [ ] Interações elegíveis produzem notificação e contador sem reload; leitura/falha/reconexão mantêm consistência
+- [ ] Tocar na notificação abre o post, comentário, story, perfil ou mensagem corretos
+- [ ] Comentários usam uma única superfície e preservam contexto, scroll e draft, com envio/retry confiáveis
+- [ ] Responder a story mantém o viewer estável e pausado até encerrar a interação
+- [ ] Chat e formulários mantêm respiro e ações acessíveis em todas as larguras previstas e com teclado aberto
+- [ ] Todas as telas oferecem retorno/fechamento seguro ou navegação principal na raiz, inclusive por link direto
+- [ ] Critérios da matriz de validação do PLANO_UX.md verificados; nenhuma etapa declarada concluída apenas por teste mock
+
+## Troca de idioma não retraduz o passado (2026-10-04)
+
+Antes, abrir uma conversa depois de trocar o idioma de recebimento traduzia de novo as 30 mensagens visíveis (e mais 30 a cada rolagem), gastando IA com o histórico. Regra nova em PLAN.md §21.
+
+- [x] `receiving_language_history` (migration V4, com o idioma atual de cada usuário desde a criação da conta) e gravação a cada troca (onboarding e Settings)
+- [x] Projeção e alvos do envio usam o idioma vigente em `message.created_at` (`ReceivingLanguages`); a tradução sob demanda ao abrir a conversa foi removida
+- [x] Mensagem sem tradução gravada para o idioma da época aparece só no original (não fica "pending" para sempre)
+- [x] Mock no mesmo modelo (`receivingLanguageHistory`, versão 7 do banco local)
+- [x] Testes: backend 407 (inclui troca e volta de idioma sem nenhuma chamada nova à IA), frontend 357

@@ -6,6 +6,7 @@ import type {
   ProfileService,
   UpdateProfileInput,
 } from "@/services/profileService";
+import type { LanguageCode } from "@/types/language";
 
 import { mockDb } from "../db";
 import { mockRequest } from "../latency";
@@ -45,6 +46,12 @@ function findUser(db: MockDatabase, userId: string): UserRecord {
   return user;
 }
 
+/** A new receiving language applies only to messages sent from now on (PLAN.md §21). */
+function recordReceivingChange(user: UserRecord, language: LanguageCode): void {
+  if (user.preferences.translation.receivingLanguage === language) return;
+  user.receivingLanguageHistory.push({ language, since: new Date().toISOString() });
+}
+
 export const mockProfileService: ProfileService = {
   getMe() {
     return mockRequest(() => {
@@ -82,6 +89,7 @@ export const mockProfileService: ProfileService = {
         }
         assertUsernameAvailable(db, input.username, viewer.id);
         viewer.nativeLanguage = input.nativeLanguage;
+        recordReceivingChange(viewer, input.receivingLanguage);
         viewer.preferences.translation.receivingLanguage = input.receivingLanguage;
         viewer.displayName = input.displayName.trim();
         viewer.username = normalizeUsername(input.username);
@@ -116,6 +124,9 @@ export const mockProfileService: ProfileService = {
       mockDb.update((db) => {
         const viewer = viewerRecord(db);
         const current = viewer.preferences;
+        if (patch.translation?.receivingLanguage) {
+          recordReceivingChange(viewer, patch.translation.receivingLanguage);
+        }
         viewer.preferences = {
           interfaceLanguage: patch.interfaceLanguage ?? current.interfaceLanguage,
           translation: { ...current.translation, ...patch.translation },

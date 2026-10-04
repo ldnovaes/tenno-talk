@@ -99,16 +99,6 @@ export function scheduleTranslations(messageId: string): void {
   }
 }
 
-/** Translation for a language nobody asked for yet (e.g. the viewer changed language). */
-export function ensureTranslation(messageId: string, target: LanguageCode): void {
-  const message = mockDb.read().messages[messageId];
-  if (!message || message.translations[target]) return;
-  const original = originalOf(message.content);
-  if (!original || !needsTranslation(original, target)) return;
-  setTranslation(messageId, target, () => ({ text: null, status: "pending", version: 0 }));
-  runTranslation(messageId, target, true);
-}
-
 /** Manual "Retry translation". */
 export function retryTranslation(messageId: string, target: LanguageCode): void {
   runTranslation(messageId, target, false);

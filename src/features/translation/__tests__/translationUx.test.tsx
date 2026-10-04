@@ -8,6 +8,7 @@ import { setMockConfig } from "@/services/mock/latency";
 import { writeMockSession } from "@/services/mock/session";
 import { setViewportWidth } from "@/test/setup";
 import { renderApp, signInAs } from "@/test/utils";
+import type { Message } from "@/types/message";
 import type { TranslationDisplayMode } from "@/types/preferences";
 
 const LINH_PT = "Eu também estava com saudade de você.";
@@ -179,7 +180,7 @@ describe("translation UX", () => {
     );
   });
 
-  it("changing the receiving language translates into the new language", async () => {
+  it("changing the receiving language applies only to messages sent after it", async () => {
     signInAs("usr_rafael");
     renderApp("/settings/translation");
     await screen.findByRole("radio", { name: "Translation only" });
@@ -187,15 +188,34 @@ describe("translation UX", () => {
     await act(() =>
       profileService.updatePreferences({ translation: { receivingLanguage: "en-US" } }),
     );
-    const page = await mockChatService.getMessages("conv_rafael_linh", null);
-    await waitFor(async () => {
-      const again = await mockChatService.getMessages("conv_rafael_linh", null);
-      const linhMessage = again.items.find(
-        (m) => m.senderId === "usr_linh" && m.content.type === "text",
-      );
-      expect(linhMessage?.translation?.targetLanguage).toBe("en-US");
-      expect(linhMessage?.translation?.status).toBe("translated");
+    const linhText = (items: Message[]) =>
+      items.filter((m) => m.senderId === "usr_linh" && m.content.type === "text");
+
+    // The past keeps the language it was received in, and nothing is translated again.
+    const before = await mockChatService.getMessages("conv_rafael_linh", null);
+    const old = linhText(before.items);
+    expect(old.length).toBeGreaterThan(0);
+    old.forEach((m) => expect(m.translation?.targetLanguage).toBe("pt-BR"));
+    const stored = Object.values(mockDb.read().messages).filter(
+      (m) => m.conversationId === "conv_rafael_linh" && m.translations["en-US"],
+    );
+    expect(stored).toHaveLength(0);
+
+    // A message sent after the change arrives in the new language.
+    writeMockSession("usr_linh");
+    await mockChatService.sendMessage({
+      clientId: "after-change",
+      conversationId: "conv_rafael_linh",
+      text: "Anh ăn cơm chưa?",
+      media: [],
+      replyToId: null,
     });
-    expect(page.items.length).toBeGreaterThan(0);
+    writeMockSession("usr_rafael");
+    await waitFor(async () => {
+      const after = await mockChatService.getMessages("conv_rafael_linh", null);
+      const latest = linhText(after.items).at(-1);
+      expect(latest?.translation?.targetLanguage).toBe("en-US");
+      expect(latest?.translation?.status).toBe("translated");
+    });
   });
 });

@@ -108,6 +108,18 @@ public class ChatRepository {
                 .update();
     }
 
+    /** Receiving-language history of these users, oldest period first (PLAN.md §21). */
+    public ReceivingLanguages receivingLanguages(Collection<UUID> userIds) {
+        if (userIds.isEmpty()) return ReceivingLanguages.NONE;
+        Map<UUID, List<ReceivingLanguages.Period>> periods = new HashMap<>();
+        jdbc.sql("SELECT user_id, language, since FROM receiving_language_history WHERE user_id IN (:ids) ORDER BY since")
+                .param("ids", userIds)
+                .query((rs, row) -> periods.computeIfAbsent(rs.getObject("user_id", UUID.class), key -> new ArrayList<>())
+                        .add(new ReceivingLanguages.Period(rs.getString("language"), rs.getTimestamp("since").toInstant())))
+                .list();
+        return new ReceivingLanguages(periods);
+    }
+
     /** Members of several conversations, cursors resolved to timestamps. */
     public Map<UUID, List<MemberRow>> members(Collection<UUID> conversationIds) {
         Map<UUID, List<MemberRow>> result = new HashMap<>();

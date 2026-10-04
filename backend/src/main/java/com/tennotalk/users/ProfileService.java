@@ -112,6 +112,7 @@ public class ProfileService {
                 input.country().toUpperCase(), checkedAvatar(viewer, input.avatarUrl()), input.nativeLanguage(), List.of());
         Preferences current = preferences.find(viewer);
         preferences.save(viewer, withReceiving(current, input.receivingLanguage()));
+        recordReceivingChange(viewer, current, input.receivingLanguage());
         users.completeOnboarding(viewer, clock.instant());
         return me(viewer);
     }
@@ -171,6 +172,7 @@ public class ProfileService {
             interfaceLanguage = patch.interfaceLanguage();
         }
         preferences.save(viewer, new Preferences(interfaceLanguage, t, p, n));
+        recordReceivingChange(viewer, current, t.receivingLanguage());
         return me(viewer);
     }
 
@@ -309,6 +311,12 @@ public class ProfileService {
 
     private static void requireOneOf(Set<String> allowed, String value, String field) {
         if (!allowed.contains(value)) throw ApiException.validation("Invalid value.", field, "invalid");
+    }
+
+    /** Only messages sent from now on use the new language; the past is never translated again. */
+    private void recordReceivingChange(UUID viewer, Preferences current, String receiving) {
+        String previous = current.translation().receivingLanguage();
+        if (!Objects.equals(previous, receiving)) preferences.recordReceivingChange(viewer, previous, receiving, clock.instant());
     }
 
     private static Preferences withReceiving(Preferences current, String receiving) {

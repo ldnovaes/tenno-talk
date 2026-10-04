@@ -17,6 +17,7 @@ import static com.tennotalk.support.TestData.as;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -81,6 +82,58 @@ class TranslationPipelineIT extends IntegrationTest {
         assertThat(jobStatus()).isEqualTo("done");
         String provider = jdbc.sql("SELECT provider FROM message_translations WHERE status = 'translated'").query(String.class).single();
         assertThat(provider).isEqualTo("openai");
+    }
+
+    private void changeReceivingLanguage(UUID user, String language) throws Exception {
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("translation", Map.of("receivingLanguage", language)))
+                .with(as(user))).andExpect(status().isOk());
+    }
+
+    private long jobs() {
+        return jdbc.sql("SELECT count(*) FROM translation_jobs").query(Long.class).single();
+    }
+
+    @Test
+    void changingTheReceivingLanguageNeverTranslatesThePastAgain() throws Exception {
+        steps.send(rafael, conversation, "Oi");
+        worker.runOnce();
+        changeReceivingLanguage(linh, "en-US");
+        long jobsBefore = jobs();
+
+        // Opening the conversation and the chat list after the change costs nothing.
+        JsonNode old = linhView();
+        assertThat(old.at("/translation/targetLanguage").asString()).isEqualTo("vi-VN");
+        assertThat(old.at("/translation/text").asString()).isEqualTo("[Vietnamese (Vietnam)] Oi");
+        steps.conversations(linh);
+        assertThat(jobs()).isEqualTo(jobsBefore);
+        assertThat(worker.runOnce()).isZero();
+
+        // Only what arrives after the change uses the new language.
+        steps.send(rafael, conversation, "Tudo bem?");
+        worker.runOnce();
+        JsonNode linhItems = steps.messages(linh, conversation).get("items");
+        assertThat(linhItems.get(0).at("/translation/text").asString()).isEqualTo("[Vietnamese (Vietnam)] Oi");
+        assertThat(linhItems.get(1).at("/translation/text").asString()).isEqualTo("[English (United States)] Tudo bem?");
+        // The sender sees what Linh received each time.
+        JsonNode rafaelItems = steps.messages(rafael, conversation).get("items");
+        assertThat(rafaelItems.get(0).at("/translation/targetLanguage").asString()).isEqualTo("vi-VN");
+        assertThat(rafaelItems.get(1).at("/translation/targetLanguage").asString()).isEqualTo("en-US");
+        assertThat(ai.translationCalls("openai")).isEqualTo(2);
+    }
+
+    @Test
+    void switchingBackToAnEarlierLanguageStillOnlyAffectsNewMessages() throws Exception {
+        changeReceivingLanguage(linh, "en-US");
+        steps.send(rafael, conversation, "Oi");
+        worker.runOnce();
+        changeReceivingLanguage(linh, "vi-VN");
+        steps.send(rafael, conversation, "Tchau");
+        worker.runOnce();
+        JsonNode items = steps.messages(linh, conversation).get("items");
+        assertThat(items.get(0).at("/translation/targetLanguage").asString()).isEqualTo("en-US");
+        assertThat(items.get(1).at("/translation/targetLanguage").asString()).isEqualTo("vi-VN");
+        assertThat(jdbc.sql("SELECT count(*) FROM receiving_language_history WHERE user_id = :id").param("id", linh)
+                .query(Long.class).single()).isEqualTo(3);
     }
 
     @Test

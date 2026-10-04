@@ -1,5 +1,7 @@
 package com.tennotalk.users;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -35,6 +37,30 @@ public class PreferencesRepository {
                                 rs.getBoolean("notify_likes"),
                                 rs.getBoolean("notify_followers"))))
                 .single();
+    }
+
+    /**
+     * A new receiving language applies from {@code since} on (PLAN.md §21). Without history yet,
+     * the previous language is recorded first, from the creation of the account.
+     */
+    public void recordReceivingChange(UUID userId, String previous, String language, Instant since) {
+        jdbc.sql("""
+                INSERT INTO receiving_language_history (user_id, language, since)
+                SELECT u.id, :previous, LEAST(u.created_at, :since) FROM users u
+                WHERE u.id = :id AND NOT EXISTS (SELECT 1 FROM receiving_language_history h WHERE h.user_id = u.id)
+                """)
+                .param("id", userId)
+                .param("previous", previous)
+                .param("since", Timestamp.from(since))
+                .update();
+        jdbc.sql("""
+                INSERT INTO receiving_language_history (user_id, language, since) VALUES (:id, :language, :since)
+                ON CONFLICT (user_id, since) DO UPDATE SET language = EXCLUDED.language
+                """)
+                .param("id", userId)
+                .param("language", language)
+                .param("since", Timestamp.from(since))
+                .update();
     }
 
     public void save(UUID userId, Preferences p) {

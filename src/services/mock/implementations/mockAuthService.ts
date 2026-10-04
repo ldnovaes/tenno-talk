@@ -48,6 +48,7 @@ function newUser(
         receivingLanguage: language,
       },
     },
+    receivingLanguageHistory: [{ language, since: now }],
     isOnline: true,
     lastSeenAt: null,
     blockedUserIds: [],

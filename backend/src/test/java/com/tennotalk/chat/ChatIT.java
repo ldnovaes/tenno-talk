@@ -299,13 +299,11 @@ class ChatIT extends IntegrationTest {
     }
 
     @Test
-    void switchingTheReceivingLanguageQueuesNewTranslationsOnRead() throws Exception {
+    void aMessageWithoutAStoredTranslationShowsOnlyTheOriginal() throws Exception {
         UUID conversation = steps.direct(rafael, linh);
         steps.send(linh, conversation, "Chào anh");
-        data.setPreference(rafael, "receiving_language", "en-US");
-        JsonNode message = steps.lastMessage(rafael, conversation);
-        assertThat(message.at("/translation/targetLanguage").asString()).isEqualTo("en-US");
-        assertThat(message.at("/translation/status").asString()).isEqualTo("pending");
-        assertThat(count("SELECT count(*) FROM translation_jobs WHERE target_language = 'en-US'")).isOne();
+        jdbc.sql("DELETE FROM message_translations").update();
+        assertThat(steps.lastMessage(rafael, conversation).get("translation").isNull()).isTrue();
+        assertThat(count("SELECT count(*) FROM translation_jobs")).isOne();
     }
 }

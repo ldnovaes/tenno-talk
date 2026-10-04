@@ -14,7 +14,7 @@ import type {
   MockDatabase,
 } from "../schema";
 import { requireViewerId } from "../session";
-import { ensureTranslation, scheduleTranslations } from "../translationPipeline";
+import { scheduleTranslations } from "../translationPipeline";
 
 const PAGE_SIZE = 30;
 const FAR_FUTURE = "9999-12-31T23:59:59.000Z";
@@ -174,8 +174,6 @@ export const mockChatService: ChatService = {
       const older = cursor ? all.filter((m) => `${m.createdAt}|${m.id}` < cursor) : all;
       const items = older.slice(-PAGE_SIZE);
       const first = items[0];
-      const target = db.users[viewerId]?.preferences.translation.receivingLanguage;
-      if (target) items.forEach((m) => m.senderId !== viewerId && ensureTranslation(m.id, target));
       return {
         items: items.map((m) => projectMessage(db, m, viewerId)),
         nextCursor: first && older.length > items.length ? `${first.createdAt}|${first.id}` : null,
