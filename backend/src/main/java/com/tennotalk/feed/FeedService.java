@@ -73,7 +73,7 @@ public class FeedService {
 
     @Transactional(readOnly = true)
     public PageDto<PostDto> feed(UUID viewer, String cursor) {
-        return page(viewer, cursor, "TRUE", Map.of());
+        return page(viewer, cursor, Visibility.followedAuthor("p.author_id"), Map.of());
     }
 
     @Transactional(readOnly = true)
@@ -196,7 +196,9 @@ public class FeedService {
     }
 
     @Transactional(readOnly = true)
-    public List<CommentDto> comments(UUID viewer, UUID postId) {
+    public List<CommentDto> comments(UUID viewer, UUID postId) { return comments(viewer, postId, null, null); }
+
+    public List<CommentDto> comments(UUID viewer, UUID postId, UUID afterId, UUID targetId) {
         visiblePost(viewer, postId);
         String language = preferences.receivingLanguage(viewer);
         record CommentRow(UUID id, UUID authorId, String text, String language, Instant at) {}
@@ -204,8 +206,10 @@ public class FeedService {
                 SELECT c.* FROM comments c WHERE c.post_id = :p
                 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = :viewer AND b.blocked_id = c.author_id)
                                                         OR (b.blocker_id = c.author_id AND b.blocked_id = :viewer))
-                ORDER BY c.created_at, c.id
-                """).param("p", postId).param("viewer", viewer)
+                AND (CAST(:after AS uuid) IS NULL OR (c.created_at, c.id) > (SELECT created_at, id FROM comments WHERE id = :after AND post_id = :p))
+                AND (CAST(:target AS uuid) IS NULL OR c.id = :target)
+                ORDER BY c.created_at, c.id LIMIT 50
+                """).param("p", postId).param("viewer", viewer).param("after", afterId).param("target", targetId)
                 .query((rs, row) -> new CommentRow(rs.getObject("id", UUID.class), rs.getObject("author_id", UUID.class),
                         rs.getString("body_text"), rs.getString("body_language"), rs.getTimestamp("created_at").toInstant()))
                 .list();
@@ -220,7 +224,10 @@ public class FeedService {
 
     /** "Who can comment" is enforced here, never only in the UI (PLAN.md §31). */
     @Transactional
-    public CommentDto comment(UUID viewer, UUID postId, String text) {
+    public CommentDto comment(UUID viewer, UUID postId, String text) { return comment(viewer, postId, text, null); }
+
+    @Transactional
+    public CommentDto comment(UUID viewer, UUID postId, String text, String clientId) {
         PostRow post = visiblePost(viewer, postId);
         String body = text == null ? "" : text.strip();
         if (body.isEmpty()) throw ApiException.validation("A comment can't be empty.");
@@ -233,11 +240,17 @@ public class FeedService {
         }
         UserRow author = users.require(viewer);
         UUID id = Ids.newId();
-        jdbc.sql("INSERT INTO comments (id, post_id, author_id, body_text, body_language) VALUES (:id, :p, :a, :t, :l)")
-                .param("id", id).param("p", postId).param("a", viewer).param("t", body).param("l", author.nativeLanguage())
+        int inserted = jdbc.sql("INSERT INTO comments (id, post_id, author_id, body_text, body_language, client_id) VALUES (:id, :p, :a, :t, :l, :client) ON CONFLICT DO NOTHING")
+                .param("id", id).param("p", postId).param("a", viewer).param("t", body).param("l", author.nativeLanguage()).param("client", clientId)
                 .update();
+        if (inserted == 0) {
+            UUID existing = jdbc.sql("SELECT id FROM comments WHERE author_id = :a AND client_id = :client AND post_id = :p")
+                .param("a", viewer).param("client", clientId).param("p", postId).query(UUID.class).optional()
+                .orElseThrow(() -> ApiException.conflict("This comment id was already used."));
+            return comments(viewer, postId, null, existing).stream().filter(c -> c.id().equals(existing)).findFirst().orElseThrow();
+        }
         notifications.notify(post.authorId(), viewer, "comment", Target.comment(postId, id));
-        return comments(viewer, postId).stream().filter(c -> c.id().equals(id)).findFirst().orElseThrow();
+        return comments(viewer, postId, null, id).stream().filter(c -> c.id().equals(id)).findFirst().orElseThrow();
     }
 
     @Transactional

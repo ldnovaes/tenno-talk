@@ -1,6 +1,6 @@
+import { useBack } from "@/app/router/useBack";
 import { ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
@@ -46,11 +46,11 @@ function AiProvidersPanel() {
 
 export default function AdminAiPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const backSafe = useBack();
   const me = useCurrentUser();
   return (
     <ContentColumn>
-      <PageHeader title={t("admin.ai.title")} onBack={() => navigate(-1)} />
+      <PageHeader title={t("admin.ai.title")} onBack={backSafe} />
       {me.role === "admin" ? (
         <AiProvidersPanel />
       ) : (

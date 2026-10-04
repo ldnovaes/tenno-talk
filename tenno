@@ -35,12 +35,12 @@ case "$GROUP:$COMMAND" in
     ;;
   vps:provision)
     source "$ROOT_DIR/deploy/shared-vps/lib.sh"
-    identity="$(infisical_env_lines)"
+    runtime_config="$(deployment_env_lines)"
     vps_ssh "rm -rf /root/tenno-provision && mkdir -p /root/tenno-provision"
     vps_rsync "$ROOT_DIR/deploy/shared-vps/remote/" "/root/tenno-provision/"
     vps_ssh "DOMAIN='$TENNO_DOMAIN' CERT_EMAIL='$TENNO_CERT_EMAIL' PORT='$TENNO_PORT' \
       NEIGHBOR_HOSTS='$TENNO_NEIGHBOR_HOSTS' CERT_MODE='${TENNO_CERT_MODE:-letsencrypt}' \
-      bash /root/tenno-provision/provision.sh" <<<"$identity"
+      bash /root/tenno-provision/provision.sh" <<<"$runtime_config"
     ;;
   vps:ssh)
     source "$ROOT_DIR/deploy/shared-vps/lib.sh"

@@ -4,7 +4,8 @@ import { mockNotificationService } from "./mock/implementations/mockNotification
 import { httpNotificationService } from "./http/httpNotificationService";
 
 export interface NotificationService {
-  list(): Promise<Notification[]>;
+  list(beforeId?: string): Promise<Notification[]>;
+  markRead(ids: string[]): Promise<void>;
   unreadCount(): Promise<number>;
   markAllRead(): Promise<void>;
 }

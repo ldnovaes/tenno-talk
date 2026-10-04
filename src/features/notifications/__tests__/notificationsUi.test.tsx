@@ -19,12 +19,14 @@ describe("notifications", () => {
     await waitFor(() => expect(within(link).getByText("5")).toBeInTheDocument());
   });
 
-  it("groups notifications and clears the badge when opened", async () => {
+  it("groups notifications and reads the observed list explicitly", async () => {
     renderApp("/notifications");
     expect(await screen.findByRole("heading", { name: "Today" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "This week" })).toBeInTheDocument();
     expect(screen.getByText(/reacted 😍 to your story/)).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "Notifications" });
+    expect(within(link).getByText("5")).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Mark all as read" }));
     await waitFor(() => expect(within(link).queryByText("5")).not.toBeInTheDocument());
     await waitFor(() =>
       expect(

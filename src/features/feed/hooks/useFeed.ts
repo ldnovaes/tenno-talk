@@ -1,10 +1,23 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 
 import { feedService, type CreatePostInput } from "@/services/feedService";
+import type { Page } from "@/types/api";
+import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import type { Comment } from "@/types/post";
 
 import { patchPostInCaches, prependPost, withLike } from "../lib/postCache";
 import { feedKeys } from "../lib/queryKeys";
+
+export function usePost(postId: string) {
+  return useQuery({ queryKey: feedKeys.post(postId), queryFn: () => feedService.getPost(postId) });
+}
 
 export function useFeed() {
   return useInfiniteQuery({
@@ -40,26 +53,65 @@ export function useToggleLike() {
 }
 
 export function useComments(postId: string | null) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: feedKeys.comments(postId ?? ""),
-    queryFn: () => feedService.getComments(postId ?? ""),
+    queryFn: async ({ pageParam }): Promise<Page<Comment>> => {
+      const items = await feedService.getComments(postId ?? "", pageParam ?? undefined);
+      return { items, nextCursor: items.length === 50 ? (items.at(-1)?.id ?? null) : null };
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor,
     enabled: postId !== null,
   });
 }
-
+export function useTargetComment(postId: string, target: string | null) {
+  return useQuery({
+    queryKey: ["comment-target", postId, target],
+    queryFn: () => feedService.getComments(postId, undefined, target ?? undefined),
+    enabled: !!target,
+  });
+}
 export function useAddComment(postId: string) {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (text: string) => feedService.addComment(postId, text),
-    onSuccess: (comment) => {
-      queryClient.setQueryData<Comment[]>(feedKeys.comments(postId), (list) => [
-        ...(list ?? []),
-        comment,
-      ]);
-      patchPostInCaches(queryClient, postId, (post) => ({
-        ...post,
-        commentsCount: post.commentsCount + 1,
+  const me = useCurrentUser();
+  const pending = useRef<{ text: string; id: string } | null>(null);
+  const patch = (id: string, comment?: Comment) =>
+    queryClient.setQueryData<InfiniteData<Page<Comment>>>(feedKeys.comments(postId), (data) => {
+      if (!data) return data;
+      const pages = data.pages.map((page) => ({
+        ...page,
+        items: page.items.filter((item) => item.id !== id && item.id !== comment?.id),
       }));
+      const last = pages.at(-1);
+      if (last && comment) last.items.push(comment);
+      return { ...data, pages };
+    });
+  return useMutation({
+    onMutate: async (text: string) => {
+      await queryClient.cancelQueries({ queryKey: feedKeys.comments(postId) });
+      if (pending.current?.text !== text) pending.current = { text, id: crypto.randomUUID() };
+      const id = `tmp_${pending.current.id}`;
+      patch(id, {
+        id,
+        postId,
+        author: me,
+        body: { text, language: me.nativeLanguage },
+        translation: null,
+        createdAt: new Date().toISOString(),
+      });
+      return { id };
+    },
+    mutationFn: (text: string) => feedService.addComment(postId, text, pending.current?.id),
+    onError: (_error, _text, context) => {
+      if (context) patch(context.id);
+    },
+    onSuccess: (comment, _text, context) => {
+      if (context) patch(context.id, comment);
+      pending.current = null;
+      void queryClient.invalidateQueries({ queryKey: feedKeys.comments(postId) });
+      void feedService
+        .getPost(postId)
+        .then((post) => patchPostInCaches(queryClient, postId, () => post));
     },
   });
 }

@@ -10,7 +10,7 @@ describe("mockFeedService", () => {
 
   it("pages the feed newest first", async () => {
     const first = await mockFeedService.getFeed(null);
-    expect(first.items).toHaveLength(5);
+    expect(first.items).toHaveLength(4);
     const dates = first.items.map((p) => p.createdAt);
     expect([...dates].sort().reverse()).toEqual(dates);
     const all = [first];
@@ -20,7 +20,17 @@ describe("mockFeedService", () => {
       all.push(next);
       cursor = next.nextCursor;
     }
-    expect(all.flatMap((p) => p.items)).toHaveLength(13);
+    const posts = all.flatMap((p) => p.items);
+    expect(posts).toHaveLength(4);
+    expect(
+      posts.every(
+        (post) =>
+          post.author.id === "usr_rafael" ||
+          mockDb
+            .read()
+            .follows.some((f) => f.followerId === "usr_rafael" && f.followeeId === post.author.id),
+      ),
+    ).toBe(true);
   });
 
   it("projects captions in the viewer's language, keeping the original", async () => {

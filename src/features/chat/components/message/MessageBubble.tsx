@@ -95,7 +95,7 @@ function MessageBubbleComponent({ message, position, sender }: MessageBubbleProp
     <div
       id={`message-${message.id}`}
       className={cn(
-        "group flex items-end gap-2 px-2 md:px-4",
+        "group flex items-end gap-2 px-4 md:px-6",
         own ? "justify-end" : "justify-start",
         endOfGroup ? "pb-2" : "pb-0.5",
       )}

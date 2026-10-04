@@ -51,8 +51,9 @@ export function Composer({ conversationId, senderName, viewerId }: ComposerProps
   function submit(event?: FormEvent) {
     event?.preventDefault();
     if (!canSend) return;
-    send(draft, media, replyTo);
-    setMedia([]);
+    send(draft, media, replyTo, () =>
+      setMedia((current) => current.filter((item) => !media.includes(item))),
+    );
     typing.stop();
     textareaRef.current?.focus();
   }
@@ -89,7 +90,7 @@ export function Composer({ conversationId, senderName, viewerId }: ComposerProps
   }
 
   return (
-    <form onSubmit={submit} className="shrink-0 border-t bg-background px-2 pb-safe pt-2 md:px-4">
+    <form onSubmit={submit} className="shrink-0 border-t bg-background px-4 pb-safe pt-3 md:px-6">
       {replyTo && (
         <ReplyPreviewBar
           reference={replyTo}
@@ -122,7 +123,7 @@ export function Composer({ conversationId, senderName, viewerId }: ComposerProps
             onBlur={typing.stop}
             placeholder={t("chat.composer.placeholder")}
             dir="auto"
-            className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-1 py-2.5 text-[15px] leading-5 outline-none placeholder:text-muted-foreground"
+            className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-3 py-3 text-[15px] leading-5 outline-none placeholder:text-muted-foreground"
           />
           <input
             ref={fileRef}

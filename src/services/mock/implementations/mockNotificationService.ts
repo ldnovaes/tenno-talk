@@ -1,32 +1,55 @@
 import type { NotificationService } from "@/services/notificationService";
 import type { Notification } from "@/types/notification";
 
+import { publish } from "../events";
 import { mockDb } from "../db";
 import { mockRequest } from "../latency";
 import { projectNotification } from "../notificationProjection";
 import { requireViewerId } from "../session";
 
 export const mockNotificationService: NotificationService = {
-  list() {
+  markRead(ids) {
+    return mockRequest(() =>
+      mockDb.update((db) => {
+        const viewer = requireViewerId();
+        for (const id of ids) {
+          const n = db.notifications[id];
+          if (n?.recipientId === viewer && !n.readAt) n.readAt = new Date().toISOString();
+        }
+      }),
+    ).then(() => {
+      publish({ kind: "notifications.read", recipientId: requireViewerId() });
+    });
+  },
+  list(beforeId) {
     return mockRequest(() => {
       const viewerId = requireViewerId();
       const db = mockDb.read();
-      return Object.values(db.notifications)
+      const ordered = Object.values(db.notifications)
         .filter(
           (n) =>
-            n.recipientId === viewerId && !db.users[viewerId]?.blockedUserIds.includes(n.actorId),
+            n.recipientId === viewerId &&
+            !db.users[viewerId]?.blockedUserIds.includes(n.actorId) &&
+            !db.users[n.actorId]?.blockedUserIds.includes(viewerId),
         )
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map((n) => projectNotification(db, n))
         .filter((n): n is Notification => n !== null);
+      const start = beforeId ? ordered.findIndex((n) => n.id === beforeId) + 1 : 0;
+      return ordered.slice(start, start + 100);
     });
   },
 
   unreadCount() {
     return mockRequest(() => {
       const viewerId = requireViewerId();
-      return Object.values(mockDb.read().notifications).filter(
-        (n) => n.recipientId === viewerId && !n.readAt,
+      const db = mockDb.read();
+      return Object.values(db.notifications).filter(
+        (n) =>
+          n.recipientId === viewerId &&
+          !n.readAt &&
+          !db.users[viewerId]?.blockedUserIds.includes(n.actorId) &&
+          !db.users[n.actorId]?.blockedUserIds.includes(viewerId),
       ).length;
     });
   },

@@ -1,3 +1,4 @@
+import { useBack } from "@/app/router/useBack";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 
@@ -16,6 +17,7 @@ import { CreatePostForm } from "@/features/feed/components/create/CreatePostForm
 /** Dialog over the current screen on md+, full page on mobile (PLAN.md §8). */
 export default function CreatePostPage() {
   const { t } = useTranslation();
+  const backSafe = useBack();
   const navigate = useNavigate();
   const background = useBackgroundLocation();
   const close = useCloseOverlay();
@@ -36,7 +38,7 @@ export default function CreatePostPage() {
   }
   return (
     <div className="flex min-h-full flex-col bg-background">
-      <PageHeader title={t("feed.createPost.title")} onBack={() => navigate(-1)} />
+      <PageHeader title={t("feed.createPost.title")} onBack={backSafe} />
       <CreatePostForm onPublished={done} />
     </div>
   );

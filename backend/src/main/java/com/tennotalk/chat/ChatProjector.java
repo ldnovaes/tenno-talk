@@ -45,11 +45,13 @@ public class ChatProjector {
 
     }
 
+    private final MessageReceipts receipts;
     private final ChatRepository chat;
     private final MediaRepository media;
     private final MessageTranslationRepository translations;
 
-    public ChatProjector(ChatRepository chat, MediaRepository media, MessageTranslationRepository translations) {
+    public ChatProjector(ChatRepository chat, MediaRepository media, MessageTranslationRepository translations, MessageReceipts receipts) {
+        this.receipts = receipts;
         this.chat = chat;
         this.media = media;
         this.translations = translations;
@@ -89,6 +91,7 @@ public class ChatProjector {
         Map<UUID, List<ChatRepository.ReactionRow>> reactions = chat.reactions(ids);
         Map<String, MessageTranslationRepository.Row> translated = translations.forMessages(ids);
 
+        Map<UUID, String> statuses = receipts.statuses(messages);
         List<MessageDto> result = new ArrayList<>(messages.size());
         for (MessageRow message : messages) {
             Scope scope = Objects.requireNonNull(scopes.get(message.conversationId()), "scope");
@@ -107,7 +110,7 @@ public class ChatProjector {
                     translation(message, targetFor(message, viewer, scope), translated),
                     reply,
                     summarize(reactions.getOrDefault(message.id(), List.of()), viewer),
-                    deliveryStatus(message, viewer, scope),
+                    message.senderId().equals(viewer) ? statuses.getOrDefault(message.id(), deliveryStatus(message, viewer, scope)) : "read",
                     message.createdAt()));
         }
         return result;

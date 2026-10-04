@@ -106,6 +106,7 @@ class FeedIT extends IntegrationTest {
 
     @Test
     void feedIsNewestFirstAndPaginatesWithACursor() throws Exception {
+        data.follow(linh, rafael);
         List<String> ids = new ArrayList<>();
         for (int i = 0; i < 12; i++) {
             String id = post(rafael, "post " + i).get("id").asString();

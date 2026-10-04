@@ -21,6 +21,7 @@ export interface RealtimeEventMap {
   "user.offline": { userId: string; lastSeenAt: string };
   "typing.started": { conversationId: string; userId: string };
   "typing.stopped": { conversationId: string; userId: string };
+  "notifications.read": Record<string, never>;
   "notification.created": { notification: Notification };
 }
 
@@ -37,7 +38,7 @@ export interface RealtimeClient {
     event: K,
     handler: (payload: RealtimeEventMap[K]) => void,
   ): Unsubscribe;
-  emitTyping(conversationId: string, isTyping: boolean): void;
+  emitTyping(conversationId: string, isTyping: boolean): boolean;
 }
 
 export const realtimeClient: RealtimeClient = __USE_HTTP__ ? wsRealtimeClient : mockRealtimeClient;

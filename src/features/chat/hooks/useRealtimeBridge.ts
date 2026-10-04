@@ -1,10 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
+import { acknowledgeReceived } from "@/services/realtime/deliveryAcks";
 import { realtimeClient } from "@/services/realtime/realtimeClient";
 import { usePresenceStore } from "@/stores/presenceStore";
 
-import { refetchIfLoading, setReceipt, setTranslation, upsertMessage } from "../lib/messageCache";
+import { refetchIfLoading, setTranslation, upsertMessage } from "../lib/messageCache";
 import { chatKeys } from "../lib/queryKeys";
 
 const TYPING_TIMEOUT_MS = 6_000;
@@ -30,9 +31,11 @@ export function useRealtimeBridge(viewerId: string) {
 
     const unsubscribers = [
       realtimeClient.subscribe("message.created", ({ message }) => {
-        if (message.senderId !== viewerId) stopTyping(message.conversationId, message.senderId);
+        if (message.senderId !== viewerId)
+          acknowledgeReceived(message.conversationId, [message.id]);
         upsertMessage(queryClient, message, { incrementUnread: message.senderId !== viewerId });
         refetchIfLoading(queryClient, message.conversationId);
+        void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
       }),
       realtimeClient.subscribe("message.updated", ({ message }) => {
         upsertMessage(queryClient, message);
@@ -45,12 +48,12 @@ export function useRealtimeBridge(viewerId: string) {
           refetchIfLoading(queryClient, conversationId);
         },
       ),
-      realtimeClient.subscribe("message.delivered", ({ conversationId, upToMessageId }) => {
-        setReceipt(queryClient, conversationId, viewerId, upToMessageId, "delivered");
+      realtimeClient.subscribe("message.delivered", ({ conversationId }) => {
+        void queryClient.invalidateQueries({ queryKey: chatKeys.messages(conversationId) });
         refetchIfLoading(queryClient, conversationId);
       }),
-      realtimeClient.subscribe("message.read", ({ conversationId, upToMessageId }) => {
-        setReceipt(queryClient, conversationId, viewerId, upToMessageId, "read");
+      realtimeClient.subscribe("message.read", ({ conversationId }) => {
+        void queryClient.invalidateQueries({ queryKey: chatKeys.messages(conversationId) });
         refetchIfLoading(queryClient, conversationId);
       }),
       realtimeClient.subscribe("typing.started", ({ conversationId, userId }) => {

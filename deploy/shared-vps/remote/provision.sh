@@ -18,7 +18,7 @@ PORT="${PORT:-8090}"
 CERT_MODE="${CERT_MODE:-letsencrypt}"
 NEIGHBOR_HOSTS="${NEIGHBOR_HOSTS:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# The Infisical machine identity arrives on stdin (./tenno vps provision); read it before any
+# Runtime secrets arrive on stdin (./tenno vps provision); read them before any
 # other command can consume stdin.
 IDENTITY=""
 [ -t 0 ] || IDENTITY="$(cat)"

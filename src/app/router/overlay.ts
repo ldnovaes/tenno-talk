@@ -3,6 +3,7 @@ import { matchPath, useLocation, useNavigate, type Location } from "react-router
 
 import { useIsMobile } from "@/hooks/useBreakpoint";
 
+import { useBack } from "./useBack";
 import { paths } from "./paths";
 
 /**
@@ -15,6 +16,7 @@ export const OVERLAY_PATTERNS = [
   "/settings",
   "/settings/:section",
   "/create",
+  "/posts/:postId",
   "/stories/:userId",
 ] as const;
 
@@ -48,7 +50,11 @@ const DEFAULT_BACKGROUND: Location = {
 export function useBackgroundLocation(): Location | null {
   const location = useLocation();
   const isMobile = useIsMobile();
-  if (isMobile || !isOverlayPath(location.pathname)) return null;
+  if (!isOverlayPath(location.pathname)) return null;
+  if (isMobile)
+    return location.pathname.startsWith("/posts/")
+      ? (readBackground(location.state) ?? null)
+      : null;
   return readBackground(location.state) ?? DEFAULT_BACKGROUND;
 }
 
@@ -67,16 +73,13 @@ export function useOverlayNavigate() {
 
 /** Closes the current overlay: back in history when opened in-app, else to the background. */
 export function useCloseOverlay() {
-  const navigate = useNavigate();
   const location = useLocation();
-  return useCallback(() => {
-    const background = readBackground(location.state);
-    if (background && location.key !== "default") {
-      navigate(-1);
-    } else {
-      navigate(background ? background.pathname + background.search : paths.chats(), {
-        replace: true,
-      });
-    }
-  }, [location, navigate]);
+  const background = readBackground(location.state);
+  return useBack(
+    background
+      ? background.pathname + background.search
+      : location.pathname.startsWith("/posts/") || location.pathname.startsWith("/stories/")
+        ? paths.feed()
+        : paths.chats(),
+  );
 }

@@ -64,6 +64,7 @@ export type MessageContentRecord =
   | { type: "story_reply"; storyId: string; body: OriginalText };
 
 export interface MessageRecord {
+  receipts?: Record<string, boolean>;
   id: string;
   clientId: string | null;
   conversationId: string;

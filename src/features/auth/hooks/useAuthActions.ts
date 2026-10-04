@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 
+import { pushService } from "@/services/pushService";
+import { takeTarget } from "@/app/router/returnTarget";
 import { paths } from "@/app/router/paths";
 import {
   authService,
@@ -20,7 +22,7 @@ function useOnSignedIn() {
   return (session: Session) => {
     queryClient.clear();
     setSession(session);
-    navigate(paths.home(), { replace: true });
+    navigate(takeTarget(session.userId) ?? paths.home(), { replace: true });
   };
 }
 
@@ -64,8 +66,17 @@ export function useSignOut() {
   const navigate = useNavigate();
   const setSession = useSessionStore((state) => state.setSession);
   return useMutation({
-    mutationFn: () => authService.signOut(),
-    onSettled: () => {
+    mutationFn: async () => {
+      if (__USE_HTTP__) {
+        try {
+          await pushService.disable();
+        } catch {
+          // A failed push revocation must not trap the user in a signed-in session.
+        }
+      }
+      await authService.signOut();
+    },
+    onSuccess: () => {
       queryClient.clear();
       clearClientState();
       setSession(null);

@@ -85,7 +85,7 @@ public class StoryService {
     /** The viewer first, then authors with unseen stories, then the rest (most recent first). */
     @Transactional(readOnly = true)
     public List<StoryTrayItemDto> tray(UUID viewer) {
-        List<StoryRow> rows = jdbc.sql(SELECT + " ORDER BY s.created_at, s.id")
+        List<StoryRow> rows = jdbc.sql(SELECT + " AND " + Visibility.followedAuthor("s.author_id") + " ORDER BY s.created_at, s.id")
                 .param("viewer", viewer).param("now", Timestamp.from(clock.instant()))
                 .query(StoryService::row).list();
         Map<UUID, List<StoryDto>> byAuthor = new LinkedHashMap<>();
@@ -98,6 +98,18 @@ public class StoryService {
         items.sort(Comparator.<StoryTrayItemDto>comparingInt(item -> item.user().id().equals(viewer) ? 0 : item.hasUnseen() ? 1 : 2)
                 .thenComparing(item -> item.stories().getLast().createdAt(), Comparator.reverseOrder()));
         return items;
+    }
+
+    @Transactional(readOnly = true)
+    public List<StoryDto> byUser(UUID viewer, UUID author) {
+        return project(viewer, jdbc.sql(SELECT + " AND s.author_id = :author ORDER BY s.created_at, s.id")
+                .param("viewer", viewer).param("author", author).param("now", Timestamp.from(clock.instant()))
+                .query(StoryService::row).list());
+    }
+
+    @Transactional(readOnly = true)
+    public StoryDto get(UUID viewer, UUID id) {
+        return project(viewer, List.of(require(viewer, id))).getFirst();
     }
 
     private Optional<StoryRow> find(UUID viewer, UUID storyId) {
@@ -156,8 +168,8 @@ public class StoryService {
         if (story.authorId().equals(viewer)) throw ApiException.validation("You can't reply to your own story.");
         UUID conversationId = chat.direct(viewer, story.authorId()).id();
         String key = clientId == null || clientId.isBlank() ? Ids.newId().toString() : clientId;
-        chat.send(viewer, conversationId, new SendMessage(key, text, List.of(), null), storyId);
-        return new ReplyResult(conversationId);
+        var message = chat.send(viewer, conversationId, new SendMessage(key, text, List.of(), null), storyId);
+        return new ReplyResult(conversationId, message);
     }
 
     @Transactional

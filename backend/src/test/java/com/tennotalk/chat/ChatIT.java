@@ -184,7 +184,10 @@ class ChatIT extends IntegrationTest {
         UUID conversation = steps.direct(rafael, linh);
         String id = steps.send(rafael, conversation, "Oi").get("id").asString();
         assertThat(steps.lastMessage(rafael, conversation).get("deliveryStatus").asString()).isEqualTo("sent");
-        steps.conversations(linh); // Linh's device synced.
+        steps.conversations(linh);
+        assertThat(steps.lastMessage(rafael, conversation).get("deliveryStatus").asString()).isEqualTo("sent");
+        mvc.perform(withJson(post("/api/conversations/" + conversation + "/delivered"), Map.of("messageIds", List.of(id))).with(as(linh)))
+                .andExpect(status().isNoContent());
         assertThat(steps.lastMessage(rafael, conversation).get("deliveryStatus").asString()).isEqualTo("delivered");
         mvc.perform(withJson(post("/api/conversations/" + conversation + "/read"), Map.of("messageId", id)).with(as(linh)))
                 .andExpect(status().isNoContent());

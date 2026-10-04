@@ -56,10 +56,12 @@ public class ChatService {
     private final Presence presence;
     private final ApplicationEventPublisher events;
     private final Clock clock;
+    private final MessageReceipts receipts;
+    private final com.tennotalk.notifications.NotificationService notifications;
 
     public ChatService(ChatRepository chat, ChatProjector projector, UserRepository users, PreferencesRepository preferences,
             SocialGraph graph, MediaRepository media, MessageTranslationRepository translations, TranslationJobRepository jobs,
-            Presence presence, ApplicationEventPublisher events, Clock clock) {
+            Presence presence, ApplicationEventPublisher events, Clock clock, MessageReceipts receipts, com.tennotalk.notifications.NotificationService notifications) {
         this.chat = chat;
         this.projector = projector;
         this.users = users;
@@ -71,21 +73,16 @@ public class ChatService {
         this.presence = presence;
         this.events = events;
         this.clock = clock;
+        this.receipts = receipts;
+        this.notifications = notifications;
     }
 
     // ---- reading ---------------------------------------------------------
 
-    /** The list also acknowledges delivery: the client is now in sync (ticks ✓✓). */
+    /** Listing is read-only; delivery requires a client acknowledgement. */
     @Transactional
     public List<ConversationDto> conversations(UUID viewer) {
         List<ConversationRow> rows = chat.conversationsOf(viewer);
-        for (ConversationRow row : rows) {
-            chat.lastFromOthers(row.id(), viewer).ifPresent(last -> {
-                if (chat.advanceCursor(row.id(), viewer, last.id(), false)) {
-                    events.publishEvent(new ReceiptChanged(row.id(), viewer, "delivered", last.id()));
-                }
-            });
-        }
         return project(viewer, rows);
     }
 
@@ -149,6 +146,12 @@ public class ChatService {
     }
 
     private void afterInsert(MessageRow message) {
+        receipts.snapshot(message);
+        for (MemberRow member : chat.members(message.conversationId())) {
+            if (member.mutedUntil() != null && member.mutedUntil().isAfter(clock.instant())) continue;
+            notifications.notify(member.user().id(), message.senderId(), "new_message",
+                new com.tennotalk.notifications.NotificationService.Target(null, null, null, null, message.conversationId(), message.id()));
+        }
         chat.touch(message.conversationId(), message.createdAt());
         chat.advanceCursor(message.conversationId(), message.senderId(), message.id(), true);
         if (message.originalText() != null) {
@@ -188,16 +191,22 @@ public class ChatService {
         chat.findMessage(messageId)
                 .filter(message -> message.conversationId().equals(conversationId))
                 .orElseThrow(() -> ApiException.notFound("Message not found."));
+        for (UUID id : receipts.read(viewer, conversationId, messageId)) events.publishEvent(new MessageUpdated(conversationId, id));
+        notifications.readConversation(viewer, conversationId, messageId);
         if (chat.advanceCursor(conversationId, viewer, messageId, true)) {
             events.publishEvent(new ReceiptChanged(conversationId, viewer, "read", messageId));
         }
     }
 
-    /** Called after a message reached a member's socket (runs in its own transaction). */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markDelivered(UUID member, UUID conversationId, UUID messageId) {
-        if (chat.advanceCursor(conversationId, member, messageId, false)) {
-            events.publishEvent(new ReceiptChanged(conversationId, member, "delivered", messageId));
+    @Transactional
+    public void acknowledge(UUID viewer, UUID conversationId, List<UUID> messageIds) {
+        requireMember(conversationId, viewer);
+        for (UUID id : messageIds) {
+            MessageRow message = chat.findMessage(id).filter(m -> m.conversationId().equals(conversationId))
+                .orElseThrow(() -> ApiException.notFound("Message not found."));
+            if (!message.senderId().equals(viewer) && receipts.delivered(viewer, id)) {
+                events.publishEvent(new MessageUpdated(conversationId, id));
+            }
         }
     }
 

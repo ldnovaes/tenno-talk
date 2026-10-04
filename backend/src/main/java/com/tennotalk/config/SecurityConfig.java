@@ -32,7 +32,7 @@ public class SecurityConfig {
             throws Exception {
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
         csrfRepository.setCookieCustomizer(cookie -> cookie.path("/").sameSite("Lax"));
-        http
+        http.addFilterAfter(new com.tennotalk.auth.ExpectedAccountFilter(), org.springframework.security.web.access.intercept.AuthorizationFilter.class)
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfRepository).csrfTokenRequestHandler(CsrfConfig.spaHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/session", "/api/auth/signup", "/api/auth/signin", "/api/auth/providers").permitAll()

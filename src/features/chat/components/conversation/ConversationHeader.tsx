@@ -1,7 +1,7 @@
 import { ArrowLeft, Bell, BellOff, MoreVertical, Phone, UserRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { useBack } from "@/app/router/useBack";
 
 import { useOverlayNavigate } from "@/app/router/overlay";
 import { paths } from "@/app/router/paths";
@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/useBreakpoint";
+
 import { usePresence, useTypingUsers } from "@/stores/presenceStore";
 import type { Conversation } from "@/types/conversation";
 
@@ -36,9 +36,8 @@ export function ConversationHeader({
   viewerId: string;
 }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const back = useBack();
   const openOverlay = useOverlayNavigate();
-  const isMobile = useIsMobile();
   const mute = useMuteConversation();
   const other = otherMember(conversation, viewerId);
   const presence = usePresence(other?.user.id, {
@@ -53,17 +52,12 @@ export function ConversationHeader({
     other ? openOverlay(paths.profile(other.user.username)) : setGroupInfo(true);
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-2 md:px-4">
-      {isMobile && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(paths.chats())}
-          aria-label={t("common.back")}
-        >
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 md:px-5">
+      {
+        <Button variant="ghost" size="icon" onClick={back} aria-label={t("common.back")}>
           <ArrowLeft className="size-5 rtl:rotate-180" />
         </Button>
-      )}
+      }
       <button
         type="button"
         onClick={openProfile}

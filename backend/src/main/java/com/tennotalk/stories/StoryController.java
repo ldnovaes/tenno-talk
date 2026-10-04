@@ -46,6 +46,16 @@ public class StoryController {
         return stories.tray(me.userId());
     }
 
+    @GetMapping("/by-user/{id}")
+    public List<StoryDto> byUser(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id) {
+        return stories.byUser(me.userId(), Ids.parse(id));
+    }
+
+    @GetMapping("/{id}")
+    public StoryDto get(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id) {
+        return stories.get(me.userId(), Ids.parse(id));
+    }
+
     @PostMapping
     public StoryDto create(@AuthenticationPrincipal AppPrincipal me, @Valid @RequestBody CreateStory body) {
         return stories.create(me.userId(), body.mediaId(), body.text());

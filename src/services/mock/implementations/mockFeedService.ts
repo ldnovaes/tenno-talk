@@ -63,7 +63,12 @@ export const mockFeedService: FeedService = {
       const viewerId = requireViewerId();
       const db = mockDb.read();
       const posts = Object.values(db.posts)
-        .filter((post) => canSeePosts(db, post.authorId, viewerId))
+        .filter(
+          (post) =>
+            canSeePosts(db, post.authorId, viewerId) &&
+            (post.authorId === viewerId ||
+              db.follows.some((f) => f.followerId === viewerId && f.followeeId === post.authorId)),
+        )
         .sort(newest)
         .map((post) => projectPost(db, post, viewerId));
       return page(posts, cursor);
@@ -129,19 +134,28 @@ export const mockFeedService: FeedService = {
     );
   },
 
-  getComments(postId) {
+  getComments(postId, afterId, targetId) {
     return mockRequest(() => {
       const viewerId = requireViewerId();
       const db = mockDb.read();
       visiblePost(db, postId, viewerId);
-      return Object.values(db.comments)
-        .filter((comment) => comment.postId === postId)
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      const ordered = Object.values(db.comments)
+        .filter(
+          (comment) =>
+            comment.postId === postId &&
+            (!targetId || comment.id === targetId) &&
+            !db.users[viewerId]?.blockedUserIds.includes(comment.authorId) &&
+            !db.users[comment.authorId]?.blockedUserIds.includes(viewerId),
+        )
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+      const start = afterId ? ordered.findIndex((c) => c.id === afterId) + 1 : 0;
+      return ordered
+        .slice(start, start + 50)
         .map((comment) => projectComment(db, comment, viewerId));
     });
   },
 
-  async addComment(postId, text) {
+  async addComment(postId, text, clientId) {
     const viewerId = requireViewerId();
     const result = await mockRequest(() =>
       mockDb.update((db) => {
@@ -162,7 +176,17 @@ export const mockFeedService: FeedService = {
         ) {
           throw new AppError("forbidden", "Comments are limited on this post.");
         }
-        const id = `cmt_${crypto.randomUUID()}`;
+        const id = clientId ? `cmt_${viewerId}_${clientId}` : `cmt_${crypto.randomUUID()}`;
+        const existing = db.comments[id];
+        if (existing) {
+          if (existing.postId !== postId)
+            throw new AppError("conflict", "This comment id was already used.");
+          return {
+            comment: projectComment(db, existing, viewerId),
+            notificationId: null,
+            recipientId: post.authorId,
+          };
+        }
         db.comments[id] = {
           id,
           postId,

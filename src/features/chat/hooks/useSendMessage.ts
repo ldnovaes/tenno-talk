@@ -1,6 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
+import { persistSend, updatePending } from "@/services/outbox/store";
+import { toast } from "sonner";
+import { toAppError } from "@/lib/errors";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { createClientId } from "@/lib/ids";
 import { chatService, type MediaInput, type SendMessageInput } from "@/services/chatService";
@@ -44,8 +47,11 @@ export function useSendMessage(conversationId: string) {
   const clearComposer = useComposerStore((state) => state.clear);
 
   const mutation = useMutation({
-    mutationFn: (input: SendMessageInput) => chatService.sendMessage(input),
-    onMutate: (input) => {
+    mutationFn: async (input: SendMessageInput & { onQueued?: (() => void) | undefined }) => {
+      if (!__USE_HTTP__) return chatService.sendMessage(input);
+      return null; // The outbox worker preserves conversation order.
+    },
+    onMutate: async (input) => {
       const replyTo = useComposerStore.getState().replyTo[conversationId] ?? null;
       const optimistic: Message = {
         id: `tmp_${input.clientId}`,
@@ -59,12 +65,22 @@ export function useSendMessage(conversationId: string) {
         deliveryStatus: "sending",
         createdAt: new Date().toISOString(),
       };
+      if (__USE_HTTP__)
+        await persistSend(me.id, { ...input, onQueued: undefined } as SendMessageInput, optimistic);
       upsertMessage(queryClient, optimistic);
-      clearComposer(conversationId);
+      if (useComposerStore.getState().drafts[conversationId] === input.text)
+        clearComposer(conversationId);
+      input.onQueued?.();
       failedSends.delete(input.clientId);
     },
-    onSuccess: (message) => upsertMessage(queryClient, message),
-    onError: (_error, input) => {
+    onSuccess: (message) => {
+      if (message) upsertMessage(queryClient, message);
+    },
+    onError: (error, input) => {
+      if (__USE_HTTP__) {
+        toast.error(toAppError(error).message);
+        return;
+      }
       failedSends.set(input.clientId, input);
       patchMessage(
         queryClient,
@@ -84,9 +100,15 @@ export function useSendMessage(conversationId: string) {
   const { mutate } = mutation;
 
   const send = useCallback(
-    (text: string, media: MediaInput[], replyTo: MessageReference | null) =>
+    (
+      text: string,
+      media: MediaInput[],
+      replyTo: MessageReference | null,
+      onQueued?: (() => void) | undefined,
+    ) =>
       mutate({
         conversationId,
+        onQueued,
         clientId: createClientId(),
         text,
         media,
@@ -98,6 +120,12 @@ export function useSendMessage(conversationId: string) {
   /** Resends with the same clientId: the server deduplicates (idempotency). */
   const retry = useCallback(
     (clientId: string) => {
+      if (__USE_HTTP__) {
+        void updatePending(`${me.id}:${clientId}`, (e) =>
+          e ? { ...e, blocked: false, nextAttempt: 0, leaseUntil: 0 } : e,
+        );
+        return;
+      }
       const input = failedSends.get(clientId);
       if (!input) return;
       patchMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId }, (m) => ({
@@ -106,15 +134,16 @@ export function useSendMessage(conversationId: string) {
       }));
       mutate(input);
     },
-    [mutate, queryClient, conversationId],
+    [mutate, queryClient, conversationId, me.id],
   );
 
   const discard = useCallback(
     (clientId: string) => {
+      if (__USE_HTTP__) void updatePending(`${me.id}:${clientId}`, () => undefined);
       failedSends.delete(clientId);
       removeMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId });
     },
-    [queryClient, conversationId],
+    [queryClient, conversationId, me.id],
   );
 
   return { send, retry, discard };

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { acknowledgeReceived } from "@/services/realtime/deliveryAcks";
 import { chatService } from "@/services/chatService";
 
 import { chatKeys } from "../lib/queryKeys";
@@ -7,7 +8,14 @@ import { chatKeys } from "../lib/queryKeys";
 export function useConversations() {
   return useQuery({
     queryKey: chatKeys.conversations(),
-    queryFn: () => chatService.getConversations(),
+    queryFn: async () => {
+      const conversations = await chatService.getConversations();
+      conversations.forEach((conversation) => {
+        if (conversation.lastMessage)
+          acknowledgeReceived(conversation.id, [conversation.lastMessage.id]);
+      });
+      return conversations;
+    },
   });
 }
 

@@ -20,6 +20,12 @@ export function useMarkAsRead(
   const lastMarked = useRef<string | null>(null);
   const mutation = useMutation({
     mutationFn: (messageId: string) => chatService.markAsRead(conversationId, messageId),
+    onSuccess: () => setConversationUnread(queryClient, conversationId, 0),
+    onError: () => {
+      lastMarked.current = null;
+      void queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] });
+    },
+    retry: 2,
     meta: { silent: true },
   });
   const { mutate } = mutation;
@@ -33,7 +39,6 @@ export function useMarkAsRead(
     const timer = window.setTimeout(() => {
       if (document.visibilityState === "hidden") return;
       lastMarked.current = lastIncoming.id;
-      setConversationUnread(queryClient, conversationId, 0);
       mutate(lastIncoming.id);
     }, 500);
     return () => window.clearTimeout(timer);

@@ -26,16 +26,26 @@ interface StoryViewerProps {
   userId: string;
   viewerId: string;
   onClose: () => void;
+  storyId?: string | null;
 }
 
 /** Fullscreen viewer: tap sides, hold to pause, swipe down or Esc to close. */
-export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProps) {
+export function StoryViewer({ tray, userId, viewerId, onClose, storyId }: StoryViewerProps) {
   const { t } = useTranslation();
-  const [position, setPosition] = useState<StoryPosition | null>(() => startPosition(tray, userId));
+  const [position, setPosition] = useState<StoryPosition | null>(() => {
+    const initial = startPosition(tray, userId);
+    const index = initial
+      ? tray[initial.userIndex]?.stories.findIndex((item) => item.id === storyId)
+      : -1;
+    return initial && index !== undefined && index >= 0
+      ? { ...initial, storyIndex: index }
+      : initial;
+  });
   const [held, setHeld] = useState(false);
   const [typing, setTyping] = useState(false);
   const [manualPause, setManualPause] = useState(false);
   const pointerStart = useRef<{ x: number; y: number; at: number } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const markViewed = useMarkStoryViewed();
   const { mutate: markViewedMutate } = markViewed;
 
@@ -58,6 +68,12 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
       ? story.media.durationMs
       : IMAGE_DURATION_MS;
   const paused = held || typing || manualPause;
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (paused) video.pause();
+    else void video.play().catch(() => undefined);
+  }, [paused, story?.id]);
   const progress = useStoryTimer(story?.id ?? "none", duration, paused, goNext);
 
   useEffect(() => {
@@ -117,6 +133,7 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
       <div className="relative flex h-full w-full max-w-[min(100vw,calc(100dvh*9/16))] flex-col overflow-hidden md:h-[min(100dvh,860px)] md:rounded-2xl">
         {story.media.kind === "video" ? (
           <video
+            ref={videoRef}
             key={story.id}
             src={story.media.url}
             autoPlay
@@ -141,7 +158,7 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
           aria-hidden
         />
 
-        <header className="relative z-10 space-y-3 px-3 pt-safe">
+        <header className="relative z-20 shrink-0 space-y-3 px-4 pt-safe">
           <div className="pt-2">
             <StoryProgress
               count={item.stories.length}
@@ -151,13 +168,18 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
           </div>
           <div className="flex items-center gap-2 text-white">
             <UserAvatar user={item.user} size="sm" />
-            <span className="min-w-0 truncate text-sm font-semibold">{item.user.displayName}</span>
-            <RelativeTime iso={story.createdAt} className="text-xs text-white/70" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+              {item.user.displayName}
+            </span>
+            <RelativeTime
+              iso={story.createdAt}
+              className="hidden shrink-0 text-xs text-white/70 min-[390px]:block"
+            />
             <button
               type="button"
               onClick={() => setManualPause((value) => !value)}
               aria-label={manualPause ? t("stories.play") : t("stories.pause")}
-              className="ms-auto grid size-9 place-items-center rounded-full hover:bg-white/10"
+              className="ms-auto grid size-11 shrink-0 place-items-center rounded-full hover:bg-white/10"
             >
               {manualPause ? <Play className="size-5" /> : <Pause className="size-5" />}
             </button>
@@ -166,7 +188,7 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
               autoFocus
               onClick={onClose}
               aria-label={t("stories.close")}
-              className="grid size-9 place-items-center rounded-full hover:bg-white/10"
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-black/50 text-white hover:bg-black/70"
             >
               <X className="size-6" />
             </button>
@@ -204,7 +226,7 @@ export function StoryViewer({ tray, userId, viewerId, onClose }: StoryViewerProp
 
         {!own && (
           <footer className="relative z-10 px-3 pb-4 pb-safe">
-            <StoryReplyBar story={story} onFocusChange={setTyping} />
+            <StoryReplyBar key={story.id} story={story} onFocusChange={setTyping} />
           </footer>
         )}
       </div>

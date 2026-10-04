@@ -26,12 +26,12 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler {
 
     private final RealtimeHub hub;
     private final JsonMapper json;
-    private final ApplicationEventPublisher events;
+    private final TypingSessions typing;
 
-    public RealtimeWebSocketHandler(RealtimeHub hub, JsonMapper json, ApplicationEventPublisher events) {
+    public RealtimeWebSocketHandler(RealtimeHub hub, JsonMapper json, TypingSessions typing) {
         this.hub = hub;
         this.json = json;
-        this.events = events;
+        this.typing = typing;
     }
 
     static UUID userOf(Principal principal) {
@@ -73,12 +73,13 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         if ("typing".equals(parsed.type()) && parsed.conversationId() != null) {
-            events.publishEvent(new TypingReceived(userId, parsed.conversationId(), Boolean.TRUE.equals(parsed.isTyping())));
+            typing.update(session.getId(), userId, parsed.conversationId(), Boolean.TRUE.equals(parsed.isTyping()));
         }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        typing.close(session.getId());
         UUID userId = (UUID) session.getAttributes().get(USER_ATTRIBUTE);
         WebSocketSession decorated = (WebSocketSession) session.getAttributes().get(DECORATED_ATTRIBUTE);
         if (userId != null) hub.unregister(userId, decorated == null ? session : decorated);

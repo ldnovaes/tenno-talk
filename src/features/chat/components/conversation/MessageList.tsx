@@ -1,4 +1,5 @@
-import { Fragment, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { ErrorState } from "@/components/common/ErrorState";
@@ -28,6 +29,9 @@ export function MessageList({
 }) {
   const { t } = useTranslation();
   const query = useMessages(conversation.id);
+  const [params] = useSearchParams();
+  const target = params.get("messageId");
+  const located = useRef<string | null>(null);
   const messages = useMemo(() => flattenMessages(query.data), [query.data]);
   const sections = useMemo(() => groupMessages(messages, new Date()), [messages]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -45,7 +49,21 @@ export function MessageList({
     [conversation.members],
   );
 
-  useMarkAsRead(conversation.id, messages, viewerId, isAtBottom);
+  useEffect(() => {
+    if (!target || located.current === target) return;
+    if (messages.some((message) => message.id === target)) {
+      const frame = requestAnimationFrame(() => {
+        const element = document.getElementById(`message-${target}`);
+        element?.scrollIntoView?.({ block: "center" });
+        element?.classList.add("bg-primary/10");
+        located.current = target;
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    if (query.hasNextPage && !query.isFetching) void query.fetchNextPage();
+    return undefined;
+  }, [target, messages, query]);
+  useMarkAsRead(conversation.id, messages, viewerId, isAtBottom && !target);
 
   if (query.isPending) return <MessageListSkeleton />;
   if (query.isError) return <ErrorState onRetry={() => void query.refetch()} className="flex-1" />;
@@ -57,7 +75,7 @@ export function MessageList({
         onScroll={onScroll}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
       >
-        <div ref={contentRef} className="flex min-h-full flex-col justify-end py-2">
+        <div ref={contentRef} className="flex min-h-full flex-col justify-end py-3">
           {query.hasNextPage && (
             <>
               <InfiniteScrollTrigger

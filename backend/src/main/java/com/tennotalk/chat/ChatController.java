@@ -1,6 +1,7 @@
 package com.tennotalk.chat;
 
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 
@@ -58,6 +59,14 @@ public class ChatController {
     @PostMapping("/conversations/{id}/messages")
     public MessageDto send(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id, @Valid @RequestBody SendMessage body) {
         return chat.send(me.userId(), Ids.parse(id), body);
+    }
+
+    public record Delivered(@jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Size(min = 1, max = 100) List<@jakarta.validation.constraints.NotNull UUID> messageIds) {}
+
+    @PostMapping("/conversations/{id}/delivered")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delivered(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id, @Valid @RequestBody Delivered body) {
+        chat.acknowledge(me.userId(), Ids.parse(id), body.messageIds());
     }
 
     @PostMapping("/conversations/{id}/read")

@@ -1,35 +1,62 @@
+import { X } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 
 import { useCloseOverlay } from "@/app/router/overlay";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { StoryViewer } from "@/features/stories/components/StoryViewer";
-import { useStoryTray } from "@/features/stories/hooks/useStories";
+import { useStoryTray, useUserStories } from "@/features/stories/hooks/useStories";
 import type { StoryTrayItem } from "@/types/story";
 
 export default function StoryViewerPage() {
   const { t } = useTranslation();
   const { userId = "" } = useParams();
+  const [params] = useSearchParams();
   const me = useCurrentUser();
   const tray = useStoryTray();
+  const userStories = useUserStories(userId);
   const close = useCloseOverlay();
-  // Freeze the order while watching: a background refetch must not move the cursor.
   const [snapshot, setSnapshot] = useState<StoryTrayItem[] | null>(null);
-  if (snapshot === null && tray.data) setSnapshot(tray.data);
+  const first = userStories.data?.[0];
+  if (snapshot === null && first) {
+    const items = tray.data ?? [];
+    const ownItem = { user: first.author, stories: userStories.data ?? [], hasUnseen: true };
+    setSnapshot(
+      items.some((item) => item.user.id === userId)
+        ? items.map((item) => (item.user.id === userId ? ownItem : item))
+        : [ownItem],
+    );
+  }
 
-  if (tray.isPending) return <div className="fixed inset-0 z-50 bg-black" aria-busy="true" />;
-  if (!snapshot?.some((item) => item.user.id === userId)) {
+  const target = params.get("storyId");
+  const missingTarget = target && !userStories.data?.some((story) => story.id === target);
+  if (userStories.isPending || userStories.isError || !first || !snapshot || missingTarget) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-black p-6 text-center text-white">
-        <div className="space-y-4">
-          <p>{t("stories.unavailable")}</p>
-          <button type="button" onClick={close} className="font-semibold underline">
-            {t("stories.close")}
-          </button>
-        </div>
+      <div
+        className="fixed inset-0 z-50 grid place-items-center bg-background p-6 text-center"
+        aria-busy={userStories.isPending}
+      >
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t("stories.close")}
+          className="absolute end-4 top-[max(1rem,env(safe-area-inset-top))] grid size-11 shrink-0 place-items-center rounded-full bg-muted"
+        >
+          <X className="size-6" />
+        </button>
+        {!userStories.isPending && <p>{t("stories.unavailable")}</p>}
       </div>
     );
   }
-  return <StoryViewer tray={snapshot} userId={userId} viewerId={me.id} onClose={close} />;
+  return (
+    <StoryViewer
+      key={userId}
+      tray={snapshot}
+      userId={userId}
+      viewerId={me.id}
+      onClose={close}
+      storyId={params.get("storyId")}
+    />
+  );
 }

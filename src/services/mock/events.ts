@@ -5,6 +5,7 @@ import { mockDb } from "./db";
  * its own signed-in user (see mockRealtimeClient), like a real server would per socket.
  */
 export type ServerEvent =
+  | { kind: "notifications.read"; recipientId: string }
   | { kind: "message.created"; conversationId: string; messageId: string }
   | { kind: "message.updated"; conversationId: string; messageId: string }
   | { kind: "translation.updated"; conversationId: string; messageId: string }

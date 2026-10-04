@@ -5,6 +5,10 @@ public final class Visibility {
 
     private Visibility() {}
 
+    public static String followedAuthor(String authorColumn) {
+        return "(" + authorColumn + " = :viewer OR EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = :viewer AND f.followee_id = " + authorColumn + "))";
+    }
+
     public static String authorVisible(String authorColumn) {
         return """
                 (%1$s = :viewer OR (

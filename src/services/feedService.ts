@@ -16,8 +16,8 @@ export interface FeedService {
   getPost(postId: string): Promise<Post>;
   like(postId: string): Promise<Post>;
   unlike(postId: string): Promise<Post>;
-  getComments(postId: string): Promise<Comment[]>;
-  addComment(postId: string, text: string): Promise<Comment>;
+  getComments(postId: string, afterId?: string, targetId?: string): Promise<Comment[]>;
+  addComment(postId: string, text: string, clientId?: string): Promise<Comment>;
   /** Upload + create; progress in [0, 1] (real uploads report it in Phase 8). */
   createPost(input: CreatePostInput, onProgress?: (progress: number) => void): Promise<Post>;
 }

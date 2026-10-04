@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useContentDraft } from "@/features/feed/hooks/useContentDraft";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -17,9 +18,14 @@ export function StoryReplyBar({
   onFocusChange: (focused: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState("");
+  const [text, setText] = useContentDraft(`story:${story.id}`);
+  const [focused, setFocused] = useState(false);
   const reply = useReplyToStory();
   const react = useReactToStory();
+
+  useEffect(() => {
+    onFocusChange(focused || reply.isPending || react.isPending || text.length > 0);
+  }, [focused, reply.isPending, react.isPending, text, onFocusChange]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -27,9 +33,10 @@ export function StoryReplyBar({
     reply.mutate(
       { storyId: story.id, text },
       {
-        onSuccess: () => {
-          setText("");
-          toast.success(t("stories.replied"));
+        onSuccess: (result) => {
+          setText((current) => (current === text ? "" : current));
+          setFocused(false);
+          toast.success(t(result.queued ? "stories.queuedReply" : "stories.replied"));
         },
       },
     );
@@ -55,16 +62,24 @@ export function StoryReplyBar({
           </button>
         ))}
       </div>
+      <p className="text-center text-xs text-white/80">{t("stories.privateReply")}</p>
+      {reply.isError && (
+        <p role="alert" className="text-sm text-white">
+          {t("errors.generic")}
+        </p>
+      )}
       <form onSubmit={submit} className="flex gap-2">
-        <input
+        <textarea
+          rows={1}
+          maxLength={4000}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          onFocus={() => onFocusChange(true)}
-          onBlur={() => onFocusChange(false)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={t("stories.reply", { name: story.author.displayName })}
           aria-label={t("stories.reply", { name: story.author.displayName })}
           dir="auto"
-          className="h-11 min-w-0 flex-1 rounded-full border border-white/40 bg-transparent px-4 text-white outline-none placeholder:text-white/60 focus:border-white"
+          className="min-h-11 max-h-32 resize-y py-2.5 min-w-0 flex-1 rounded-full border border-white/40 bg-transparent px-4 text-white outline-none placeholder:text-white/60 focus:border-white"
         />
         <Button
           type="submit"

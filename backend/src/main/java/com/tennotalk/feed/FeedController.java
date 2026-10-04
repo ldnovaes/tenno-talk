@@ -29,7 +29,7 @@ public class FeedController {
 
     public record CreatePost(@Size(max = 10) List<UUID> mediaIds, @Size(max = 2200) String caption) {}
 
-    public record AddComment(@Size(max = 2000) String text) {}
+    public record AddComment(@Size(max = 2000) String text, @Size(max = 100) String clientId) {}
 
     private final FeedService feed;
 
@@ -69,12 +69,13 @@ public class FeedController {
     }
 
     @GetMapping("/posts/{id}/comments")
-    public List<CommentDto> comments(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id) {
-        return feed.comments(me.userId(), Ids.parse(id));
+    public List<CommentDto> comments(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id,
+        @RequestParam(required = false) String afterId, @RequestParam(required = false) String targetId) {
+        return feed.comments(me.userId(), Ids.parse(id), afterId == null ? null : Ids.parse(afterId), targetId == null ? null : Ids.parse(targetId));
     }
 
     @PostMapping("/posts/{id}/comments")
     public CommentDto comment(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id, @Valid @RequestBody AddComment body) {
-        return feed.comment(me.userId(), Ids.parse(id), body.text());
+        return feed.comment(me.userId(), Ids.parse(id), body.text(), body.clientId());
     }
 }

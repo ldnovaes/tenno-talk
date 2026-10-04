@@ -1,24 +1,20 @@
 import { Copy, Play } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { InfiniteScrollTrigger } from "@/components/common/InfiniteScrollTrigger";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Post } from "@/types/post";
+import { useOverlayNavigate } from "@/app/router/overlay";
+import { paths } from "@/app/router/paths";
 
 import { useUserPosts } from "../hooks/useFeed";
-import { CommentsPanel } from "./CommentsPanel";
-import { PostCard } from "./PostCard";
 
 /** Profile grid (3 columns) opening a post viewer. */
 export function PostsGrid({ userId, empty }: { userId: string; empty: ReactNode }) {
   const { t } = useTranslation();
   const posts = useUserPosts(userId);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [commentsFor, setCommentsFor] = useState<Post | null>(null);
+  const open = useOverlayNavigate();
   const items = posts.data?.pages.flatMap((page) => page.items) ?? [];
-  const open = items.find((post) => post.id === openId) ?? null;
 
   if (posts.isPending) {
     return (
@@ -39,7 +35,7 @@ export function PostsGrid({ userId, empty }: { userId: string; empty: ReactNode 
             <li key={post.id}>
               <button
                 type="button"
-                onClick={() => setOpenId(post.id)}
+                onClick={() => open(paths.post(post.id))}
                 aria-label={t("feed.openPost")}
                 className="relative block aspect-square w-full overflow-hidden bg-muted"
               >
@@ -72,16 +68,6 @@ export function PostsGrid({ userId, empty }: { userId: string; empty: ReactNode 
           onVisible={() => !posts.isFetchingNextPage && void posts.fetchNextPage()}
         />
       )}
-      <Dialog open={open !== null} onOpenChange={(next) => !next && setOpenId(null)}>
-        <DialogContent className="max-h-[92dvh] overflow-y-auto p-0 sm:max-w-lg">
-          <DialogTitle className="sr-only">
-            {open ? t("feed.postBy", { name: open.author.displayName }) : ""}
-          </DialogTitle>
-          <DialogDescription className="sr-only">{t("feed.openPost")}</DialogDescription>
-          {open && <PostCard post={open} onOpenComments={setCommentsFor} />}
-        </DialogContent>
-      </Dialog>
-      <CommentsPanel post={commentsFor} onClose={() => setCommentsFor(null)} />
     </>
   );
 }

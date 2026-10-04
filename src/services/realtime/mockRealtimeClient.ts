@@ -74,8 +74,9 @@ class MockRealtimeClient implements RealtimeClient {
   }
 
   emitTyping(conversationId: string, isTyping: boolean) {
-    if (!this.viewerId) return;
+    if (!this.viewerId) return false;
     publish({ kind: "typing", conversationId, userId: this.viewerId, isTyping });
+    return true;
   }
 
   private goOffline = () => {
@@ -167,6 +168,9 @@ class MockRealtimeClient implements RealtimeClient {
         if (event.userId === viewerId) return;
         if (event.online) this.dispatch("user.online", { userId: event.userId });
         else this.dispatch("user.offline", { userId: event.userId, lastSeenAt: event.at });
+        return;
+      case "notifications.read":
+        if (event.recipientId === viewerId) this.dispatch("notifications.read", {});
         return;
       case "notification.created": {
         if (event.recipientId !== viewerId) return;

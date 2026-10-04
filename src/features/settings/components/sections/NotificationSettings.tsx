@@ -1,3 +1,4 @@
+import { PushSettings } from "@/features/notifications/components/PushSettings";
 import { useTranslation } from "react-i18next";
 
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
@@ -13,6 +14,7 @@ export function NotificationSettings() {
   const update = useUpdatePreferences();
   return (
     <SettingsGroup>
+      <PushSettings />
       {KEYS.map((key) => (
         <SwitchRow
           key={key}

@@ -2,6 +2,7 @@ import { Heart, MessageCircle, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { paths } from "@/app/router/paths";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Post } from "@/types/post";
@@ -9,7 +10,7 @@ import type { Post } from "@/types/post";
 import { useToggleLike } from "../hooks/useFeed";
 
 async function share(post: Post, copied: string) {
-  const url = `${window.location.origin}/feed?post=${encodeURIComponent(post.id)}`;
+  const url = `${window.location.origin}${paths.post(post.id)}`;
   if (navigator.share) {
     await navigator.share({ url }).catch(() => undefined);
     return;

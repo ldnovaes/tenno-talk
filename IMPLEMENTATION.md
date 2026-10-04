@@ -448,6 +448,7 @@ Próxima revisão de experiência: [Phase 11 — Notificações e experiência s
 - [x] Monitoramento: health público cai para DOWN com pouco disco (testado); estado das IAs e fila em `/admin/ai`; guia de uptime em `deploy/VPS.md`
 - [ ] Sentry (opcional)
 - [x] PWA: manifest, ícones e instalação (sem service worker)
+- [x] Favicon fornecido em 2026-10-04: versões otimizadas para aba, Apple e PWA; geração reproduzível em `scripts/generate_icons.py`, original preservado na raiz e referências versionadas
 
 ### Deploy
 - [x] Deploy reproduzível: a pilha de produção sobe do zero a partir do repositório (`docker compose up -d --build`)
@@ -503,26 +504,45 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 
 ## Phase 11 — Notificações e experiência social
 
-> Planejada em 2026-10-04. Decisões em [PLAN.md §36](PLAN.md#36-revisão-da-experiência-social-2026-10-04), diagnóstico, contratos e aceite em [PLANO_UX.md](PLANO_UX.md). Nenhuma correção desta fase foi implementada ainda.
+> Planejada em 2026-10-04. Decisões em [PLAN.md §36](PLAN.md#36-revisão-da-experiência-social-2026-10-04), diagnóstico, contratos e aceite em [PLANO_UX.md](PLANO_UX.md). Implementação local em validação; chaves VAPID e ensaio em dispositivos reais pendentes.
 
 - [x] Inspecionar os fluxos atuais e documentar o plano de implementação
-- [ ] 11.0 — Reproduzir os problemas com duas contas, registrar evidências visuais e fechar escopo de push/comentários públicos em stories
-- [ ] 11.1 — Criar notificações de mensagens/respostas com idempotência e paridade HTTP/mock
-- [ ] 11.1 — Manter conexão e assinantes no escopo autenticado, inclusive em stories, e recuperar eventos após reconexão
-- [ ] 11.1 — Implementar leitura individual/em lote segura, paginação, recuperação em falha, integração com leitura do chat e sincronização entre dispositivos
-- [ ] 11.2 — Padronizar retorno por origem interna/fallback, incluindo links diretos e estados de loading/erro
-- [ ] 11.2 — Aplicar escala de espaçamento a chat, campos e formulários; corrigir composição de safe area e validar teclado
-- [ ] 11.3 — Criar rota de post/comentário e visualizador único reutilizado pelo Feed, perfil e notificações
-- [ ] 11.3 — Paginar/localizar comentários, implementar envio otimista idempotente, drafts e erros/retry sem duplicação
-- [ ] 11.4 — Melhorar respostas privadas a stories: pausa de timer/vídeo, gestos, teclado, drafts por story e confirmação inline
-- [ ] 11.4 — Implementar destino exato de story e estados de conteúdo expirado/indisponível
-- [ ] 11.5 — Conectar todos os tipos de notificação ao alvo correto, sino nos headers mobile e avisos discretos acessíveis
-- [ ] 11.6 — Executar verificações de frontend/backend e E2E com duas contas, incluindo offline, leitura concorrente e múltiplas abas
-- [ ] 11.6 — Validar visual, acessibilidade, navegação e teclado/safe area em dispositivos; registrar evidências e pendências
+- [x] Registrar escopo confirmado: push incluído, stories privados, melhorias de confiabilidade do chat e manutenção do refetch completo
+- [ ] 11.0 — Reproduzir os problemas com duas contas, registrar evidências visuais e baseline de latência
+- [ ] 11.0a — Garantir fechar stories em loading, sucesso, erro e expirado; validar contraste, safe area, nomes longos e retorno em dispositivo real
+- [x] 11.0b — Filtrar Feed/bandeja por conteúdo próprio + contas seguidas no backend/mock, antes da paginação e respeitando acesso/bloqueios
+- [ ] 11.0b — Atualizar caches após follow/unfollow e separar consulta direta de stories da bandeja; testar três contas e requisições antigas em voo
+- [x] 11.0c — Corrigir emissão de typing com socket fechado/reconnect, renovação, stop, timeout e agregação por sessão
+- [ ] 11.0c — Validar digitação no header/lista/conversa com duas contas, grupo, IME e múltiplas abas; manter eventos efêmeros fora da fila persistente
+- [x] 11.1 — Manter conexão e assinantes no escopo autenticado, inclusive em stories, e recuperar eventos por refetch completo
+- [x] 11.1 — Substituir entrega por socket/GET por ACK real, validar destinatários e corrigir recibos fora de ordem/grupos
+- [x] 11.1 — Distribuir em executor fora do HTTP com trabalho persistido, recuperação após reinício e controle de saturação
+- [x] 11.2 — Persistir saída em IndexedDB antes de limpar o composer; incluir blobs/IDs de uploads e migração do armazenamento
+- [x] 11.2 — Reidratar/reconciliar pendências, reenviar automaticamente, coordenar abas/worker e tratar falhas permanentes, quota e sessão (teste real de reload com texto e anexo; ensaio físico multitab ainda em 11.9)
+- [x] 11.3 — Criar notificações de mensagens/respostas com idempotência e paridade HTTP/mock
+- [x] 11.3 — Implementar leitura individual/em lote segura, paginação, recuperação em falha, integração com leitura do chat e sincronização entre dispositivos
+- [x] 11.4 — Implementar service worker, inscrições por dispositivo, permissão explícita e preferências de Web Push
+- [ ] 11.4 — Validar push com app fechado, retry/expiração, clique seguro e revogação no logout em dispositivos reais
+- [x] 11.5 — Padronizar retorno por origem interna/fallback, incluindo links diretos e estados de loading/erro
+- [x] 11.5 — Aplicar escala de espaçamento a chat, campos e formulários; corrigir composição de safe area e validar teclado
+- [x] 11.6 — Criar rota de post/comentário e visualizador único reutilizado pelo Feed, perfil e notificações
+- [x] 11.6 — Paginar/localizar comentários, implementar envio otimista idempotente, drafts e erros/retry sem duplicação
+- [ ] 11.7 — Melhorar respostas privadas a stories: pausa de timer/vídeo, gestos, teclado, drafts por story, saída persistente e confirmação inline
+- [x] 11.7 — Implementar destino exato de story e estados de conteúdo expirado/indisponível
+- [x] 11.8 — Conectar notificações internas/push ao alvo correto, sino nos headers mobile e avisos discretos acessíveis
+- [ ] 11.9 — Completar E2E no backend com duas contas, offline, leitura concorrente, múltiplas abas, ACK e restart do worker (teste real de outbox texto/anexo e testes unitários/IT/E2E mock executados)
+- [ ] 11.9 — Validar visual, acessibilidade, navegação, push com app fechado e teclado/safe area em dispositivos; registrar evidências e pendências
 
 **Done when**
 
 - [ ] Interações elegíveis produzem notificação e contador sem reload; leitura/falha/reconexão mantêm consistência
+- [ ] Seguir/deixar de seguir altera Feed e bandeja sem reload; conteúdo público por perfil/link mantém as permissões corretas
+- [ ] Fechar stories permanece visível e funcional em todos os estados e dispositivos previstos
+- [ ] Digitação aparece na primeira entrada, recupera após reconnect e expira sem indicadores fantasmas
+- [ ] Push chega com app fechado em dispositivos suportados e autorizados, sem comprometer notificações internas quando a permissão é negada
+- [ ] Mensagens/anexos pendentes sobrevivem a reload e reenviam automaticamente sem duplicação ou vazamento entre contas
+- [ ] Estado entregue depende de ACK; socket/GET/aceitação pelo serviço de push não geram confirmação fictícia
+- [ ] POST não espera distribuição; jobs sobrevivem a reinício e eventos repetidos são reconciliados
 - [ ] Tocar na notificação abre o post, comentário, story, perfil ou mensagem corretos
 - [ ] Comentários usam uma única superfície e preservam contexto, scroll e draft, com envio/retry confiáveis
 - [ ] Responder a story mantém o viewer estável e pausado até encerrar a interação

@@ -1,3 +1,4 @@
+import { useBack } from "@/app/router/useBack";
 import { Flag, ImagePlus, MoreHorizontal, Settings, UserX } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,7 @@ import { toAppError } from "@/lib/errors";
 
 export default function ProfilePage() {
   const { t } = useTranslation();
+  const backSafe = useBack();
   const { username = "" } = useParams();
   const me = useCurrentUser();
   const panel = usePanel();
@@ -42,7 +44,7 @@ export default function ProfilePage() {
   const [reporting, setReporting] = useState(false);
   const isOwn = profile.data?.id === me.id;
 
-  const onBack = panel ? panel.close : isOwn ? undefined : () => navigate(-1);
+  const onBack = panel ? panel.close : isOwn ? undefined : backSafe;
   const actions = profile.data ? (
     isOwn ? (
       <Button asChild variant="ghost" size="icon">

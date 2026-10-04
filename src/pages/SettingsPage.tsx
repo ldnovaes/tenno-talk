@@ -1,3 +1,5 @@
+import { usePendingSends } from "@/features/chat/hooks/usePendingSends";
+import { useBack } from "@/app/router/useBack";
 import { Bot, Flag, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
@@ -14,11 +16,13 @@ import { usePanel } from "@/layouts/panelContext";
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const backSafe = useBack();
   const { section } = useParams();
   const navigate = useNavigate();
   const overlayNavigate = useOverlayNavigate();
   const panel = usePanel();
   const signOut = useSignOut();
+  const { pending } = usePendingSends();
   const me = useCurrentUser();
 
   // Inside the desktop side panel, sections replace each other (no stacked history).
@@ -33,7 +37,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex min-h-full flex-col bg-background">
-      <PageHeader title={t("settings.title")} onBack={panel ? panel.close : () => navigate(-1)} />
+      <PageHeader title={t("settings.title")} onBack={panel ? panel.close : backSafe} />
       <SettingsNav onSelect={goTo} />
       <div className="mt-auto space-y-2 p-4">
         {me.role === "admin" && (
@@ -52,6 +56,9 @@ export default function SettingsPage() {
             </Button>
           </>
         )}
+        {pending.data?.length ? (
+          <p className="text-sm text-muted-foreground">{t("chat.pendingSignOut")}</p>
+        ) : null}
         <Button
           variant="outline"
           className="w-full text-destructive"

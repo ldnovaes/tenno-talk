@@ -82,6 +82,8 @@ class StoriesIT extends IntegrationTest {
 
     @Test
     void trayShowsMeFirstThenUnseenThenSeen() throws Exception {
+        data.follow(rafael, linh);
+        data.follow(rafael, ana);
         String linhStory = story(linh, "Chào");
         story(ana, "Hola");
         story(rafael, "Oi");
@@ -100,6 +102,7 @@ class StoriesIT extends IntegrationTest {
 
     @Test
     void storiesOfOneAuthorAreGroupedOldestFirst() throws Exception {
+        data.follow(rafael, linh);
         String first = story(linh, "1");
         String second = story(linh, "2");
         JsonNode tray = api.getOk(rafael, "/api/stories/tray");
@@ -214,6 +217,7 @@ class StoriesIT extends IntegrationTest {
 
     @Test
     void overlayTextIsTranslatedOnDemand() throws Exception {
+        data.follow(rafael, linh);
         String id = story(linh, "Chào buổi sáng");
         assertThat(api.getOk(rafael, "/api/stories/tray").at("/0/stories/0/overlayTranslation").isNull()).isTrue();
         JsonNode translated = api.postOk(rafael, "/api/translations/story/" + id + "?lang=pt-BR", null);

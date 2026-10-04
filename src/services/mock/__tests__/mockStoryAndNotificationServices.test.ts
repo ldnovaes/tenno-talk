@@ -11,6 +11,13 @@ describe("mockStoryService", () => {
   beforeEach(() => writeMockSession("usr_rafael"));
 
   it("lists the viewer first, then unseen, then seen", async () => {
+    mockDb.update((db) => {
+      db.follows.push({
+        followerId: "usr_rafael",
+        followeeId: "usr_minh",
+        createdAt: new Date().toISOString(),
+      });
+    });
     const tray = await mockStoryService.getTray();
     expect(tray[0]?.user.id).toBe("usr_rafael");
     const others = tray.slice(1);

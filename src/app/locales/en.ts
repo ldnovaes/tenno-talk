@@ -5,6 +5,7 @@ export const en = {
     tagline: "Talk to anyone. In your own language.",
   },
   common: {
+    loadMore: "Load more",
     back: "Back",
     close: "Close",
     cancel: "Cancel",
@@ -321,6 +322,9 @@ export const en = {
     },
   },
   stories: {
+    view: "View {{name}}’s stories",
+    queuedReply: "Reply saved. It will send when you are connected.",
+    privateReply: "Your reply is sent privately to the author.",
     tray: "Stories",
     yourStory: "Your story",
     addStory: "Add to your story",
@@ -349,6 +353,17 @@ export const en = {
     repliedLabel: "Replied to a story",
   },
   notifications: {
+    newActivity: "New activity from {{name}}",
+    pushDenied:
+      "Notifications are blocked in this browser. Allow them in site settings to enable push.",
+    pushTitle: "Notifications on this device",
+    pushHint:
+      "Receive alerts even when the app is closed. On iPhone or iPad, add the app to your Home Screen first.",
+    pushEnable: "Enable push notifications",
+    pushDisable: "Disable push notifications",
+    pushUnavailable:
+      "Push notifications are not available yet. Your in-app notifications still work.",
+    markAllRead: "Mark all as read",
     title: "Notifications",
     empty: "Nothing new",
     emptyDescription: "When someone likes or follows you, you'll see it here.",
@@ -485,6 +500,10 @@ export const en = {
     },
   },
   chat: {
+    pendingSignOut:
+      "Unsent messages stay on this device and resume when you sign in to this account again.",
+    pendingMessages: "Messages waiting to send",
+    pendingAttachment: "Attachment",
     title: "Chats",
     connecting: "Connecting…",
     newChat: "New chat",

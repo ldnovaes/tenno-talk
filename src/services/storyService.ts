@@ -6,12 +6,14 @@ import { httpStoryService } from "./http/httpStoryService";
 
 export interface StoryService {
   /** People with active stories: the viewer first, then unseen, then seen. */
+  getUserStories(userId: string): Promise<Story[]>;
+  getStory(storyId: string): Promise<Story>;
   getTray(): Promise<StoryTrayItem[]>;
   markViewed(storyId: string): Promise<void>;
   /** Quick reaction: notifies the author. */
   react(storyId: string, emoji: string): Promise<void>;
   /** Sends a direct message that references the story; returns the conversation id. */
-  reply(storyId: string, text: string): Promise<{ conversationId: string }>;
+  reply(storyId: string, text: string, clientId?: string): Promise<{ conversationId: string }>;
   createStory(input: { media: MediaInput; text: string }): Promise<Story>;
 }
 

@@ -108,14 +108,18 @@ export function deliveryStatusOf(
   if (message.senderId !== viewerId) return "read";
   const conversation = db.conversations[message.conversationId];
   if (!conversation) return "sent";
-  const others = conversation.memberIds.filter((id) => id !== message.senderId);
+  const others = message.receipts
+    ? Object.keys(message.receipts)
+    : conversation.memberIds.filter((id) => id !== message.senderId);
   if (others.length === 0) return "sent";
   if (others.every((id) => reached(db, conversation.lastReadMessageId[id] ?? null, message)))
     return "read";
   if (
     others.every(
       (id) =>
-        reached(db, conversation.lastDeliveredMessageId[id] ?? null, message) ||
+        (message.receipts
+          ? message.receipts[id]
+          : reached(db, conversation.lastDeliveredMessageId[id] ?? null, message)) ||
         reached(db, conversation.lastReadMessageId[id] ?? null, message),
     )
   ) {

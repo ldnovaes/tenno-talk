@@ -1,3 +1,4 @@
+import { useBack } from "@/app/router/useBack";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate, useParams } from "react-router";
 
@@ -10,6 +11,7 @@ import { usePanel } from "@/layouts/panelContext";
 
 export default function EditProfilePage() {
   const { t } = useTranslation();
+  const backSafe = useBack();
   const { username } = useParams();
   const me = useCurrentUser();
   const panel = usePanel();
@@ -20,7 +22,7 @@ export default function EditProfilePage() {
   if (username !== me.username) return <Navigate to={paths.profile(me.username)} replace />;
 
   const back = () =>
-    panel ? overlayNavigate(paths.profile(me.username), { replace: true }) : navigate(-1);
+    panel ? overlayNavigate(paths.profile(me.username), { replace: true }) : backSafe();
   return (
     <div className="flex min-h-full flex-col bg-background">
       <PageHeader title={t("profile.edit.title")} onBack={back} />

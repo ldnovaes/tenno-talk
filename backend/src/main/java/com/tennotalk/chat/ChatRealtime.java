@@ -43,24 +43,16 @@ public class ChatRealtime {
         this.jdbc = jdbc;
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onCreated(MessageCreated event) {
         chat.findMessage(event.messageId()).ifPresent(message -> {
             ConversationRow conversation = chat.findConversation(event.conversationId()).orElseThrow();
             ChatProjector.Scope scope = service.scope(conversation);
-            List<UUID> reached = new ArrayList<>();
             for (MemberRow member : scope.members()) {
-                UUID userId = member.user().id();
-                boolean sent = hub.send(userId, "message.created", Map.of("message", projector.one(userId, message, scope)));
-                if (sent && !userId.equals(message.senderId())) reached.add(userId);
+                hub.send(member.user().id(), "message.created", Map.of("message", projector.one(member.user().id(), message, scope)));
             }
-            // Reached the recipient's device: ✓✓ (PLAN.md §13.1). Only after every member got message.created,
-            // so the sender never receives a receipt for a message it doesn't know yet.
-            for (UUID userId : reached) service.markDelivered(userId, message.conversationId(), message.id());
         });
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onUpdated(MessageUpdated event) {
         chat.findMessage(event.messageId()).ifPresent(message -> {
             ChatProjector.Scope scope = service.scope(chat.findConversation(event.conversationId()).orElseThrow());
@@ -70,7 +62,6 @@ public class ChatRealtime {
         });
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onTranslation(TranslationChanged event) {
         chat.findMessage(event.messageId()).ifPresent(message -> {
             ChatProjector.Scope scope = service.scope(chat.findConversation(event.conversationId()).orElseThrow());
@@ -87,7 +78,6 @@ public class ChatRealtime {
         });
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onReceipt(ReceiptChanged event) {
         boolean read = "read".equals(event.receipt());
         Map<String, Object> payload = read
@@ -99,7 +89,6 @@ public class ChatRealtime {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onReaction(ReactionChanged event) {
         Map<String, Object> payload = Map.of("conversationId", event.conversationId(), "messageId", event.messageId(),
                 "userId", event.userId(), "emoji", event.emoji());

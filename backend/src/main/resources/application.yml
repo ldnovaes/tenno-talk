@@ -1,4 +1,8 @@
 spring:
+  task:
+    scheduling:
+      pool:
+        size: 4
   application:
     name: tenno-talk
   datasource:
@@ -42,6 +46,10 @@ springdoc:
     enabled: false
 
 tenno:
+  push:
+    public-key: ${VAPID_PUBLIC_KEY:}
+    private-key: ${VAPID_PRIVATE_KEY:}
+    subject: ${VAPID_SUBJECT:}
   public-url: ${PUBLIC_URL:http://localhost:5173}
   terms-version: "2026-10-04"
   # Social login: a provider is offered only when its client id is set (OAuthClients).

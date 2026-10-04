@@ -18,7 +18,7 @@ describe("feed", () => {
   it("shows posts with captions translated automatically and the original on demand", async () => {
     const user = userEvent.setup();
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Linh Pham" });
+    await screen.findAllByRole("article", { name: "Post by Linh Pham" });
     const post = postNamed("Linh Pham");
     expect(
       within(post).getByText("O pôr do sol no Lago Oeste hoje estava lindo demais 🌅"),
@@ -37,7 +37,7 @@ describe("feed", () => {
     });
     const user = userEvent.setup();
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Linh Pham" });
+    await screen.findAllByRole("article", { name: "Post by Linh Pham" });
     const post = postNamed("Linh Pham");
     expect(within(post).getByText("Hoàng hôn ở Hồ Tây hôm nay đẹp quá 🌅")).toBeInTheDocument();
     await user.click(within(post).getByRole("button", { name: "See translation" }));
@@ -77,7 +77,7 @@ describe("feed", () => {
     const user = userEvent.setup();
     setViewportWidth(1280);
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Linh Pham" });
+    await screen.findAllByRole("article", { name: "Post by Linh Pham" });
     await user.click(
       within(postNamed("Linh Pham")).getByRole("button", { name: "View all 2 comments" }),
     );
@@ -95,7 +95,7 @@ describe("feed", () => {
     const user = userEvent.setup();
     setViewportWidth(1280);
     renderApp("/feed");
-    await screen.findByRole("article", { name: "Post by Linh Pham" });
+    await screen.findAllByRole("article", { name: "Post by Linh Pham" });
     await user.click(screen.getByRole("link", { name: "Create" }));
     const dialog = await screen.findByRole("dialog", { name: "New post" });
     const file = new File([new Uint8Array([137, 80, 78, 71])], "praia.png", { type: "image/png" });

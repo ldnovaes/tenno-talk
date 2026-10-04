@@ -7,15 +7,17 @@ import { uploadMedia } from "./media";
 const story = (id: string) => `/api/stories/${encodeURIComponent(id)}`;
 
 export const httpStoryService: StoryService = {
+  getUserStories: (id) => http<Story[]>("GET", `/api/stories/by-user/${encodeURIComponent(id)}`),
+  getStory: (id) => http<Story>("GET", story(id)),
   getTray: () => http<StoryTrayItem[]>("GET", "/api/stories/tray"),
 
   markViewed: (id) => http<void>("PUT", `${story(id)}/view`),
 
   react: (id, emoji) => http<void>("POST", `${story(id)}/reactions`, { body: { emoji } }),
 
-  reply: (id, text) =>
+  reply: (id, text, clientId = crypto.randomUUID()) =>
     http<{ conversationId: string }>("POST", `${story(id)}/replies`, {
-      body: { clientId: crypto.randomUUID(), text },
+      body: { clientId, text },
     }),
 
   async createStory(input) {

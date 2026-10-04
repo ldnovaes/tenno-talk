@@ -14,7 +14,7 @@ export function CommentItem({ comment }: { comment: Comment }) {
     autoTranslatePosts,
   );
   return (
-    <li className="flex gap-3 py-2">
+    <li id={`comment-item-${comment.id}`} className="flex gap-3 py-3 target:bg-accent">
       <UserAvatar user={comment.author} size="xs" />
       <div className="min-w-0 flex-1 text-sm">
         <TranslatedContent

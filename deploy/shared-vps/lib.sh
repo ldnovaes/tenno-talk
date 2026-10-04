@@ -19,9 +19,8 @@ SSH_OPTS=(-p "$TENNO_VPS_PORT" -o ConnectTimeout=15 ${TENNO_SSH_EXTRA:-})
 vps_ssh() { ssh "${SSH_OPTS[@]}" "$TENNO_VPS_HOST" "$@"; }
 vps_rsync() { rsync -az --delete -e "ssh ${SSH_OPTS[*]}" "$1" "$TENNO_VPS_HOST:$2"; }
 
-# KEY=VALUE lines of the Infisical machine identity for /etc/tenno-talk/tenno.env (sent on
-# stdin to remote/set-env.sh). Fails early when vps.env does not have them.
-infisical_env_lines() {
+# Runtime secrets for /etc/tenno-talk/tenno.env, sent only on stdin to remote/set-env.sh.
+deployment_env_lines() {
   if [ -z "${TENNO_INFISICAL_CLIENT_ID:-}" ] || [ -z "${TENNO_INFISICAL_CLIENT_SECRET:-}" ]; then
     echo "[tenno] Set TENNO_INFISICAL_CLIENT_ID and TENNO_INFISICAL_CLIENT_SECRET in $VPS_ENV_FILE" \
       "(Universal Auth of the tenno-talk project identity, see deploy/shared-vps/README.md)." >&2
@@ -29,5 +28,12 @@ infisical_env_lines() {
   fi
   printf 'INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=%s\nINFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=%s\nINFISICAL_PROJECT_ID=%s\n' \
     "$TENNO_INFISICAL_CLIENT_ID" "$TENNO_INFISICAL_CLIENT_SECRET" "$TENNO_INFISICAL_PROJECT_ID"
+  if [ -n "${TENNO_VAPID_PUBLIC_KEY:-}" ] || [ -n "${TENNO_VAPID_PRIVATE_KEY:-}" ]; then
+    if [ -z "${TENNO_VAPID_PUBLIC_KEY:-}" ] || [ -z "${TENNO_VAPID_PRIVATE_KEY:-}" ]; then
+      echo '[tenno] Set both TENNO_VAPID_PUBLIC_KEY and TENNO_VAPID_PRIVATE_KEY.' >&2
+      return 1
+    fi
+    printf 'VAPID_PUBLIC_KEY=%s\nVAPID_PRIVATE_KEY=%s\nVAPID_SUBJECT=%s\n' \
+      "$TENNO_VAPID_PUBLIC_KEY" "$TENNO_VAPID_PRIVATE_KEY" "${TENNO_VAPID_SUBJECT:-https://$TENNO_DOMAIN}"
+  fi
 }
-

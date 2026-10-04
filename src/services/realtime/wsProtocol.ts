@@ -14,6 +14,7 @@ const EVENTS: ReadonlySet<string> = new Set<RealtimeEvent>([
   "typing.started",
   "typing.stopped",
   "notification.created",
+  "notifications.read",
 ]);
 
 export type ServerFrame =

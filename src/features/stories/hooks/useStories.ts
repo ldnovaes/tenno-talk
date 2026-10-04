@@ -1,3 +1,6 @@
+import { useCurrentUser } from "@/features/auth/hooks/useMe";
+import { persistSend } from "@/services/outbox/store";
+import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { MediaInput } from "@/services/chatService";
@@ -8,6 +11,21 @@ import { storyKeys } from "../lib/queryKeys";
 
 export function useStoryTray() {
   return useQuery({ queryKey: storyKeys.tray(), queryFn: () => storyService.getTray() });
+}
+
+export function useUserStories(userId: string) {
+  return useQuery({
+    queryKey: storyKeys.user(userId),
+    queryFn: () => storyService.getUserStories(userId),
+  });
+}
+
+export function useStory(storyId: string | null) {
+  return useQuery({
+    queryKey: storyKeys.item(storyId ?? ""),
+    queryFn: () => storyService.getStory(storyId ?? ""),
+    enabled: !!storyId,
+  });
 }
 
 /** Marks a story as seen locally right away so rings update without a refetch. */
@@ -37,10 +55,40 @@ export function useReactToStory() {
 }
 
 export function useReplyToStory() {
+  const me = useCurrentUser();
   const queryClient = useQueryClient();
+  const pending = useRef<{ text: string; storyId: string; id: string } | null>(null);
   return useMutation({
-    mutationFn: ({ storyId, text }: { storyId: string; text: string }) =>
-      storyService.reply(storyId, text),
+    mutationFn: async ({ storyId, text }: { storyId: string; text: string }) => {
+      if (pending.current?.text !== text || pending.current.storyId !== storyId)
+        pending.current = { text, storyId, id: crypto.randomUUID() };
+      if (!__USE_HTTP__) {
+        const result = await storyService.reply(storyId, text, pending.current.id);
+        pending.current = null;
+        return { ...result, queued: false };
+      }
+      const clientId = pending.current.id;
+      const conversationId = `story:${storyId}`;
+      await persistSend(
+        me.id,
+        { clientId, conversationId, text, media: [], replyToId: null },
+        {
+          id: `tmp_${clientId}`,
+          clientId,
+          conversationId,
+          senderId: me.id,
+          content: { type: "story_reply", storyId, body: { text, language: me.nativeLanguage } },
+          translation: null,
+          replyTo: null,
+          reactions: [],
+          deliveryStatus: "sending",
+          createdAt: new Date().toISOString(),
+        },
+        storyId,
+      );
+      pending.current = null;
+      return { conversationId, queued: true };
+    },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] }),
   });
 }

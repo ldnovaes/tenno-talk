@@ -1,3 +1,6 @@
+import { useUserStories } from "@/features/stories/hooks/useStories";
+import { useOverlayNavigate } from "@/app/router/overlay";
+import { paths } from "@/app/router/paths";
 import { useTranslation } from "react-i18next";
 
 import { CountryFlag } from "@/components/common/CountryFlag";
@@ -28,9 +31,25 @@ function Stat({ value, label }: { value: number; label: string }) {
 /** Social profile header (PLAN.md §9.6). */
 export function ProfileHeader({ profile, isOwn, onMessage, onEdit }: ProfileHeaderProps) {
   const { t } = useTranslation();
+  const stories = useUserStories(profile.id);
+  const navigate = useOverlayNavigate();
   return (
     <section className="flex flex-col items-center gap-4 px-5 pb-4 pt-6 text-center">
-      <UserAvatar user={profile} size="xl" online={!isOwn && profile.isOnline} />
+      {stories.data?.length ? (
+        <button
+          type="button"
+          onClick={() => navigate(paths.story(profile.id))}
+          aria-label={t("stories.open", { name: profile.displayName })}
+        >
+          <UserAvatar
+            user={profile}
+            size="xl"
+            storyRing={stories.data.some((story) => !story.viewedByMe) ? "unseen" : "seen"}
+          />
+        </button>
+      ) : (
+        <UserAvatar user={profile} size="xl" online={!isOwn && profile.isOnline} />
+      )}
       <div className="space-y-1">
         <h2 className="text-2xl font-bold tracking-tight">{profile.displayName}</h2>
         <p className="text-sm text-muted-foreground">@{profile.username}</p>

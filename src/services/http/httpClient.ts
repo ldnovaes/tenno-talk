@@ -53,7 +53,7 @@ const NETWORK_ERROR = "Connection problem. Check your internet and try again.";
 export async function http<T>(
   method: Method,
   path: string,
-  options: { body?: unknown; query?: Query } = {},
+  options: { body?: unknown; query?: Query; accountId?: string } = {},
 ): Promise<T> {
   let response: Response;
   try {
@@ -62,6 +62,7 @@ export async function http<T>(
       credentials: "same-origin",
       headers: {
         Accept: "application/json",
+        ...(options.accountId ? { "X-Tenno-User": options.accountId } : {}),
         ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
         ...csrfHeaders(method),
       },
@@ -81,11 +82,13 @@ export function upload<T>(
   file: Blob,
   fileName: string,
   onProgress?: (fraction: number) => void,
+  accountId?: string,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("POST", path);
     request.withCredentials = true;
+    if (accountId) request.setRequestHeader("X-Tenno-User", accountId);
     request.setRequestHeader("Accept", "application/json");
     const token = readCookie(CSRF_COOKIE);
     if (token) request.setRequestHeader(CSRF_HEADER, token);

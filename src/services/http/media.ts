@@ -13,14 +13,16 @@ export async function uploadBlobUrl(
   url: string,
   fileName: string,
   onProgress?: (fraction: number) => void,
+  accountId?: string,
 ): Promise<MediaAttachment> {
-  return upload<MediaAttachment>("/api/media", await blobOf(url), fileName, onProgress);
+  return upload<MediaAttachment>("/api/media", await blobOf(url), fileName, onProgress, accountId);
 }
 
 /** Uploads every item in order; progress is the share of bytes sent across all of them. */
 export async function uploadMedia(
   media: MediaInput[],
   onProgress?: (fraction: number) => void,
+  accountId?: string,
 ): Promise<MediaAttachment[]> {
   const total = media.reduce((sum, item) => sum + Math.max(item.sizeBytes, 1), 0);
   let done = 0;
@@ -28,8 +30,11 @@ export async function uploadMedia(
   for (const item of media) {
     const size = Math.max(item.sizeBytes, 1);
     uploaded.push(
-      await uploadBlobUrl(item.url, item.fileName, (fraction) =>
-        onProgress?.((done + fraction * size) / total),
+      await uploadBlobUrl(
+        item.url,
+        item.fileName,
+        (fraction) => onProgress?.((done + fraction * size) / total),
+        accountId,
       ),
     );
     done += size;

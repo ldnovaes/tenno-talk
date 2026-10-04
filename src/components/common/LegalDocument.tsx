@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { useBack } from "@/app/router/useBack";
 
 import { env } from "@/lib/env";
 
@@ -8,11 +8,11 @@ import { PageHeader } from "./PageHeader";
 /** Terms of Use / Privacy Policy reader. */
 export function LegalDocument({ document }: { document: "terms" | "privacy" }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const back = useBack("/welcome");
   const sections = t(`legal.${document}.sections`, { returnObjects: true });
   return (
     <div className="min-h-app bg-background">
-      <PageHeader title={t(`legal.${document}.title`)} onBack={() => navigate(-1)} />
+      <PageHeader title={t(`legal.${document}.title`)} onBack={back} />
       <article className="mx-auto max-w-2xl space-y-6 px-5 py-6">
         <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
           {t("legal.provisional")} · {t("legal.version", { version: env.termsVersion })}

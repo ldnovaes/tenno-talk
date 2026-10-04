@@ -77,7 +77,7 @@ export class WsRealtimeClient implements RealtimeClient {
   }
 
   emitTyping(conversationId: string, isTyping: boolean) {
-    this.send({ type: "typing", conversationId, isTyping });
+    return this.send({ type: "typing", conversationId, isTyping });
   }
 
   private open() {
@@ -174,7 +174,9 @@ export class WsRealtimeClient implements RealtimeClient {
   }
 
   private send(message: Record<string, unknown>) {
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
+    if (this.socket?.readyState !== WebSocket.OPEN) return false;
+    this.socket.send(JSON.stringify(message));
+    return true;
   }
 
   private setStatus(status: RealtimeStatus) {

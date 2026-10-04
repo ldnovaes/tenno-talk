@@ -1490,6 +1490,7 @@ Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.we
 - **CD:** workflow manual **Deploy** (`.github/workflows/deploy.yml`): SSH na VPS, `git checkout` da ref, `docker compose up -d --build` e espera o health. Passo a passo da VPS (hardening, login das IAs, admin, backups, monitoramento) em `deploy/VPS.md`.
 - **Backups:** `deploy/backup.sh` (pg_dump custom + mídia, 14 dias, confere o dump) e `deploy/restore.sh`. **Restauração testada** na pilha de produção local: dados e fotos apagados voltaram, e o usuário restaurado entrou e viu a conversa com a foto.
 - **PWA:** `manifest.webmanifest` com ícones (inclusive maskable) e `apple-touch-icon`: instalável na tela inicial. Sem service worker (offline não é objetivo).
+- **Ícones (2026-10-04):** fonte em `favicon.png` na raiz, preservada fora dos arquivos públicos. `python3 scripts/generate_icons.py` (Python + Pillow) gera favicon PNG de 32 px, ICO de 16/32/48 px e os tamanhos existentes de PWA/Apple em `public/`, com paleta otimizada e transparência quando aplicável. O maskable mantém o desenho na área segura; referências versionadas evitam reutilizar o ícone antigo. O original de alta resolução não é servido como favicon.
 - **Ambientes:** local (`docker compose` de desenvolvimento) e produção. Staging é opcional por enquanto.
 - **Observabilidade:** logs JSON (`docker logs`), Spring Actuator (health), monitor de uptime externo; Sentry é opcional.
 
@@ -1586,16 +1587,23 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 
 ## 36. Revisão da experiência social (2026-10-04)
 
-Status: planejado, sem alteração do comportamento atual. Plano detalhado em [PLANO_UX.md](PLANO_UX.md); execução na Phase 11 do [IMPLEMENTATION.md](IMPLEMENTATION.md#phase-11--notificações-e-experiência-social).
+Status: implementação local em validação; Web Push aguarda chaves VAPID e ensaio em dispositivos reais. Plano detalhado em [PLANO_UX.md](PLANO_UX.md); execução na Phase 11 do [IMPLEMENTATION.md](IMPLEMENTATION.md#phase-11--notificações-e-experiência-social).
 
-Esta revisão evolui as decisões das seções 6, 8, 9, 17 e 26 para resolver notificações ausentes, espaçamento, comentários/respostas e retorno entre telas:
+Esta revisão evolui as decisões das seções 6, 8, 9, 13, 17 e 26 para resolver notificações ausentes, confiabilidade do chat, espaçamento, comentários/respostas e retorno entre telas:
 
 - Persistir notificações de mensagens e respostas de stories, hoje ausentes no fluxo real do chat; manter uma conexão realtime por sessão autenticada, inclusive durante stories.
+- Persistir a fila de saída em IndexedDB com anexos, reenvio automático, idempotência por `clientId` e coordenação entre abas; reidratar após reload sem perder pendências.
+- Substituir entrega inferida da escrita no socket/consulta de conversas por ACK autenticado de mensagens recebidas pelo cliente; corrigir recibos fora de ordem e agregação em grupos.
+- Distribuir eventos em executor fora da thread HTTP, apoiado em trabalho persistido no PostgreSQL para recuperação após crash. Manter refetch completo na reconexão, sem sequência/delta nesta fase.
+- Implementar Web Push com o app fechado, service worker, inscrições por dispositivo e preferências, com envio pela fila do servidor. Push não equivale a confirmação de entrega da mensagem no chat.
 - Substituir leitura automática de toda a central por leitura individual e ação explícita de leitura em lote, com recuperação em falha e sincronização entre dispositivos. Distinguir contador de Chats e contador de atividades.
 - Aplicar espaçamento consistente a chat/formulários e somar safe area ao padding base quando necessário.
 - Padronizar retorno com origem interna e fallback por rota, incluindo estados de carregamento/erro e entrada por URL direta.
 - Introduzir `/posts/:postId` e destino de comentário; usar uma única superfície de post/comentários. Mobile com painel inferior contextual; desktop com mídia e comentários lado a lado quando houver espaço.
 - Melhorar resposta privada dentro do story, pausando progresso/vídeo durante interação; permitir destino de story específico e preservar drafts/retry.
 - Corrigir destinos das notificações e validar ponta a ponta com backend real e duas contas.
+- Corrigir primeiro os bugs adicionais de uso real: Feed/bandeja com conteúdo próprio e de quem o usuário segue (autorização separada de distribuição); follow/unfollow atualiza os caches sem reload; stories públicos por perfil/link não dependem da bandeja filtrada.
+- Garantir fechar stories em loading, sucesso e erro, com controle sempre visível e alvo de 44 px; investigar clipping/versão publicada, pois o X já existe no viewer carregado local.
+- Corrigir digitação na primeira entrada, reconexão e múltiplas sessões, com renovação/expiração efêmeras e UI consistente. Não persistir typing na fila de mensagens. Detalhamento e aceite na seção 10 do PLANO_UX.md.
 
-Premissas iniciais: notificações internas e respostas privadas em stories. Push com o app fechado e comentários públicos em stories têm extensões explícitas no plano detalhado, a incorporar conforme definição de escopo. As fases anteriores do checklist registram entregas históricas; seus itens concluídos não comprovam os novos critérios de aceite.
+Escopo confirmado pelo usuário: notificações internas **e push com o app fechado**, fila persistente e reenvio, ACK real e distribuição assíncrona. Stories mantêm respostas privadas; comentários públicos e sincronização incremental ficam fora desta fase. As fases anteriores do checklist registram entregas históricas; seus itens concluídos não comprovam os novos critérios de aceite. A ausência de push e a entrega por socket descritas nas seções anteriores representam o comportamento anterior a esta revisão.

@@ -1,5 +1,4 @@
 import { ImagePlus } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
@@ -8,17 +7,16 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { InfiniteScrollTrigger } from "@/components/common/InfiniteScrollTrigger";
 import { Button } from "@/components/ui/button";
-import type { Post } from "@/types/post";
+import { useOverlayNavigate } from "@/app/router/overlay";
 
 import { useFeed } from "../hooks/useFeed";
-import { CommentsPanel } from "./CommentsPanel";
 import { FeedPostSkeleton } from "./FeedPostSkeleton";
 import { PostCard } from "./PostCard";
 
 export function FeedList() {
   const { t } = useTranslation();
   const feed = useFeed();
-  const [commentsFor, setCommentsFor] = useState<Post | null>(null);
+  const open = useOverlayNavigate();
   const posts = feed.data?.pages.flatMap((page) => page.items) ?? [];
 
   if (feed.isPending) return <FeedPostSkeleton />;
@@ -41,7 +39,11 @@ export function FeedList() {
     <>
       <div className="md:space-y-4 md:px-4 md:py-4">
         {posts.map((post) => (
-          <PostCard key={post.id} post={post} onOpenComments={setCommentsFor} />
+          <PostCard
+            key={post.id}
+            post={post}
+            onOpenComments={(post) => open(paths.post(post.id))}
+          />
         ))}
       </div>
       {feed.hasNextPage ? (
@@ -54,7 +56,6 @@ export function FeedList() {
       ) : (
         <p className="py-8 text-center text-sm text-muted-foreground">{t("feed.end")}</p>
       )}
-      <CommentsPanel post={commentsFor} onClose={() => setCommentsFor(null)} />
     </>
   );
 }

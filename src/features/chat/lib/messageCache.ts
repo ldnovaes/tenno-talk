@@ -34,6 +34,7 @@ function matches(item: Message, message: Pick<Message, "id" | "clientId">): bool
 
 /** Never downgrade ticks or translations because of an out-of-order event. */
 export function mergeMessage(current: Message, incoming: Message): Message {
+  if (incoming.id.startsWith("tmp_") && !current.id.startsWith("tmp_")) return current;
   const keepStatus =
     incoming.deliveryStatus !== "failed" &&
     current.deliveryStatus !== "failed" &&
@@ -131,7 +132,7 @@ export function applyReceipt(
 ): MessagesData {
   const all = data.pages.flatMap((page) => page.items);
   const cursor = all.find((message) => message.id === upToMessageId);
-  const limit = cursor?.createdAt;
+  if (!cursor) return data;
   let changed = false;
   const pages = data.pages.map((page) => ({
     ...page,
@@ -139,7 +140,7 @@ export function applyReceipt(
       if (message.senderId !== viewerId) return message;
       if (message.deliveryStatus === "sending" || message.deliveryStatus === "failed")
         return message;
-      if (limit !== undefined && message.createdAt > limit) return message;
+      if (compareMessages(message, cursor) > 0) return message;
       if (STATUS_RANK[message.deliveryStatus] >= STATUS_RANK[status]) return message;
       changed = true;
       return { ...message, deliveryStatus: status };
@@ -303,17 +304,7 @@ export function setReceipt(
   queryClient.setQueryData<MessagesData>(chatKeys.messages(conversationId), (data) =>
     data ? applyReceipt(data, viewerId, upToMessageId, status) : data,
   );
-  queryClient.setQueryData<Conversation[]>(chatKeys.conversations(), (list) =>
-    list?.map((conversation) => {
-      const last = conversation.lastMessage;
-      if (conversation.id !== conversationId || !last || last.senderId !== viewerId)
-        return conversation;
-      if (last.deliveryStatus === "sending" || last.deliveryStatus === "failed")
-        return conversation;
-      if (STATUS_RANK[last.deliveryStatus] >= STATUS_RANK[status]) return conversation;
-      return { ...conversation, lastMessage: { ...last, deliveryStatus: status } };
-    }),
-  );
+  void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
 }
 
 export function setConversationUnread(

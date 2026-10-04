@@ -29,7 +29,7 @@ public class TestData {
 
     public void reset() {
         jdbc.sql("""
-                TRUNCATE users, oauth_accounts, terms_acceptances, user_preferences, follows, blocks, conversations,
+                TRUNCATE realtime_jobs, users, oauth_accounts, terms_acceptances, user_preferences, follows, blocks, conversations,
                          conversation_members, media, messages, message_media, message_reactions, message_translations,
                          translation_jobs, posts, post_media, likes, comments, stories, story_views, story_reactions,
                          content_translations, notifications, reports, SPRING_SESSION, SPRING_SESSION_ATTRIBUTES CASCADE

@@ -36,6 +36,8 @@ Para trocar o client secret, mude o `vps.env` e rode um deploy (ou o provision).
 
 Para trocar uma chave de IA, mude no Infisical e rode `systemctl restart tenno-talk` na VPS. Na subida, um provedor marcado `invalid_key` é verificado de novo. Também dá para usar **Check now** em `/admin/ai`.
 
+Para Web Push, gere o par uma vez com `node scripts/generate_vapid.mjs` e guarde as chaves como `TENNO_VAPID_PUBLIC_KEY` e `TENNO_VAPID_PRIVATE_KEY` no `vps.env` local (modo 600). O deploy as envia por stdin ao `tenno.env` protegido na VPS; `TENNO_VAPID_SUBJECT` é opcional e usa o HTTPS do domínio por padrão. Mantenha uma cópia segura desse par para futuros deploys, pois trocar a chave pública exige reinscrever os navegadores.
+
 Limpeza da instalação antiga das CLIs, depois do primeiro deploy saudável: `rm -rf /opt/tenno-talk/node /opt/tenno-talk/cli /var/lib/tenno-talk/.codex /var/lib/tenno-talk/.claude`.
 
 ## O que o provision faz, e o que ele nunca faz

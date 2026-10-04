@@ -24,9 +24,11 @@ export const httpFeedService: FeedService = {
 
   unlike: (id) => http<Post>("DELETE", `${post(id)}/like`),
 
-  getComments: (id) => http<Comment[]>("GET", `${post(id)}/comments`),
+  getComments: (id, afterId, targetId) =>
+    http<Comment[]>("GET", `${post(id)}/comments`, { query: { afterId, targetId } }),
 
-  addComment: (id, text) => http<Comment>("POST", `${post(id)}/comments`, { body: { text } }),
+  addComment: (id, text, clientId) =>
+    http<Comment>("POST", `${post(id)}/comments`, { body: { text, clientId } }),
 
   async createPost(input, onProgress) {
     const media = await uploadMedia(input.media, (fraction) =>

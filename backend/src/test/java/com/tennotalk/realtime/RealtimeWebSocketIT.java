@@ -3,6 +3,7 @@ package com.tennotalk.realtime;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -150,9 +151,11 @@ class RealtimeWebSocketIT extends IntegrationTest {
         assertThat(created.at("/translation/status").asString()).isEqualTo("pending");
 
         assertThat(rafaelDevice.next("message.created").at("/message/clientId").asString()).isEqualTo(sent.get("clientId").asString());
-        JsonNode delivered = rafaelDevice.next("message.delivered");
-        assertThat(delivered.get("recipientId").asString()).isEqualTo(linh.toString());
-        assertThat(delivered.get("upToMessageId").asString()).isEqualTo(sent.get("id").asString());
+        assertThat(steps.lastMessage(rafael, conversation).get("deliveryStatus").asString()).isEqualTo("sent");
+        api.post(linh, "/api/conversations/" + conversation + "/delivered", Map.of("messageIds", List.of(sent.get("id").asString())))
+                .andExpect(status().isNoContent());
+        JsonNode delivered = rafaelDevice.next("message.updated");
+        assertThat(delivered.at("/message/deliveryStatus").asString()).isEqualTo("delivered");
     }
 
     @Test
@@ -164,8 +167,7 @@ class RealtimeWebSocketIT extends IntegrationTest {
 
         worker.runOnce();
 
-        JsonNode translating = linhDevice.next("translation.updated");
-        assertThat(translating.at("/translation/status").asString()).isEqualTo("translating");
+        // Queued events project the latest state; intermediate states may be coalesced.
         JsonNode update = linhDevice.next("translation.updated", p -> p.at("/translation/status").asString().equals("translated"));
         assertThat(update.get("messageId").asString()).isEqualTo(sent.get("id").asString());
         assertThat(update.at("/translation/text").asString()).isEqualTo("[Vietnamese (Vietnam)] Bom dia");

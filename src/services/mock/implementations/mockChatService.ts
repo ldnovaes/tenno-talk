@@ -60,26 +60,6 @@ function buildContent(input: SendMessageInput, language: string): MessageContent
   return { type: "text", body };
 }
 
-/** Marks everything the viewer received as delivered (the client synced). */
-function acknowledgeAll(
-  db: MockDatabase,
-  viewerId: string,
-): { conversationId: string; messageId: string }[] {
-  const receipts: { conversationId: string; messageId: string }[] = [];
-  for (const conversation of Object.values(db.conversations)) {
-    if (!conversation.memberIds.includes(viewerId)) continue;
-    const last = sortedMessages(db, conversation.id).at(-1);
-    if (!last || last.senderId === viewerId) continue;
-    const current = conversation.lastDeliveredMessageId[viewerId];
-    const currentAt = current ? db.messages[current]?.createdAt : undefined;
-    if (!currentAt || currentAt < last.createdAt) {
-      conversation.lastDeliveredMessageId[viewerId] = last.id;
-      receipts.push({ conversationId: conversation.id, messageId: last.id });
-    }
-  }
-  return receipts;
-}
-
 /** Called by the realtime client when a message reaches this tab (delivery ack). */
 export function acknowledgeDelivery(
   viewerId: string,
@@ -89,7 +69,19 @@ export function acknowledgeDelivery(
   const changed = mockDb.update((db) => {
     const conversation = db.conversations[conversationId];
     const message = db.messages[messageId];
-    if (!conversation || !message || !conversation.memberIds.includes(viewerId)) return false;
+    if (
+      !conversation ||
+      !message ||
+      message.conversationId !== conversationId ||
+      message.senderId === viewerId ||
+      !conversation.memberIds.includes(viewerId)
+    )
+      return false;
+    if (message.receipts) {
+      if (!(viewerId in message.receipts) || message.receipts[viewerId]) return false;
+      message.receipts[viewerId] = true;
+      return true;
+    }
     const current = conversation.lastDeliveredMessageId[viewerId];
     const currentAt = current ? db.messages[current]?.createdAt : undefined;
     if (currentAt && currentAt >= message.createdAt) return false;
@@ -115,6 +107,9 @@ function createMessage(
   db.messages[message.id] = message;
   const conversation = db.conversations[message.conversationId];
   if (conversation) {
+    message.receipts = Object.fromEntries(
+      conversation.memberIds.filter((id) => id !== message.senderId).map((id) => [id, false]),
+    );
     conversation.updatedAt = now;
     conversation.lastReadMessageId[message.senderId] = message.id;
     conversation.lastDeliveredMessageId[message.senderId] = message.id;
@@ -123,6 +118,42 @@ function createMessage(
 }
 
 function afterCreate(message: MessageRecord) {
+  const notifications = mockDb.update((db) => {
+    const conversation = db.conversations[message.conversationId];
+    const recipients: { id: string; user: string }[] = [];
+    for (const user of conversation?.memberIds ?? []) {
+      const recipient = db.users[user];
+      if (
+        user === message.senderId ||
+        !recipient?.preferences.notifications.messages ||
+        recipient.blockedUserIds.includes(message.senderId) ||
+        db.users[message.senderId]?.blockedUserIds.includes(user)
+      )
+        continue;
+      if ((conversation?.mutedUntil[user] ?? "") > new Date().toISOString()) continue;
+      const id = `ntf_message_${message.id}_${user}`;
+      if (db.notifications[id]) continue;
+      db.notifications[id] = {
+        id,
+        recipientId: user,
+        actorId: message.senderId,
+        type: "new_message",
+        conversationId: message.conversationId,
+        messageId: message.id,
+        postId: null,
+        commentId: null,
+        storyId: null,
+        emoji: null,
+        readAt: null,
+        createdAt: message.createdAt,
+      };
+      recipients.push({ id, user });
+    }
+    return recipients;
+  });
+  notifications.forEach(({ id, user }) =>
+    publish({ kind: "notification.created", notificationId: id, recipientId: user }),
+  );
   publish({
     kind: "message.created",
     conversationId: message.conversationId,
@@ -133,28 +164,20 @@ function afterCreate(message: MessageRecord) {
 }
 
 export const mockChatService: ChatService = {
-  async getConversations() {
-    const viewerId = requireViewerId();
-    const { list, receipts } = await mockRequest(() =>
-      mockDb.update((db) => {
-        const receipts = acknowledgeAll(db, viewerId);
-        const list = Object.values(db.conversations)
-          .filter((c) => c.memberIds.includes(viewerId))
-          .map((c) => projectConversation(db, c, viewerId))
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-        return { list, receipts };
-      }),
-    );
-    receipts.forEach(({ conversationId, messageId }) =>
-      publish({
-        kind: "receipt",
-        conversationId,
-        userId: viewerId,
-        receipt: "delivered",
-        upToMessageId: messageId,
-      }),
-    );
-    return list;
+  async acknowledge(conversationId, ids) {
+    const viewer = requireViewerId();
+    memberConversation(mockDb.read(), conversationId, viewer);
+    ids.forEach((id) => acknowledgeDelivery(viewer, conversationId, id));
+  },
+  getConversations() {
+    return mockRequest(() => {
+      const viewer = requireViewerId();
+      const db = mockDb.read();
+      return Object.values(db.conversations)
+        .filter((c) => c.memberIds.includes(viewer))
+        .map((c) => projectConversation(db, c, viewer))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    });
   },
 
   getConversation(conversationId) {
@@ -225,6 +248,16 @@ export const mockChatService: ChatService = {
         if (!message || message.conversationId !== conversationId) {
           throw new AppError("not_found", "Message not found.");
         }
+        for (const notification of Object.values(db.notifications)) {
+          const target = notification.messageId ? db.messages[notification.messageId] : undefined;
+          if (
+            notification.recipientId === viewerId &&
+            notification.conversationId === conversationId &&
+            target &&
+            `${target.createdAt}|${target.id}` <= `${message.createdAt}|${message.id}`
+          )
+            notification.readAt ??= new Date().toISOString();
+        }
         const current = conversation.lastReadMessageId[viewerId];
         const currentAt = current ? db.messages[current]?.createdAt : undefined;
         if (currentAt && currentAt >= message.createdAt) return false;
@@ -233,6 +266,7 @@ export const mockChatService: ChatService = {
         return true;
       }),
     );
+    publish({ kind: "notifications.read", recipientId: viewerId });
     if (changed)
       publish({
         kind: "receipt",

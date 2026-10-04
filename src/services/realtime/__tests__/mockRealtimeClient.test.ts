@@ -46,9 +46,7 @@ describe("mockRealtimeClient", () => {
   it("acknowledges delivery when a message reaches the viewer", async () => {
     mockRealtimeClient.connect({ userId: "usr_rafael" });
     const message = await sendAs("usr_linh", "Oi", "d1");
-    expect(
-      mockDb.read().conversations["conv_rafael_linh"]?.lastDeliveredMessageId["usr_rafael"],
-    ).toBe(message.id);
+    expect(mockDb.read().messages[message.id]?.receipts?.["usr_rafael"]).toBe(true);
   });
 
   it("forwards read receipts of the other member", async () => {

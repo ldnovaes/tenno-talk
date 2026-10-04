@@ -16,6 +16,7 @@ import { SidePanel } from "@/layouts/SidePanel";
 
 import { OverlayGate, RedirectIfAuthed, RequireAuth, RequireOnboarded } from "./guards";
 import { useBackgroundLocation } from "./overlay";
+import { NavigationHistory } from "./NavigationHistory";
 import { paths } from "./paths";
 
 const SignInPage = lazy(() => import("@/pages/SignInPage"));
@@ -27,6 +28,7 @@ const ConversationListPage = lazy(() => import("@/pages/ConversationListPage"));
 const ChatsIndexPage = lazy(() => import("@/pages/ChatsIndexPage"));
 const ConversationPage = lazy(() => import("@/pages/ConversationPage"));
 const DiscoverPage = lazy(() => import("@/pages/DiscoverPage"));
+const PostPage = lazy(() => import("@/pages/PostPage"));
 const FeedPage = lazy(() => import("@/pages/FeedPage"));
 const NotificationsPage = lazy(() => import("@/pages/NotificationsPage"));
 const CreatePostPage = lazy(() => import("@/pages/CreatePostPage"));
@@ -57,7 +59,7 @@ export function AppRoutes({ shell }: { shell: ReactNode }) {
   const background = useBackgroundLocation();
 
   return (
-    <>
+    <NavigationHistory>
       <Routes location={background ?? location}>
         <Route path="/terms" element={page(TermsPage)} />
         <Route path="/privacy" element={page(PrivacyPage)} />
@@ -78,6 +80,7 @@ export function AppRoutes({ shell }: { shell: ReactNode }) {
               </Route>
               <Route path="discover" element={page(DiscoverPage)} />
               <Route path="feed" element={page(FeedPage)} />
+              <Route path="posts/:postId" element={page(PostPage)} />
               <Route path="notifications" element={page(NotificationsPage)} />
               <Route path="create" element={page(CreatePostPage)} />
               <Route path="u/:username" element={page(ProfilePage)} />
@@ -112,11 +115,12 @@ export function AppRoutes({ shell }: { shell: ReactNode }) {
               path="/settings/:section"
               element={<SidePanel title="Settings">{page(SettingsPage)}</SidePanel>}
             />
+            <Route path="/posts/:postId" element={page(PostPage)} />
             <Route path="/create" element={page(CreatePostPage)} />
             <Route path="/stories/:userId" element={page(StoryViewerPage)} />
           </Routes>
         </OverlayGate>
       )}
-    </>
+    </NavigationHistory>
   );
 }

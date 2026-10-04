@@ -46,6 +46,26 @@ function visibleStory(db: MockDatabase, storyId: string, viewerId: string): Stor
 }
 
 export const mockStoryService: StoryService = {
+  getUserStories(userId) {
+    return mockRequest(() => {
+      const viewerId = requireViewerId();
+      const db = mockDb.read();
+      return Object.values(db.stories)
+        .filter(
+          (story) =>
+            story.authorId === userId && active(story) && canSeePosts(db, userId, viewerId),
+        )
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((story) => projectStory(db, story, viewerId));
+    });
+  },
+  getStory(storyId) {
+    return mockRequest(() => {
+      const viewerId = requireViewerId();
+      const db = mockDb.read();
+      return projectStory(db, visibleStory(db, storyId, viewerId), viewerId);
+    });
+  },
   getTray() {
     return mockRequest(() => {
       const viewerId = requireViewerId();
@@ -53,6 +73,11 @@ export const mockStoryService: StoryService = {
       const byAuthor = new Map<string, StoryRecord[]>();
       for (const story of Object.values(db.stories)) {
         if (!active(story) || !canSeePosts(db, story.authorId, viewerId)) continue;
+        if (
+          story.authorId !== viewerId &&
+          !db.follows.some((f) => f.followerId === viewerId && f.followeeId === story.authorId)
+        )
+          continue;
         byAuthor.set(story.authorId, [...(byAuthor.get(story.authorId) ?? []), story]);
       }
       const tray: StoryTrayItem[] = [];
@@ -121,7 +146,7 @@ export const mockStoryService: StoryService = {
       });
   },
 
-  async reply(storyId, text) {
+  async reply(storyId, text, clientId = crypto.randomUUID()) {
     const viewerId = requireViewerId();
     const db = mockDb.read();
     const story = visibleStory(db, storyId, viewerId);
@@ -130,7 +155,7 @@ export const mockStoryService: StoryService = {
     const conversation = await mockChatService.getOrCreateDirectConversation(story.authorId);
     const message = await mockChatService.sendMessage({
       conversationId: conversation.id,
-      clientId: crypto.randomUUID(),
+      clientId,
       text,
       media: [],
       replyToId: null,

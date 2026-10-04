@@ -33,6 +33,7 @@ export interface ChatService {
   /** Newest page first; items inside a page are in chronological order. */
   getMessages(conversationId: string, cursor: string | null): Promise<Page<Message>>;
   sendMessage(input: SendMessageInput): Promise<Message>;
+  acknowledge(conversationId: string, messageIds: string[]): Promise<void>;
   markAsRead(conversationId: string, messageId: string): Promise<void>;
   /** Toggles the viewer's reaction. */
   react(messageId: string, emoji: string): Promise<Message>;

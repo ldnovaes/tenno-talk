@@ -26,5 +26,5 @@ public final class StoryDtos {
 
     public record StoryTrayItemDto(UserDto user, List<StoryDto> stories, boolean hasUnseen) {}
 
-    public record ReplyResult(UUID conversationId) {}
+    public record ReplyResult(UUID conversationId, com.tennotalk.chat.ChatDtos.MessageDto message) {}
 }

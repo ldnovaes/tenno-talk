@@ -1,3 +1,5 @@
+import { PendingSends } from "./PendingSends";
+import { NotificationBell } from "@/components/common/NotificationBell";
 import { MessageCircle, SquarePen } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -59,8 +61,12 @@ export function ConversationListPane({ header }: { header?: ReactNode }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <PendingSends />
       <div className="flex h-14 shrink-0 items-center justify-between px-4">
         <ChatsTitle />
+        <span className="ms-auto md:hidden">
+          <NotificationBell />
+        </span>
         <Button
           variant="ghost"
           size="icon"

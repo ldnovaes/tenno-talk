@@ -33,6 +33,9 @@ export const httpChatService: ChatService = {
     return sent;
   },
 
+  acknowledge: (id, messageIds) =>
+    http<void>("POST", `${conversation(id)}/delivered`, { body: { messageIds } }),
+
   markAsRead: (id, messageId) =>
     http<void>("POST", `${conversation(id)}/read`, { body: { messageId } }),
 
