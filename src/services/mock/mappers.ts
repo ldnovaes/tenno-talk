@@ -22,6 +22,10 @@ export function toUserProfile(record: UserRecord, db: MockDatabase, viewerId: st
     followingCount: db.follows.filter((f) => f.followerId === record.id).length,
     postsCount: Object.values(db.posts).filter((p) => p.authorId === record.id).length,
     isFollowing: db.follows.some((f) => f.followerId === viewerId && f.followeeId === record.id),
+    isPrivate: record.preferences.privacy.profileVisibility === "private",
+    followRequestPending: db.followRequests.some(
+      (r) => r.followerId === viewerId && r.followeeId === record.id,
+    ),
     isOnline: record.isOnline,
     lastSeenAt: record.lastSeenAt,
   };

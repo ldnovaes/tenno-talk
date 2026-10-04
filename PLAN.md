@@ -1589,6 +1589,14 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 
 Status: release `1821cbe` publicado em `https://tenno.eldialabs.com` com migration V5 e chaves VAPID de produção; Web Push com o app fechado ainda aguarda ensaio em dispositivos reais. Plano detalhado em [PLANO_UX.md](PLANO_UX.md); execução na Phase 11 do [IMPLEMENTATION.md](IMPLEMENTATION.md#phase-11--notificações-e-experiência-social).
 
+### 36.1 Privacidade e bloqueio em conversas existentes
+
+- As regras de mensagens valem em **cada envio direto**, inclusive encaminhamento e resposta a story, não apenas na criação da conversa. A mensagem idempotente já persistida continua consultável, mas uma nova tentativa com outro `clientId` após a restrição é recusada. O destinatário nunca recebe evento ou aviso sobre o bloqueio; o remetente vê apenas erro genérico de envio indisponível.
+- Bloqueio e envio direto usam o mesmo lock transacional por par de usuários para que uma confirmação de bloqueio não seja seguida por mensagem que atravessou a checagem numa transação concorrente. A preferência de mensagens é lida com lock compartilhado; a resposta de alteração só chega depois dos envios anteriores terminarem.
+- Em grupos, participantes bloqueados deixam de receber eventos diretos de digitação/presença entre si. O bloqueio não encerra o grupo para os demais participantes.
+- Uma conta privada exige aprovação de novos seguidores: seguir cria solicitação, aprovar transforma em follow, rejeitar/cancelar remove a solicitação. Seguidores aprovados antes de tornar a conta privada permanecem. Bloquear elimina follows e solicitações nos dois sentidos. O conteúdo usa apenas a tabela de follows aprovados.
+- Mudanças de privacidade invalidam imediatamente perfil, Feed, stories e conversas no cliente, com escrita de preferências serializada para impedir que respostas antigas revertam uma seleção mais recente.
+
 Esta revisão evolui as decisões das seções 6, 8, 9, 13, 17 e 26 para resolver notificações ausentes, confiabilidade do chat, espaçamento, comentários/respostas e retorno entre telas:
 
 - Persistir notificações de mensagens e respostas de stories, hoje ausentes no fluxo real do chat; manter uma conexão realtime por sessão autenticada, inclusive durante stories.

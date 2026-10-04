@@ -44,6 +44,9 @@ export interface ProfileService {
   searchPeople(query: string, limit: number): Promise<UserProfile[]>;
   follow(userId: string): Promise<UserProfile>;
   unfollow(userId: string): Promise<UserProfile>;
+  getFollowRequests(): Promise<UserProfile[]>;
+  approveFollowRequest(userId: string): Promise<void>;
+  rejectFollowRequest(userId: string): Promise<void>;
   getBlockedUsers(): Promise<UserProfile[]>;
   block(userId: string): Promise<void>;
   unblock(userId: string): Promise<void>;

@@ -146,6 +146,12 @@ public class ChatService {
     }
 
     private void afterInsert(MessageRow message) {
+        ConversationRow conversation = chat.findConversation(message.conversationId()).orElseThrow();
+        if ("direct".equals(conversation.kind())) {
+            UUID recipient = chat.members(conversation.id()).stream().map(member -> member.user().id())
+                .filter(id -> !id.equals(message.senderId())).findFirst().orElseThrow();
+            requireDirectSendAllowed(message.senderId(), recipient);
+        }
         receipts.snapshot(message);
         for (MemberRow member : chat.members(message.conversationId())) {
             if (member.mutedUntil() != null && member.mutedUntil().isAfter(clock.instant())) continue;
@@ -256,11 +262,12 @@ public class ChatService {
     public ConversationDto direct(UUID viewer, UUID target) {
         if (viewer.equals(target)) throw ApiException.validation("You can't message yourself.");
         UserRow other = users.findById(target).filter(UserRow::onboarded).orElseThrow(() -> ApiException.notFound("User not found."));
+        graph.lockPair(viewer, target);
         if (graph.blockedEitherWay(viewer, other.id())) throw ApiException.forbidden("You can't message this person.");
         String key = directKey(viewer, target);
         Optional<UUID> existing = chat.findDirect(key);
         if (existing.isPresent()) return conversation(viewer, existing.get());
-        String audience = preferences.find(target).privacy().whoCanMessage();
+        String audience = preferences.whoCanMessageForShare(target);
         if ("nobody".equals(audience) || ("followers".equals(audience) && !graph.follows(target, viewer))) {
             throw ApiException.forbidden("This person only accepts messages from people they follow.");
         }
@@ -307,6 +314,14 @@ public class ChatService {
         return new ChatProjector.Scope(conversation.kind(), members, chat.receivingLanguages(userIds(members)));
     }
 
+    private void requireDirectSendAllowed(UUID sender, UUID recipient) {
+        graph.lockPair(sender, recipient);
+        if (graph.blockedEitherWay(sender, recipient)) throw ApiException.forbidden("Messaging is unavailable.");
+        String audience = preferences.whoCanMessageForShare(recipient);
+        if ("nobody".equals(audience) || ("followers".equals(audience) && !graph.follows(recipient, sender)))
+            throw ApiException.forbidden("Messaging is unavailable.");
+    }
+
     private static List<UUID> userIds(Collection<MemberRow> members) {
         return members.stream().map(member -> member.user().id()).distinct().toList();
     }
@@ -333,8 +348,11 @@ public class ChatService {
                     row.title(),
                     row.avatarUrl(),
                     row.createdBy(),
-                    list.stream().map(m -> new ConversationMemberDto(m.user(), m.role(), m.receivingLanguage(),
-                            m.lastReadMessageId(), presence.isOnline(m.user().id()), m.lastSeenAt())).toList(),
+                    list.stream().map(m -> {
+                        boolean hidden = "direct".equals(row.kind()) && graph.blockedEitherWay(viewer, m.user().id());
+                        return new ConversationMemberDto(m.user(), m.role(), m.receivingLanguage(),
+                            m.lastReadMessageId(), !hidden && presence.isOnline(m.user().id()), hidden ? null : m.lastSeenAt());
+                    }).toList(),
                     last,
                     me == null ? 0 : chat.unreadCount(row.id(), viewer, me.lastReadAt()),
                     me == null ? null : me.mutedUntil(),

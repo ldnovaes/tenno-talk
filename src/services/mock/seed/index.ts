@@ -17,6 +17,7 @@ export function createSeed(now = Date.now()): MockDatabase {
       { followerId: "usr_rafael", followeeId: "usr_sofia", createdAt: new Date(now).toISOString() },
       { followerId: "usr_minh", followeeId: "usr_linh", createdAt: new Date(now).toISOString() },
     ],
+    followRequests: [],
     conversations,
     messages,
     posts,

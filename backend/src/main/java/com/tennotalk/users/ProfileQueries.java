@@ -20,7 +20,9 @@ public class ProfileQueries {
                    (SELECT count(*) FROM follows f WHERE f.followee_id = u.id) AS followers_count,
                    (SELECT count(*) FROM follows f WHERE f.follower_id = u.id) AS following_count,
                    (SELECT count(*) FROM posts p WHERE p.author_id = u.id) AS posts_count,
-                   EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = :viewer AND f.followee_id = u.id) AS is_following
+                   EXISTS (SELECT 1 FROM follows f WHERE f.follower_id = :viewer AND f.followee_id = u.id) AS is_following,
+                   (SELECT p.profile_visibility = 'private' FROM user_preferences p WHERE p.user_id = u.id) AS is_private,
+                   EXISTS (SELECT 1 FROM follow_requests r WHERE r.follower_id = :viewer AND r.followee_id = u.id) AS follow_request_pending
             FROM users u
             """;
 
@@ -58,6 +60,8 @@ public class ProfileQueries {
                             rs.getLong("following_count"),
                             rs.getLong("posts_count"),
                             rs.getBoolean("is_following"),
+                            rs.getBoolean("is_private"),
+                            rs.getBoolean("follow_request_pending"),
                             presence.isOnline(user.id()),
                             user.lastSeenAt());
                 })

@@ -19,6 +19,7 @@ import { profileService } from "@/services/profileService";
 import type { Audience } from "@/types/preferences";
 
 import { SettingsGroup } from "../SettingsRow";
+import { FollowRequests } from "./FollowRequests";
 
 const AUDIENCES: Audience[] = ["everyone", "followers", "nobody"];
 
@@ -61,7 +62,14 @@ function BlockedUsers() {
   });
   const unblock = useMutation({
     mutationFn: (userId: string) => profileService.unblock(userId),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: profileKeys.all }),
+    onSuccess: () => {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: profileKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ["feed"] }),
+        queryClient.invalidateQueries({ queryKey: ["stories"] }),
+        queryClient.invalidateQueries({ queryKey: ["chat"] }),
+      ]);
+    },
   });
   if (blocked.data?.length === 0) {
     return (
@@ -122,6 +130,11 @@ export function PrivacySettings() {
           onChange={(value) => update.mutate({ privacy: { whoCanComment: value as Audience } })}
         />
       </SettingsGroup>
+      {privacy.profileVisibility === "private" && (
+        <SettingsGroup title={t("settings.privacySection.followRequests")}>
+          <FollowRequests />
+        </SettingsGroup>
+      )}
       <SettingsGroup title={t("settings.privacySection.blocked")}>
         <BlockedUsers />
       </SettingsGroup>

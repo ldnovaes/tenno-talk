@@ -96,4 +96,15 @@ public class PreferencesRepository {
                 .query(String.class)
                 .single();
     }
+
+    /** A shared row lock makes a completed privacy change authoritative for later sends. */
+    public String whoCanMessageForShare(UUID userId) {
+        return jdbc.sql("SELECT who_can_message FROM user_preferences WHERE user_id = :id FOR SHARE")
+                .param("id", userId).query(String.class).single();
+    }
+
+    public String profileVisibilityForShare(UUID userId) {
+        return jdbc.sql("SELECT profile_visibility FROM user_preferences WHERE user_id = :id FOR SHARE")
+                .param("id", userId).query(String.class).single();
+    }
 }

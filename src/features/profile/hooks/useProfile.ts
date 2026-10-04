@@ -36,7 +36,13 @@ export function useBlockUser() {
     mutationFn: ({ userId }: { userId: string; name: string }) => profileService.block(userId),
     onSuccess: (_result, { name }) => {
       toast.success(t("profile.blocked", { name }));
-      void queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: profileKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ["feed"] }),
+        queryClient.invalidateQueries({ queryKey: ["stories"] }),
+        queryClient.invalidateQueries({ queryKey: ["chat"] }),
+        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+      ]);
     },
   });
 }

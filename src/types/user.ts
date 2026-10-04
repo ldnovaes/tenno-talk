@@ -18,6 +18,8 @@ export interface UserProfile extends User {
   followingCount: number;
   postsCount: number;
   isFollowing: boolean;
+  isPrivate: boolean;
+  followRequestPending: boolean;
   isOnline: boolean;
   lastSeenAt: ISODateString | null;
 }

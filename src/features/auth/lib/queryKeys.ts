@@ -8,5 +8,6 @@ export const profileKeys = {
   byUsername: (username: string) => ["profiles", "username", username] as const,
   suggestions: (limit: number) => ["profiles", "suggestions", limit] as const,
   blocked: () => ["profiles", "blocked"] as const,
+  followRequests: () => ["profiles", "follow-requests"] as const,
   usernameCheck: (username: string) => ["profiles", "username-check", username] as const,
 };

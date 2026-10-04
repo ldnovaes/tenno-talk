@@ -41,6 +41,12 @@ export const httpProfileService: ProfileService = {
 
   unfollow: (userId) => http<UserProfile>("DELETE", `${user(userId)}/follow`),
 
+  getFollowRequests: () => http<UserProfile[]>("GET", "/api/me/follow-requests"),
+  approveFollowRequest: (userId) =>
+    http<void>("POST", `/api/me/follow-requests/${encodeURIComponent(userId)}/approve`),
+  rejectFollowRequest: (userId) =>
+    http<void>("DELETE", `/api/me/follow-requests/${encodeURIComponent(userId)}`),
+
   getBlockedUsers: () => http<UserProfile[]>("GET", "/api/me/blocked"),
 
   block: (userId) => http<void>("PUT", `${user(userId)}/block`),

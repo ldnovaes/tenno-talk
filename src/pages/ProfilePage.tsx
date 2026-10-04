@@ -1,5 +1,5 @@
 import { useBack } from "@/app/router/useBack";
-import { Flag, ImagePlus, MoreHorizontal, Settings, UserX } from "lucide-react";
+import { Flag, ImagePlus, LockKeyhole, MoreHorizontal, Settings, UserX } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
@@ -107,18 +107,26 @@ export default function ProfilePage() {
               <PostsGrid
                 userId={profile.data.id}
                 empty={
-                  <EmptyState
-                    icon={ImagePlus}
-                    title={t("profile.emptyPosts")}
-                    description={isOwn ? t("profile.emptyPostsOwn") : undefined}
-                    action={
-                      isOwn ? (
-                        <Button asChild size="sm">
-                          <OverlayLink to={paths.create()}>{t("nav.create")}</OverlayLink>
-                        </Button>
-                      ) : undefined
-                    }
-                  />
+                  profile.data.isPrivate && !isOwn && !profile.data.isFollowing ? (
+                    <EmptyState
+                      icon={LockKeyhole}
+                      title={t("profile.privateTitle")}
+                      description={t("profile.privateDescription")}
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={ImagePlus}
+                      title={t("profile.emptyPosts")}
+                      description={isOwn ? t("profile.emptyPostsOwn") : undefined}
+                      action={
+                        isOwn ? (
+                          <Button asChild size="sm">
+                            <OverlayLink to={paths.create()}>{t("nav.create")}</OverlayLink>
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  )
                 }
               />
             }
@@ -132,9 +140,15 @@ export default function ProfilePage() {
             open={confirmBlock}
             onOpenChange={setConfirmBlock}
             onConfirm={() => {
-              block.mutate({ userId: profile.data.id, name: profile.data.displayName });
-              if (panel) panel.close();
-              else navigate(paths.chats());
+              block.mutate(
+                { userId: profile.data.id, name: profile.data.displayName },
+                {
+                  onSuccess: () => {
+                    if (panel) panel.close();
+                    else navigate(paths.chats());
+                  },
+                },
+              );
             }}
           />
         </>

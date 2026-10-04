@@ -10,6 +10,7 @@ import type { LanguageCode } from "@/types/language";
 
 import { mockDb } from "../db";
 import { mockRequest } from "../latency";
+import { blockedEitherWay } from "../privacy";
 import { toCurrentUser, toUserProfile } from "../mappers";
 import type { MockDatabase, UserRecord } from "../schema";
 import { clearMockSession, requireViewerId } from "../session";
@@ -133,6 +134,16 @@ export const mockProfileService: ProfileService = {
           privacy: { ...current.privacy, ...patch.privacy },
           notifications: { ...current.notifications, ...patch.notifications },
         };
+        if (
+          current.privacy.profileVisibility === "private" &&
+          viewer.preferences.privacy.profileVisibility === "public"
+        ) {
+          for (const request of db.followRequests.filter((item) => item.followeeId === viewer.id)) {
+            if (!blockedEitherWay(db, request.followerId, viewer.id))
+              db.follows.push({ ...request });
+          }
+          db.followRequests = db.followRequests.filter((item) => item.followeeId !== viewer.id);
+        }
         return toCurrentUser(viewer, db);
       }),
     );
@@ -143,7 +154,8 @@ export const mockProfileService: ProfileService = {
       const db = mockDb.read();
       const viewerId = requireViewerId();
       const user = findByUsername(db, username);
-      if (!user || !user.onboardingCompletedAt) throw new AppError("not_found", "User not found.");
+      if (!user || !user.onboardingCompletedAt || blockedEitherWay(db, viewerId, user.id))
+        throw new AppError("not_found", "User not found.");
       return toUserProfile(user, db, viewerId);
     });
   },
@@ -154,7 +166,7 @@ export const mockProfileService: ProfileService = {
       const viewer = viewerRecord(db);
       return Object.values(db.users)
         .filter((user) => user.id !== viewer.id && user.onboardingCompletedAt)
-        .filter((user) => !viewer.blockedUserIds.includes(user.id))
+        .filter((user) => !blockedEitherWay(db, viewer.id, user.id))
         .sort((a, b) => Number(b.isOnline) - Number(a.isOnline))
         .slice(0, limit)
         .map((user) => toUserProfile(user, db, viewer.id));
@@ -168,7 +180,7 @@ export const mockProfileService: ProfileService = {
       const normalized = query.trim().toLowerCase().replace(/^@/, "");
       return Object.values(db.users)
         .filter((user) => user.id !== viewer.id && user.onboardingCompletedAt)
-        .filter((user) => !viewer.blockedUserIds.includes(user.id))
+        .filter((user) => !blockedEitherWay(db, viewer.id, user.id))
         .filter(
           (user) =>
             !normalized ||
@@ -186,15 +198,21 @@ export const mockProfileService: ProfileService = {
         const viewer = viewerRecord(db);
         const target = findUser(db, userId);
         if (target.id === viewer.id) throw new AppError("validation", "You can't follow yourself.");
+        if (blockedEitherWay(db, viewer.id, target.id))
+          throw new AppError("not_found", "User not found.");
         const exists = db.follows.some(
           (f) => f.followerId === viewer.id && f.followeeId === userId,
         );
         if (!exists) {
-          db.follows.push({
+          const entry = {
             followerId: viewer.id,
             followeeId: userId,
             createdAt: new Date().toISOString(),
-          });
+          };
+          if (target.preferences.privacy.profileVisibility === "private") {
+            if (!db.followRequests.some((item) => item.followerId === viewer.id && item.followeeId === userId))
+              db.followRequests.push(entry);
+          } else db.follows.push(entry);
         }
         return toUserProfile(target, db, viewer.id);
       }),
@@ -209,7 +227,53 @@ export const mockProfileService: ProfileService = {
         db.follows = db.follows.filter(
           (f) => !(f.followerId === viewer.id && f.followeeId === userId),
         );
+        db.followRequests = db.followRequests.filter(
+          (r) => !(r.followerId === viewer.id && r.followeeId === userId),
+        );
         return toUserProfile(target, db, viewer.id);
+      }),
+    );
+  },
+
+  getFollowRequests() {
+    return mockRequest(() => {
+      const db = mockDb.read();
+      const viewerId = requireViewerId();
+      return db.followRequests
+        .filter((request) => request.followeeId === viewerId)
+        .map((request) => db.users[request.followerId])
+        .filter((user): user is UserRecord => !!user && !blockedEitherWay(db, viewerId, user.id))
+        .map((user) => toUserProfile(user, db, viewerId));
+    });
+  },
+
+  approveFollowRequest(userId) {
+    return mockRequest(() =>
+      mockDb.update((db) => {
+        const viewerId = requireViewerId();
+        const request = db.followRequests.find(
+          (item) => item.followerId === userId && item.followeeId === viewerId,
+        );
+        if (!request || blockedEitherWay(db, viewerId, userId))
+          throw new AppError("not_found", "Follow request not found.");
+        db.followRequests = db.followRequests.filter((item) => item !== request);
+        if (!db.follows.some((item) => item.followerId === userId && item.followeeId === viewerId))
+          db.follows.push({ ...request });
+      }),
+    );
+  },
+
+  rejectFollowRequest(userId) {
+    return mockRequest(() =>
+      mockDb.update((db) => {
+        const viewerId = requireViewerId();
+        const exists = db.followRequests.some(
+          (item) => item.followerId === userId && item.followeeId === viewerId,
+        );
+        if (!exists) throw new AppError("not_found", "Follow request not found.");
+        db.followRequests = db.followRequests.filter(
+          (item) => !(item.followerId === userId && item.followeeId === viewerId),
+        );
       }),
     );
   },
@@ -238,6 +302,13 @@ export const mockProfileService: ProfileService = {
             !(
               (f.followerId === viewer.id && f.followeeId === userId) ||
               (f.followerId === userId && f.followeeId === viewer.id)
+            ),
+        );
+        db.followRequests = db.followRequests.filter(
+          (r) =>
+            !(
+              (r.followerId === viewer.id && r.followeeId === userId) ||
+              (r.followerId === userId && r.followeeId === viewer.id)
             ),
         );
       }),

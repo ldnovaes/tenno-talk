@@ -10,7 +10,7 @@ export function FollowButton({
   size = "sm",
   className,
 }: {
-  profile: Pick<UserProfile, "id" | "isFollowing" | "displayName">;
+  profile: Pick<UserProfile, "id" | "isFollowing" | "isPrivate" | "followRequestPending" | "displayName">;
   size?: "sm" | "default";
   className?: string;
 }) {
@@ -19,12 +19,21 @@ export function FollowButton({
   return (
     <Button
       size={size}
-      variant={profile.isFollowing ? "secondary" : "default"}
+      variant={profile.isFollowing || profile.followRequestPending ? "secondary" : "default"}
       className={className}
-      aria-pressed={profile.isFollowing}
-      onClick={() => toggle.mutate({ userId: profile.id, follow: !profile.isFollowing })}
+      aria-pressed={profile.isFollowing || profile.followRequestPending}
+      onClick={() =>
+        toggle.mutate({
+          userId: profile.id,
+          follow: !profile.isFollowing && !profile.followRequestPending,
+        })
+      }
     >
-      {profile.isFollowing ? t("onboarding.discover.following") : t("onboarding.discover.follow")}
+      {profile.isFollowing
+        ? t("onboarding.discover.following")
+        : profile.followRequestPending
+          ? t("profile.requested")
+          : t("onboarding.discover.follow")}
     </Button>
   );
 }

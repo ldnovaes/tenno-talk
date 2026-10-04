@@ -24,6 +24,8 @@ public final class UserDtos {
             long followingCount,
             long postsCount,
             boolean isFollowing,
+            boolean isPrivate,
+            boolean followRequestPending,
             boolean isOnline,
             Instant lastSeenAt) {}
 
@@ -40,6 +42,8 @@ public final class UserDtos {
             long followingCount,
             long postsCount,
             boolean isFollowing,
+            boolean isPrivate,
+            boolean followRequestPending,
             boolean isOnline,
             Instant lastSeenAt,
             String email,

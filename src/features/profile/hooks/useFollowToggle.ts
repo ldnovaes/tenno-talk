@@ -42,8 +42,10 @@ export function useFollowToggle() {
       return { version };
     },
     onError: (_error, { userId, follow }, context) => {
-      if (context?.version === versions.get(keyOf(userId)))
+      if (context?.version === versions.get(keyOf(userId))) {
         patchProfileInCaches(queryClient, userId, (profile) => withFollowing(profile, !follow));
+        void queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      }
     },
     onSuccess: async (profile, { userId }, context) => {
       if (context?.version !== versions.get(keyOf(userId))) return;

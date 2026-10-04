@@ -35,6 +35,10 @@ public class DataExportService {
                 SELECT u.username, f.created_at FROM follows f JOIN users u ON u.id = f.followee_id WHERE f.follower_id = :me""");
         SECTIONS.put("followers", """
                 SELECT u.username, f.created_at FROM follows f JOIN users u ON u.id = f.follower_id WHERE f.followee_id = :me""");
+        SECTIONS.put("followRequestsSent", """
+                SELECT u.username, r.created_at FROM follow_requests r JOIN users u ON u.id = r.followee_id WHERE r.follower_id = :me""");
+        SECTIONS.put("followRequestsReceived", """
+                SELECT u.username, r.created_at FROM follow_requests r JOIN users u ON u.id = r.follower_id WHERE r.followee_id = :me""");
         SECTIONS.put("blocked", """
                 SELECT u.username, b.created_at FROM blocks b JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = :me""");
         SECTIONS.put("conversations", """

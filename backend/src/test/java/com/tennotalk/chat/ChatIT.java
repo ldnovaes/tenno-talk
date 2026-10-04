@@ -69,6 +69,35 @@ class ChatIT extends IntegrationTest {
     }
 
     @Test
+    void privacyChangesAndBlocksStopNewMessagesInAnExistingConversation() throws Exception {
+        UUID conversation = steps.direct(rafael, linh);
+        JsonNode original = steps.send(rafael, conversation, "Before privacy changed", "before-privacy");
+        data.setPreference(linh, "who_can_message", "nobody");
+        mvc.perform(withJson(post("/api/conversations/" + conversation + "/messages"),
+                Map.of("clientId", "after-privacy", "text", "This must not arrive")).with(as(rafael)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value("Messaging is unavailable."));
+        mvc.perform(withJson(post("/api/messages/" + original.get("id").asString() + "/forward"),
+                Map.of("conversationIds", List.of(conversation))).with(as(rafael)))
+                .andExpect(status().isForbidden());
+        assertThat(count("SELECT count(*) FROM messages")).isOne();
+        assertThat(count("SELECT count(*) FROM notifications WHERE recipient_id = '" + linh + "'")).isOne();
+
+        data.setPreference(linh, "who_can_message", "followers");
+        data.follow(linh, rafael);
+        steps.send(rafael, conversation, "Allowed by Linh", "allowed");
+        data.block(linh, rafael);
+        for (UUID sender : List.of(rafael, linh)) {
+            mvc.perform(withJson(post("/api/conversations/" + conversation + "/messages"),
+                    Map.of("clientId", "blocked-" + sender, "text", "Blocked")).with(as(sender)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.detail").value("Messaging is unavailable."));
+        }
+        assertThat(count("SELECT count(*) FROM messages")).isEqualTo(2);
+        assertThat(count("SELECT count(*) FROM notifications WHERE recipient_id = '" + linh + "'")).isEqualTo(2);
+    }
+
+    @Test
     void sendingStoresTheOriginalInTheSendersLanguageAndQueuesTheTranslation() throws Exception {
         UUID conversation = steps.direct(rafael, linh);
         JsonNode sent = steps.send(rafael, conversation, "  Estou com saudade de você.  ");

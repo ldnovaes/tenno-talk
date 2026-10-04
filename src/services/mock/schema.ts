@@ -41,6 +41,12 @@ export interface FollowRecord {
   createdAt: ISODateString;
 }
 
+export interface FollowRequestRecord {
+  followerId: string;
+  followeeId: string;
+  createdAt: ISODateString;
+}
+
 export interface ConversationRecord {
   id: string;
   kind: "direct" | "group";
@@ -130,6 +136,7 @@ export interface NotificationRecord {
 export interface MockDatabase {
   users: Record<string, UserRecord>;
   follows: FollowRecord[];
+  followRequests: FollowRequestRecord[];
   conversations: Record<string, ConversationRecord>;
   messages: Record<string, MessageRecord>;
   posts: Record<string, PostRecord>;

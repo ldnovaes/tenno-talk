@@ -21,6 +21,7 @@ import com.tennotalk.chat.ChatEvents.TranslationChanged;
 import com.tennotalk.realtime.PresenceChanged;
 import com.tennotalk.realtime.RealtimeHub;
 import com.tennotalk.realtime.TypingReceived;
+import com.tennotalk.users.SocialGraph;
 
 /**
  * Pushes chat events to each member's sockets, projected for that member
@@ -34,13 +35,15 @@ public class ChatRealtime {
     private final ChatProjector projector;
     private final ChatService service;
     private final JdbcClient jdbc;
+    private final SocialGraph graph;
 
-    public ChatRealtime(RealtimeHub hub, ChatRepository chat, ChatProjector projector, ChatService service, JdbcClient jdbc) {
+    public ChatRealtime(RealtimeHub hub, ChatRepository chat, ChatProjector projector, ChatService service, JdbcClient jdbc, SocialGraph graph) {
         this.hub = hub;
         this.chat = chat;
         this.projector = projector;
         this.service = service;
         this.jdbc = jdbc;
+        this.graph = graph;
     }
 
     public void onCreated(MessageCreated event) {
@@ -48,6 +51,7 @@ public class ChatRealtime {
             ConversationRow conversation = chat.findConversation(event.conversationId()).orElseThrow();
             ChatProjector.Scope scope = service.scope(conversation);
             for (MemberRow member : scope.members()) {
+                if ("direct".equals(conversation.kind()) && graph.blockedEitherWay(member.user().id(), message.senderId())) continue;
                 hub.send(member.user().id(), "message.created", Map.of("message", projector.one(member.user().id(), message, scope)));
             }
         });
@@ -55,8 +59,10 @@ public class ChatRealtime {
 
     public void onUpdated(MessageUpdated event) {
         chat.findMessage(event.messageId()).ifPresent(message -> {
-            ChatProjector.Scope scope = service.scope(chat.findConversation(event.conversationId()).orElseThrow());
+            ConversationRow conversation = chat.findConversation(event.conversationId()).orElseThrow();
+            ChatProjector.Scope scope = service.scope(conversation);
             for (MemberRow member : scope.members()) {
+                if ("direct".equals(conversation.kind()) && graph.blockedEitherWay(member.user().id(), message.senderId())) continue;
                 hub.send(member.user().id(), "message.updated", Map.of("message", projector.one(member.user().id(), message, scope)));
             }
         });
@@ -64,9 +70,11 @@ public class ChatRealtime {
 
     public void onTranslation(TranslationChanged event) {
         chat.findMessage(event.messageId()).ifPresent(message -> {
-            ChatProjector.Scope scope = service.scope(chat.findConversation(event.conversationId()).orElseThrow());
+            ConversationRow conversation = chat.findConversation(event.conversationId()).orElseThrow();
+            ChatProjector.Scope scope = service.scope(conversation);
             for (MemberRow member : scope.members()) {
                 UUID userId = member.user().id();
+                if ("direct".equals(conversation.kind()) && graph.blockedEitherWay(userId, message.senderId())) continue;
                 if (!event.targetLanguage().equals(ChatProjector.targetFor(message, userId, scope))) continue;
                 var projected = projector.one(userId, message, scope);
                 if (projected.translation() == null) continue;
@@ -85,6 +93,7 @@ public class ChatRealtime {
                 : Map.of("conversationId", event.conversationId(), "recipientId", event.userId(), "upToMessageId", event.upToMessageId());
         for (MemberRow member : chat.members(event.conversationId())) {
             if (member.user().id().equals(event.userId())) continue;
+            if (graph.blockedEitherWay(member.user().id(), event.userId())) continue;
             hub.send(member.user().id(), read ? "message.read" : "message.delivered", payload);
         }
     }
@@ -93,6 +102,7 @@ public class ChatRealtime {
         Map<String, Object> payload = Map.of("conversationId", event.conversationId(), "messageId", event.messageId(),
                 "userId", event.userId(), "emoji", event.emoji());
         for (MemberRow member : chat.members(event.conversationId())) {
+            if (graph.blockedEitherWay(member.user().id(), event.userId())) continue;
             hub.send(member.user().id(), event.added() ? "reaction.created" : "reaction.deleted", payload);
         }
     }
@@ -103,6 +113,7 @@ public class ChatRealtime {
         Map<String, Object> payload = Map.of("conversationId", event.conversationId(), "userId", event.userId());
         for (MemberRow member : chat.members(event.conversationId())) {
             if (!member.user().id().equals(event.userId())) {
+                if (graph.blockedEitherWay(member.user().id(), event.userId())) continue;
                 hub.send(member.user().id(), event.typing() ? "typing.started" : "typing.stopped", payload);
             }
         }
@@ -115,6 +126,8 @@ public class ChatRealtime {
                 SELECT DISTINCT other.user_id FROM conversation_members mine
                 JOIN conversation_members other ON other.conversation_id = mine.conversation_id AND other.user_id <> mine.user_id
                 WHERE mine.user_id = :u
+                AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = :u AND b.blocked_id = other.user_id)
+                                                        OR (b.blocker_id = other.user_id AND b.blocked_id = :u))
                 """).param("u", event.userId()).query(UUID.class).list());
         Map<String, Object> payload = event.online()
                 ? Map.of("userId", event.userId())

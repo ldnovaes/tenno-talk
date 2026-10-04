@@ -19,6 +19,8 @@ const profile = (id: string, extra: Partial<UserProfile> = {}): UserProfile => (
   followingCount: 0,
   postsCount: 0,
   isFollowing: false,
+  isPrivate: false,
+  followRequestPending: false,
   isOnline: false,
   lastSeenAt: null,
   ...extra,

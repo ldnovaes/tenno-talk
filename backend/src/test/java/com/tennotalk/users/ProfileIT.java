@@ -161,6 +161,36 @@ class ProfileIT extends IntegrationTest {
     }
 
     @Test
+    void privateProfilesRequireApprovalAndBlockingSilentlyCancelsRequests() throws Exception {
+        UUID owner = data.user("privateowner", "pt-BR");
+        UUID requester = data.user("requester", "vi-VN");
+        UUID second = data.user("second", "en-US");
+        data.setPreference(owner, "profile_visibility", "private");
+        mvc.perform(put("/api/profiles/" + owner + "/follow").with(as(requester)).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isPrivate").value(true))
+                .andExpect(jsonPath("$.isFollowing").value(false))
+                .andExpect(jsonPath("$.followRequestPending").value(true))
+                .andExpect(jsonPath("$.followersCount").value(0));
+        mvc.perform(get("/api/me/follow-requests").with(as(owner)))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].username").value("requester"));
+        mvc.perform(post("/api/me/follow-requests/" + requester + "/approve").with(as(second)).with(csrf()))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/me/follow-requests/" + requester + "/approve").with(as(owner)).with(csrf()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/profiles/privateowner").with(as(requester)))
+                .andExpect(jsonPath("$.isFollowing").value(true))
+                .andExpect(jsonPath("$.followRequestPending").value(false));
+        mvc.perform(put("/api/profiles/" + owner + "/follow").with(as(second)).with(csrf()))
+                .andExpect(jsonPath("$.followRequestPending").value(true));
+        mvc.perform(put("/api/profiles/" + second + "/block").with(as(owner)).with(csrf()))
+                .andExpect(status().isNoContent());
+        mvc.perform(get("/api/me/follow-requests").with(as(owner))).andExpect(jsonPath("$", hasSize(0)));
+        assertThat(jdbc.sql("SELECT count(*) FROM follow_requests").query(Long.class).single()).isZero();
+    }
+
+    @Test
     void blockingHidesPeopleBothWaysAndRemovesFollows() throws Exception {
         UUID rafael = data.user("rafael", "pt-BR");
         UUID linh = data.user("linh", "vi-VN");

@@ -42,7 +42,7 @@ export function createQueryClient(): QueryClient {
       queries: {
         staleTime: 30_000,
         retry: (failureCount, error) => failureCount < 1 && toAppError(error).retryable,
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
       },
       mutations: { retry: 0 },
     },

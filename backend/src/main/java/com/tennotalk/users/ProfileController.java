@@ -126,6 +126,23 @@ public class ProfileController {
         return profiles.blocked(me.userId());
     }
 
+    @GetMapping("/me/follow-requests")
+    public List<UserProfileDto> followRequests(@AuthenticationPrincipal AppPrincipal me) {
+        return profiles.followRequests(me.userId());
+    }
+
+    @PostMapping("/me/follow-requests/{userId}/approve")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void approveFollowRequest(@AuthenticationPrincipal AppPrincipal me, @PathVariable String userId) {
+        profiles.decideFollowRequest(me.userId(), Ids.parse(userId), true);
+    }
+
+    @DeleteMapping("/me/follow-requests/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void rejectFollowRequest(@AuthenticationPrincipal AppPrincipal me, @PathVariable String userId) {
+        profiles.decideFollowRequest(me.userId(), Ids.parse(userId), false);
+    }
+
     @GetMapping("/people/suggestions")
     public List<UserProfileDto> suggestions(@AuthenticationPrincipal AppPrincipal me, @RequestParam(defaultValue = "6") int limit) {
         return profiles.suggestions(me.userId(), limit);

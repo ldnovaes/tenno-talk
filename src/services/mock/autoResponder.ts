@@ -5,6 +5,7 @@ import { publish } from "./events";
 import { getMockConfig } from "./latency";
 import { PHRASES } from "./phrasebook";
 import { isUserActive } from "./presence";
+import { canDirectMessage } from "./privacy";
 import type { MessageRecord } from "./schema";
 import { scheduleTranslations } from "./translationPipeline";
 
@@ -39,6 +40,8 @@ function reply(conversationId: string, botId: string): void {
     const bot = db.users[botId];
     const conversation = db.conversations[conversationId];
     if (!bot || !conversation) return null;
+    const recipient = conversation.memberIds.find((id) => id !== botId);
+    if (!recipient || !canDirectMessage(db, botId, recipient)) return null;
     const script = REPLIES[baseLanguage(bot.nativeLanguage)] ?? REPLIES["en"] ?? [];
     const sent = Object.values(db.messages).filter(
       (m) => m.conversationId === conversationId && m.senderId === botId,
@@ -85,14 +88,23 @@ export function maybeAutoRespond(message: MessageRecord): void {
   const botId = conversation.memberIds.find((id) => id !== message.senderId);
   const bot = botId ? db.users[botId] : undefined;
   if (!botId || !bot || isUserActive(botId)) return;
+  if (!canDirectMessage(db, message.senderId, botId)) return;
 
   const step = config.autoReplyDelayMs;
-  setTimeout(() => setCursor(conversation.id, botId, message.id, "delivered"), step * 0.8);
+  setTimeout(() => {
+    if (canDirectMessage(mockDb.read(), message.senderId, botId))
+      setCursor(conversation.id, botId, message.id, "delivered");
+  }, step * 0.8);
   if (!bot.isOnline) return;
-  setTimeout(() => setCursor(conversation.id, botId, message.id, "read"), step * 1.8);
+  setTimeout(() => {
+    if (canDirectMessage(mockDb.read(), message.senderId, botId))
+      setCursor(conversation.id, botId, message.id, "read");
+  }, step * 1.8);
   setTimeout(
-    () =>
-      publish({ kind: "typing", conversationId: conversation.id, userId: botId, isTyping: true }),
+    () => {
+      if (canDirectMessage(mockDb.read(), botId, message.senderId))
+        publish({ kind: "typing", conversationId: conversation.id, userId: botId, isTyping: true });
+    },
     step * 2.4,
   );
   setTimeout(() => reply(conversation.id, botId), step * 4.5);

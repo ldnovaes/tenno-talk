@@ -6,6 +6,7 @@ import { maybeAutoRespond } from "../autoResponder";
 import { mockDb } from "../db";
 import { publish } from "../events";
 import { mockRequest } from "../latency";
+import { blockedEitherWay, requireDirectSend } from "../privacy";
 import { projectConversation, projectMessage, sortedMessages } from "../projections";
 import type {
   ConversationRecord,
@@ -208,11 +209,12 @@ export const mockChatService: ChatService = {
     const viewerId = requireViewerId();
     const message = await mockRequest(() =>
       mockDb.update((db) => {
-        memberConversation(db, input.conversationId, viewerId);
+        const conversation = memberConversation(db, input.conversationId, viewerId);
         const existing = Object.values(db.messages).find(
           (m) => m.senderId === viewerId && m.clientId === input.clientId,
         );
         if (existing) return { record: existing, created: false };
+        requireDirectSend(db, conversation, viewerId);
         const sender = db.users[viewerId];
         if (!sender) throw new AppError("unauthenticated", "Your session has expired.");
         if (
@@ -316,7 +318,8 @@ export const mockChatService: ChatService = {
         if (!source) throw new AppError("not_found", "Message not found.");
         memberConversation(db, source.conversationId, viewerId);
         return conversationIds.map((conversationId) => {
-          memberConversation(db, conversationId, viewerId);
+          const conversation = memberConversation(db, conversationId, viewerId);
+          requireDirectSend(db, conversation, viewerId);
           return createMessage(db, {
             clientId: null,
             conversationId,
@@ -352,14 +355,13 @@ export const mockChatService: ChatService = {
         if (userId === viewerId) throw new AppError("validation", "You can't message yourself.");
         const target = db.users[userId];
         if (!target) throw new AppError("not_found", "User not found.");
+        if (blockedEitherWay(db, viewerId, userId))
+          throw new AppError("forbidden", "Messaging is unavailable.");
         const existing = Object.values(db.conversations).find(
           (c) =>
             c.kind === "direct" && c.memberIds.includes(viewerId) && c.memberIds.includes(userId),
         );
         if (existing) return projectConversation(db, existing, viewerId);
-        if (target.blockedUserIds.includes(viewerId)) {
-          throw new AppError("forbidden", "You can't message this person.");
-        }
         const audience = target.preferences.privacy.whoCanMessage;
         const followsViewer = db.follows.some(
           (f) => f.followerId === userId && f.followeeId === viewerId,

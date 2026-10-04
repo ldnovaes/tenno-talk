@@ -75,6 +75,8 @@ public class ProfileService {
                 profile.followingCount(),
                 profile.postsCount(),
                 false,
+                profile.isPrivate(),
+                false,
                 presence.isOnline(viewer),
                 user.lastSeenAt(),
                 user.email(),
@@ -172,6 +174,8 @@ public class ProfileService {
             interfaceLanguage = patch.interfaceLanguage();
         }
         preferences.save(viewer, new Preferences(interfaceLanguage, t, p, n));
+        if ("private".equals(current.privacy().profileVisibility()) && "public".equals(p.profileVisibility()))
+            graph.approveAll(viewer);
         recordReceivingChange(viewer, current, t.receivingLanguage());
         return me(viewer);
     }
@@ -221,7 +225,12 @@ public class ProfileService {
     @Transactional
     public UserProfileDto follow(UUID viewer, UUID target) {
         requireOtherVisibleUser(viewer, target);
-        if (graph.follow(viewer, target)) {
+        graph.lockPair(viewer, target);
+        if (graph.blockedEitherWay(viewer, target)) throw ApiException.notFound("User not found.");
+        if (graph.follows(viewer, target)) return profiles.byId(viewer, target).orElseThrow();
+        if ("private".equals(preferences.profileVisibilityForShare(target))) {
+            graph.requestFollow(viewer, target);
+        } else if (graph.follow(viewer, target)) {
             notifications.notify(target, viewer, "follow", com.tennotalk.notifications.NotificationService.Target.none());
         }
         return profiles.byId(viewer, target).orElseThrow();
@@ -229,6 +238,7 @@ public class ProfileService {
 
     @Transactional
     public UserProfileDto unfollow(UUID viewer, UUID target) {
+        graph.lockPair(viewer, target);
         graph.unfollow(viewer, target);
         return profiles.byId(viewer, target).orElseThrow(() -> ApiException.notFound("User not found."));
     }
@@ -240,10 +250,25 @@ public class ProfileService {
                 Map.of());
     }
 
+    @Transactional(readOnly = true)
+    public List<UserProfileDto> followRequests(UUID viewer) {
+        return profiles.list(viewer, "EXISTS (SELECT 1 FROM follow_requests r WHERE r.followee_id = :viewer AND r.follower_id = u.id) ORDER BY u.display_name", Map.of());
+    }
+
+    @Transactional
+    public void decideFollowRequest(UUID viewer, UUID follower, boolean approve) {
+        graph.lockPair(viewer, follower);
+        if (!graph.requested(follower, viewer)) throw ApiException.notFound("Follow request not found.");
+        if (graph.blockedEitherWay(viewer, follower)) throw ApiException.notFound("Follow request not found.");
+        if (approve) graph.approveFollow(follower, viewer);
+        else graph.rejectFollow(follower, viewer);
+    }
+
     @Transactional
     public void block(UUID viewer, UUID target) {
         if (viewer.equals(target)) throw ApiException.validation("You can't block yourself.");
         users.findById(target).orElseThrow(() -> ApiException.notFound("User not found."));
+        graph.lockPair(viewer, target);
         graph.block(viewer, target);
     }
 
