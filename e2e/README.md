@@ -2,7 +2,7 @@
 
 ## Suíte principal (`bun run e2e`)
 
-Roda contra o **mock** (o Vite sobe sozinho em `:4173`), em dois perfis: desktop (1280×860) e celular (Pixel 7).
+Roda contra o **mock**, usando o **build de produção** (`vite build` + `vite preview` em `:4173`, nunca o servidor de desenvolvimento, que recarrega a página ao otimizar dependências no meio do teste), em dois perfis: desktop (1280×860) e celular (Pixel 7).
 
 | Arquivo | O que cobre |
 |---|---|

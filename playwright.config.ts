@@ -24,10 +24,14 @@ export default defineConfig({
     },
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
+  // The production build, not the dev server: the dev server optimizes dependencies the first time
+  // a lazy page opens and reloads the page mid-test. Never reuse a server already running: it may
+  // serve an older build.
   webServer: {
-    command: `vite --port ${PORT} --strictPort`,
+    command: `vite build --outDir dist-e2e --emptyOutDir && vite preview --outDir dist-e2e --port ${PORT} --strictPort`,
     port: PORT,
-    reuseExistingServer: !process.env["CI"],
+    reuseExistingServer: false,
+    timeout: 180_000,
     env: { VITE_DATA_SOURCE: "mock" },
   },
 });

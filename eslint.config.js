@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist", "backend", "deploy", "e2e/.playwright", "playwright-report", "test-results"],
+    ignores: ["dist", "dist-e2e", "backend", "deploy", "e2e/.playwright", "playwright-report", "test-results"],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
