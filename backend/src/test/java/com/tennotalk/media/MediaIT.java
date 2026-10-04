@@ -22,6 +22,7 @@ import tools.jackson.databind.JsonNode;
 
 import static com.tennotalk.support.TestData.as;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -84,6 +85,16 @@ class MediaIT extends IntegrationTest {
         assertThat(media.get("url").asString()).isEqualTo("/api/media/" + media.get("id").asString());
         assertThat(media.get("width").asInt()).isEqualTo(4);
         assertThat(media.get("height").asInt()).isEqualTo(3);
+    }
+
+    @Test
+    void downloadsRevalidateAccessAfterPrivacyChanges() throws Exception {
+        String id = uploadOk(rafael, "a.png", image("png", 2, 2));
+        api.postOk(rafael, "/api/posts", Map.of("mediaIds", List.of(id)));
+        download(linh, id).andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("no-cache")));
+        data.setPreference(rafael, "profile_visibility", "private");
+        download(linh, id).andExpect(status().isNotFound());
     }
 
     @Test

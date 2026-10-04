@@ -1,7 +1,6 @@
 package com.tennotalk.media;
 
 import java.io.IOException;
-import java.time.Duration;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -50,7 +49,7 @@ public class MediaController {
                 .contentType(MediaType.parseMediaType(row.mimeType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .header("X-Content-Type-Options", "nosniff")
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePrivate())
+                .cacheControl(CacheControl.noCache().cachePrivate())
                 .body(new FileSystemResource(media.pathOf(row)));
     }
 }
