@@ -33,6 +33,9 @@ export function ProfileHeader({ profile, isOwn, onMessage, onEdit }: ProfileHead
   const { t } = useTranslation();
   const stories = useUserStories(profile.id);
   const navigate = useOverlayNavigate();
+  // Someone who blocked the viewer appears only by name (PLAN.md §31.1); any block removes the actions.
+  const minimal = profile.blockStatus === "blocked_me";
+  const blocked = profile.blockStatus !== "none";
   return (
     <section className="flex flex-col items-center gap-4 px-5 pb-4 pt-6 text-center">
       {stories.data?.length ? (
@@ -69,46 +72,52 @@ export function ProfileHeader({ profile, isOwn, onMessage, onEdit }: ProfileHead
           {profile.bio}
         </p>
       )}
-      <dl className="flex flex-wrap items-center justify-center gap-2 text-sm">
-        <div className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-accent-foreground">
-          <dt className="font-medium">{t("profile.native")}</dt>
-          <dd>
-            <LanguageLabel code={profile.nativeLanguage} />
-          </dd>
-        </div>
-        {profile.learningLanguages.length > 0 && (
-          <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
-            <dt className="font-medium">{t("profile.learning")}</dt>
-            <dd className="flex gap-1.5">
-              {profile.learningLanguages.map((code, index) => (
-                <span key={code}>
-                  <LanguageLabel code={code} />
-                  {index < profile.learningLanguages.length - 1 && ","}
-                </span>
-              ))}
+      {!minimal && (
+        <dl className="flex flex-wrap items-center justify-center gap-2 text-sm">
+          <div className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-accent-foreground">
+            <dt className="font-medium">{t("profile.native")}</dt>
+            <dd>
+              <LanguageLabel code={profile.nativeLanguage} />
             </dd>
           </div>
-        )}
-      </dl>
-      <div className="flex gap-8">
-        <Stat value={profile.postsCount} label={t("profile.posts")} />
-        <Stat value={profile.followersCount} label={t("profile.followers")} />
-        <Stat value={profile.followingCount} label={t("profile.following")} />
-      </div>
-      <div className="flex w-full max-w-xs gap-2">
-        {isOwn ? (
-          <Button variant="secondary" className="flex-1" onClick={onEdit}>
-            {t("profile.editProfile")}
-          </Button>
-        ) : (
-          <>
-            <FollowButton profile={profile} size="default" className="flex-1" />
-            <Button variant="secondary" className="flex-1" onClick={onMessage}>
-              {t("profile.message")}
+          {profile.learningLanguages.length > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1">
+              <dt className="font-medium">{t("profile.learning")}</dt>
+              <dd className="flex gap-1.5">
+                {profile.learningLanguages.map((code, index) => (
+                  <span key={code}>
+                    <LanguageLabel code={code} />
+                    {index < profile.learningLanguages.length - 1 && ","}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
+      {!minimal && (
+        <div className="flex gap-8">
+          <Stat value={profile.postsCount} label={t("profile.posts")} />
+          <Stat value={profile.followersCount} label={t("profile.followers")} />
+          <Stat value={profile.followingCount} label={t("profile.following")} />
+        </div>
+      )}
+      {(isOwn || !blocked) && (
+        <div className="flex w-full max-w-xs gap-2">
+          {isOwn ? (
+            <Button variant="secondary" className="flex-1" onClick={onEdit}>
+              {t("profile.editProfile")}
             </Button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <FollowButton profile={profile} size="default" className="flex-1" />
+              <Button variant="secondary" className="flex-1" onClick={onMessage}>
+                {t("profile.message")}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }

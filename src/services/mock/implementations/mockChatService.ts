@@ -6,7 +6,12 @@ import { maybeAutoRespond } from "../autoResponder";
 import { mockDb } from "../db";
 import { publish } from "../events";
 import { mockRequest } from "../latency";
-import { blockedEitherWay, requireDirectSend } from "../privacy";
+import {
+  blockedEitherWay,
+  canDirectMessage,
+  requireCanMessage,
+  requireDirectSend,
+} from "../privacy";
 import { projectConversation, projectMessage, sortedMessages } from "../projections";
 import type {
   ConversationRecord,
@@ -355,23 +360,14 @@ export const mockChatService: ChatService = {
         if (userId === viewerId) throw new AppError("validation", "You can't message yourself.");
         const target = db.users[userId];
         if (!target) throw new AppError("not_found", "User not found.");
-        if (blockedEitherWay(db, viewerId, userId))
-          throw new AppError("forbidden", "Messaging is unavailable.");
         const existing = Object.values(db.conversations).find(
           (c) =>
             c.kind === "direct" && c.memberIds.includes(viewerId) && c.memberIds.includes(userId),
         );
-        if (existing) return projectConversation(db, existing, viewerId);
-        const audience = target.preferences.privacy.whoCanMessage;
-        const followsViewer = db.follows.some(
-          (f) => f.followerId === userId && f.followeeId === viewerId,
-        );
-        if (audience === "nobody" || (audience === "followers" && !followsViewer)) {
-          throw new AppError(
-            "forbidden",
-            "This person only accepts messages from people they follow.",
-          );
-        }
+        // An existing conversation stays reachable (history, the reason in place of the composer) unless blocked.
+        if (existing && !blockedEitherWay(db, viewerId, userId))
+          return projectConversation(db, existing, viewerId);
+        requireCanMessage(db, viewerId, userId);
         const now = new Date().toISOString();
         const conversation: ConversationRecord = {
           id: `conv_${crypto.randomUUID()}`,
@@ -407,6 +403,9 @@ export const mockChatService: ChatService = {
           throw new AppError("conflict", "You can create only one group.");
         }
         const members = [...new Set([viewerId, ...memberIds])].filter((id) => db.users[id]);
+        // Adding someone to a group is messaging them: their "Who can message me" applies (PLAN.md §31.1).
+        if (members.some((id) => id !== viewerId && !canDirectMessage(db, viewerId, id)))
+          throw new AppError("validation", "Some people can't be added.");
         if (members.length < 3)
           throw new AppError("validation", "Add at least two people to the group.");
         const now = new Date().toISOString();

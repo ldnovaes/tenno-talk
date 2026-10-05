@@ -42,7 +42,7 @@ public final class ProfileInputs {
             Boolean autoTranslateStories,
             Boolean learningMode) {}
 
-    public record PrivacyPatch(String profileVisibility, String whoCanMessage, String whoCanComment) {}
+    public record PrivacyPatch(String profileVisibility, String whoCanMessage, String whoCanComment, String whoCanSeeOnline) {}
 
     public record NotificationsPatch(Boolean messages, Boolean comments, Boolean likes, Boolean followers) {}
 }

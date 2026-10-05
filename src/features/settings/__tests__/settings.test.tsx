@@ -34,6 +34,16 @@ describe("settings", () => {
     expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
+  it("hides when I'm online from everyone", async () => {
+    const user = userEvent.setup();
+    renderApp("/settings/privacy");
+    await user.click(await screen.findByRole("combobox", { name: "Who can see when I'm online" }));
+    await user.click(await screen.findByRole("option", { name: "Nobody" }));
+    await waitFor(() =>
+      expect(mockDb.read().users["usr_rafael"]?.preferences.privacy.whoCanSeeOnline).toBe("nobody"),
+    );
+  });
+
   it("changes privacy rules and persists them", async () => {
     const user = userEvent.setup();
     renderApp("/settings/privacy");

@@ -102,7 +102,7 @@ class SocialReachIT extends IntegrationTest {
 
     /** Production, 2026-10-04: one account blocked the other mid-test and nothing on screen said so. */
     @Test
-    void aBlockHidesBothProfilesAndSilencesTheConversationBothWays() throws Exception {
+    void aBlockMarksBothProfilesAndSilencesTheConversationBothWays() throws Exception {
         UUID caladris = data.user("caladris", "pt-BR"), teste = data.user("teste", "pt-BR");
         UUID conversation = steps.direct(teste, caladris);
         post(caladris);
@@ -113,8 +113,9 @@ class SocialReachIT extends IntegrationTest {
 
         api.put(caladris, "/api/profiles/" + teste + "/block").andExpect(status().isNoContent());
 
-        api.get(caladris, "/api/profiles/teste").andExpect(status().isNotFound());
-        api.get(teste, "/api/profiles/caladris").andExpect(status().isNotFound());
+        // Profiles stay reachable, but say so (PLAN.md §31.1): a notice for the blocker, a minimal profile for the other.
+        assertThat(api.getOk(caladris, "/api/profiles/teste").get("blockStatus").asString()).isEqualTo("blocked_by_me");
+        assertThat(api.getOk(teste, "/api/profiles/caladris").get("blockStatus").asString()).isEqualTo("blocked_me");
         assertThat(api.getOk(caladris, "/api/discover").get("items").size()).isZero();
         assertThat(api.getOk(teste, "/api/discover").get("items").size()).isZero();
         int testeUnread = unreadIn(teste, conversation), caladrisUnread = unreadIn(caladris, conversation);

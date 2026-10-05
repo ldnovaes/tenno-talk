@@ -254,7 +254,16 @@ export const en = {
     block: "Block {{name}}",
     blocked: "{{name}} was blocked",
     blockConfirmTitle: "Block {{name}}?",
-    blockConfirmDescription: "They won't be able to message you or see your profile in Discover.",
+    blockConfirmDescription:
+      "You won't see each other's posts and stories or be able to message each other. You can unblock them anytime.",
+    unblock: "Unblock {{name}}",
+    unblocked: "{{name}} was unblocked",
+    unblockAction: "Unblock",
+    youBlockedTitle: "You blocked {{name}}",
+    youBlockedDescription:
+      "Unblock to see their posts and stories and to message each other again.",
+    unavailableTitle: "This profile isn't available",
+    unavailableDescription: "You can't see this person's posts or stories.",
     tabs: { label: "Profile content", posts: "Posts", media: "Media", tagged: "Tagged" },
     emptyPostsOwn: "Share your first moment.",
     emptyPosts: "No posts yet",
@@ -473,6 +482,7 @@ export const en = {
       private: "Private",
       whoCanMessage: "Who can message me",
       whoCanComment: "Who can comment",
+      whoCanSeeOnline: "Who can see when I'm online",
       everyone: "Everyone",
       followers: "People I follow",
       nobody: "Nobody",
@@ -620,6 +630,11 @@ export const en = {
       removeAttachment: "Remove attachment",
       cancelReply: "Cancel reply",
       replyingTo: "Replying to {{name}}",
+      restriction: {
+        you_blocked: "You blocked {{name}}.",
+        followers_only: "{{name}} only accepts messages from people they follow.",
+        unavailable: "You can't message this person.",
+      },
     },
     newChatDialog: {
       title: "New chat",

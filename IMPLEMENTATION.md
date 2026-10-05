@@ -611,3 +611,19 @@ Antes, abrir uma conversa depois de trocar o idioma de recebimento traduzia de n
 - [x] Mensagem sem tradução gravada para o idioma da época aparece só no original (não fica "pending" para sempre)
 - [x] Mock no mesmo modelo (`receivingLanguageHistory`, versão 7 do banco local)
 - [x] Testes: backend 407 (inclui troca e volta de idioma sem nenhuma chamada nova à IA), frontend 357
+
+## Auditoria de privacidade (2026-10-05)
+
+Bugs de produção: o perfil de quem eu bloqueei dava "not found"; depois de desbloquear, e com perfil privado, as mensagens eram recusadas em silêncio (a regra "People I follow" do destinatário, sem o follow apagado pelo bloqueio ou ainda pendente); a mensagem recusada travava a fila de envio da conversa; sem mensagens aceitas, os contadores não subiam. Regras completas em [PLAN.md §31.1](PLAN.md#311-matriz-de-privacidade-2026-10-05).
+
+- [x] Matriz de privacidade no PLAN.md §31.1 e decisões (§34.1 #12 e #21, §36.1)
+- [x] `PrivacyMatrixIT` (backend, 405 combinações + 3 sequências de produção) e `privacyMatrix.test.ts` (mock, os mesmos 405 casos); mutações de propósito na regra de presença e na de pedido pendente quebram 55 casos
+- [x] Motivo de não poder enviar (`sendRestriction`) no backend, no mock e na conversa; pedido pendente do destinatário conta para "People I follow"
+- [x] Fila de envio: falha definitiva não segura as mensagens seguintes; a mensagem recusada é reenviada quando a restrição some; notificações de follow/pedido/aceite atualizam as conversas ao vivo
+- [x] Perfil com bloqueio (`blockStatus`), aviso com Unblock e perfil mínimo; o perfil não fecha mais ao tocar em Message (uma recusa deixava a pessoa em /chats só com um toast)
+- [x] Grupos respeitam "Who can message me"
+- [x] "Who can see when I'm online" (migration V9) em perfil, busca, conversas e eventos de presença (`RealtimeWebSocketIT`)
+- [x] Pool do agendador comporta todas as tarefas `@Scheduled` (`SchedulingPoolIT`): 12 threads para 11 tarefas
+- [x] E2E stack (`e2e/stack/privacy.spec.ts`): bloqueio/desbloqueio e privado + "People I follow", com o badge de Chats subindo do outro lado
+
+> Notas: a investigação em produção (somente leitura) mostrou que os contadores não tinham defeito próprio: entre 10:46 e 10:59 de 05/10 nenhuma mensagem foi aceita (403), então não havia o que contar. Grupos ficaram fora do e2e da pilha; estão no IT e na matriz do mock.

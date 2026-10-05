@@ -10,7 +10,7 @@ public record Preferences(String interfaceLanguage, Translation translation, Pri
             boolean autoTranslateStories,
             boolean learningMode) {}
 
-    public record Privacy(String profileVisibility, String whoCanMessage, String whoCanComment) {}
+    public record Privacy(String profileVisibility, String whoCanMessage, String whoCanComment, String whoCanSeeOnline) {}
 
     public record Notifications(boolean messages, boolean comments, boolean likes, boolean followers) {}
 }

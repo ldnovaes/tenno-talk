@@ -1,8 +1,7 @@
 import { useBack } from "@/app/router/useBack";
-import { Flag, ImagePlus, LockKeyhole, MoreHorizontal, Settings, UserX } from "lucide-react";
-import { useState } from "react";
+import { ImagePlus, LockKeyhole, Settings, UserX } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { OverlayLink } from "@/app/router/OverlayLink";
 import { useOverlayNavigate } from "@/app/router/overlay";
@@ -11,21 +10,15 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
-import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { useStartConversation } from "@/features/chat/hooks/useMessageMutations";
 import { PostsGrid } from "@/features/feed/components/PostsGrid";
-import { BlockUserDialog } from "@/features/profile/components/BlockUserDialog";
+import { BlockedProfileNotice } from "@/features/profile/components/BlockedProfileNotice";
 import { ProfileHeader } from "@/features/profile/components/ProfileHeader";
+import { ProfileMenu } from "@/features/profile/components/ProfileMenu";
 import { ProfileSkeleton } from "@/features/profile/components/ProfileSkeleton";
 import { ProfileTabs } from "@/features/profile/components/ProfileTabs";
-import { useBlockUser, useProfile } from "@/features/profile/hooks/useProfile";
+import { useProfile } from "@/features/profile/hooks/useProfile";
 import { usePanel } from "@/layouts/panelContext";
 import { toAppError } from "@/lib/errors";
 
@@ -35,13 +28,9 @@ export default function ProfilePage() {
   const { username = "" } = useParams();
   const me = useCurrentUser();
   const panel = usePanel();
-  const navigate = useNavigate();
   const overlayNavigate = useOverlayNavigate();
   const profile = useProfile(username);
   const start = useStartConversation();
-  const block = useBlockUser();
-  const [confirmBlock, setConfirmBlock] = useState(false);
-  const [reporting, setReporting] = useState(false);
   const isOwn = profile.data?.id === me.id;
 
   const onBack = panel ? panel.close : isOwn ? undefined : backSafe;
@@ -53,23 +42,7 @@ export default function ProfilePage() {
         </OverlayLink>
       </Button>
     ) : (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label={t("profile.menu")}>
-            <MoreHorizontal className="size-5" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setReporting(true)}>
-            <Flag className="size-4" aria-hidden />
-            {t("moderation.report")}
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive" onSelect={() => setConfirmBlock(true)}>
-            <UserX className="size-4" aria-hidden />
-            {t("profile.block", { name: profile.data.displayName })}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ProfileMenu profile={profile.data} />
     )
   ) : null;
 
@@ -97,60 +70,42 @@ export default function ProfilePage() {
             profile={profile.data}
             isOwn={isOwn}
             onEdit={() => overlayNavigate(paths.editProfile(me.username))}
-            onMessage={() => {
-              panel?.close();
-              start.mutate(profile.data.id);
-            }}
+            // Opening the chat leaves the side panel by itself; a refusal keeps the profile on screen.
+            onMessage={() => start.mutate(profile.data.id)}
           />
-          <ProfileTabs
-            posts={
-              <PostsGrid
-                userId={profile.data.id}
-                empty={
-                  profile.data.isPrivate && !isOwn && !profile.data.isFollowing ? (
-                    <EmptyState
-                      icon={LockKeyhole}
-                      title={t("profile.privateTitle")}
-                      description={t("profile.privateDescription")}
-                    />
-                  ) : (
-                    <EmptyState
-                      icon={ImagePlus}
-                      title={t("profile.emptyPosts")}
-                      description={isOwn ? t("profile.emptyPostsOwn") : undefined}
-                      action={
-                        isOwn ? (
-                          <Button asChild size="sm">
-                            <OverlayLink to={paths.create()}>{t("nav.create")}</OverlayLink>
-                          </Button>
-                        ) : undefined
-                      }
-                    />
-                  )
-                }
-              />
-            }
-          />
-          <ReportDialog
-            target={reporting ? { kind: "user", id: profile.data.id } : null}
-            onClose={() => setReporting(false)}
-          />
-          <BlockUserDialog
-            name={profile.data.displayName}
-            open={confirmBlock}
-            onOpenChange={setConfirmBlock}
-            onConfirm={() => {
-              block.mutate(
-                { userId: profile.data.id, name: profile.data.displayName },
-                {
-                  onSuccess: () => {
-                    if (panel) panel.close();
-                    else navigate(paths.chats());
-                  },
-                },
-              );
-            }}
-          />
+          {profile.data.blockStatus !== "none" ? (
+            <BlockedProfileNotice profile={profile.data} />
+          ) : (
+            <ProfileTabs
+              posts={
+                <PostsGrid
+                  userId={profile.data.id}
+                  empty={
+                    profile.data.isPrivate && !isOwn && !profile.data.isFollowing ? (
+                      <EmptyState
+                        icon={LockKeyhole}
+                        title={t("profile.privateTitle")}
+                        description={t("profile.privateDescription")}
+                      />
+                    ) : (
+                      <EmptyState
+                        icon={ImagePlus}
+                        title={t("profile.emptyPosts")}
+                        description={isOwn ? t("profile.emptyPostsOwn") : undefined}
+                        action={
+                          isOwn ? (
+                            <Button asChild size="sm">
+                              <OverlayLink to={paths.create()}>{t("nav.create")}</OverlayLink>
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    )
+                  }
+                />
+              }
+            />
+          )}
         </>
       )}
     </div>

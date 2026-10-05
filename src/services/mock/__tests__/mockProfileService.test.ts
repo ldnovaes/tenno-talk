@@ -134,8 +134,9 @@ describe("mockProfileService", () => {
     await mockProfileService.block("usr_emma");
     expect(mockDb.read().followRequests).toHaveLength(0);
     writeMockSession("usr_emma");
-    await expect(mockProfileService.getProfile("rafael")).rejects.toMatchObject({
-      code: "not_found",
+    expect(await mockProfileService.getProfile("rafael")).toMatchObject({
+      blockStatus: "blocked_me",
+      bio: null,
     });
   });
 

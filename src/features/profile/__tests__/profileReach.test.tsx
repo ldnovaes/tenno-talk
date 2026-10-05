@@ -36,14 +36,34 @@ describe.each([
     expect(screen.queryByText("User not found")).not.toBeInTheDocument();
   });
 
-  // Production, 2026-10-04: a forgotten block made every profile of the other account "not found".
-  it("shows not found for a chat partner after a block", async () => {
+  // Production, 2026-10-05: the profile of someone I blocked said "not found" (PLAN.md §31.1).
+  it("says who I blocked, in the chat and on the profile, and unblocks from there", async () => {
     const user = userEvent.setup();
     mockDb.update((db) => {
       db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
     });
     renderApp("/chats/conv_rafael_linh");
+    expect(await screen.findByText("You blocked Linh Pham.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: /message/i })).not.toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Open Linh Pham's profile" }));
-    expect(await screen.findByText("User not found")).toBeInTheDocument();
+    expect(await screen.findByText("You blocked Linh Pham")).toBeInTheDocument();
+    expect(screen.queryByText("User not found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Message" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Unblock" }));
+    expect(await screen.findByRole("button", { name: "Message" })).toBeInTheDocument();
+    expect(mockDb.read().users["usr_rafael"]?.blockedUserIds).not.toContain("usr_linh");
+  });
+
+  it("shows only who someone is when they blocked me", async () => {
+    mockDb.update((db) => {
+      db.users["usr_linh"]?.blockedUserIds.push("usr_rafael");
+    });
+    renderApp("/u/linh");
+    expect(await screen.findByText("This profile isn't available")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Linh Pham" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Profile menu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Message" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Followers")).not.toBeInTheDocument();
   });
 });

@@ -27,7 +27,9 @@ public final class UserDtos {
             boolean isPrivate,
             boolean followRequestPending,
             boolean isOnline,
-            Instant lastSeenAt) {}
+            Instant lastSeenAt,
+            /** none · blocked_by_me · blocked_me (PLAN.md §31.1). */
+            String blockStatus) {}
 
     public record CurrentUserDto(
             UUID id,
@@ -46,6 +48,7 @@ public final class UserDtos {
             boolean followRequestPending,
             boolean isOnline,
             Instant lastSeenAt,
+            String blockStatus,
             String email,
             String role,
             List<String> connectedProviders,

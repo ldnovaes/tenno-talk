@@ -23,6 +23,7 @@ const profile = (id: string, extra: Partial<UserProfile> = {}): UserProfile => (
   followRequestPending: false,
   isOnline: false,
   lastSeenAt: null,
+  blockStatus: "none",
   ...extra,
 });
 

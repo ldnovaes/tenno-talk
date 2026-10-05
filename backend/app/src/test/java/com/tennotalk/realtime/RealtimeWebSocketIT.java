@@ -243,6 +243,40 @@ class RealtimeWebSocketIT extends IntegrationTest {
     }
 
     @Test
+    void hiddenPresenceIsNeverPushed() throws Exception {
+        conversation = steps.direct(rafael, linh);
+        data.setPreference(linh, "who_can_see_online", "nobody");
+        Client rafaelDevice = connect("rafael");
+        Client linhDevice = connect("linh");
+        assertThat(api.getOk(rafael, "/api/profiles/linh").get("isOnline").asBoolean()).isFalse();
+
+        linhDevice.session.close(CloseStatus.NORMAL);
+        Thread.sleep(500);
+        assertThat(rafaelDevice.frames.stream().map(f -> f.get("type").asString())).doesNotContain("user.online", "user.offline");
+        assertThat(api.getOk(rafael, "/api/profiles/linh").get("lastSeenAt").isNull()).isTrue();
+    }
+
+    @Test
+    void onlyPeopleTheOwnerFollowsSeeThemOnlineWithFollowers() throws Exception {
+        UUID ana = data.user("ana", "es-ES");
+        data.password(ana, passwords.encode("secret123"));
+        steps.direct(rafael, linh);
+        steps.direct(ana, linh);
+        data.setPreference(linh, "who_can_see_online", "followers");
+        data.follow(linh, rafael);
+        Client rafaelDevice = connect("rafael");
+        Client anaDevice = connect("ana");
+        connect("linh");
+
+        assertThat(rafaelDevice.next("user.online", p -> p.get("userId").asString().equals(linh.toString()))).isNotNull();
+        assertThat(api.getOk(rafael, "/api/profiles/linh").get("isOnline").asBoolean()).isTrue();
+        assertThat(api.getOk(ana, "/api/profiles/linh").get("isOnline").asBoolean()).isFalse();
+        Thread.sleep(300);
+        assertThat(anaDevice.frames.stream().filter(f -> "user.online".equals(f.get("type").asString()))
+                .map(f -> f.at("/payload/userId").asString())).doesNotContain(linh.toString());
+    }
+
+    @Test
     void onlineStatusShowsInProfiles() throws Exception {
         steps.direct(rafael, linh);
         connect("linh");

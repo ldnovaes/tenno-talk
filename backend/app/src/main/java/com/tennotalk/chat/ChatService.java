@@ -257,20 +257,19 @@ public class ChatService {
         return a.compareTo(b) < 0 ? a + ":" + b : b + ":" + a;
     }
 
-    /** Direct conversation, honoring blocks and "who can message me" (enforced here, PLAN.md §31). */
+    /** Direct conversation, honoring blocks and "who can message me" (enforced here, PLAN.md §31.1). */
     @Transactional
     public ConversationDto direct(UUID viewer, UUID target) {
         if (viewer.equals(target)) throw ApiException.validation("You can't message yourself.");
         UserRow other = users.findById(target).filter(UserRow::onboarded).orElseThrow(() -> ApiException.notFound("User not found."));
         graph.lockPair(viewer, target);
-        if (graph.blockedEitherWay(viewer, other.id())) throw ApiException.forbidden("Messaging is unavailable.");
+        SendRestriction restriction = directRestriction(viewer, other.id(), preferences.whoCanMessageForShare(target));
+        // An existing conversation stays reachable (its history, the reason in place of the composer) unless blocked.
         String key = directKey(viewer, target);
         Optional<UUID> existing = chat.findDirect(key);
-        if (existing.isPresent()) return conversation(viewer, existing.get());
-        String audience = preferences.whoCanMessageForShare(target);
-        if ("nobody".equals(audience) || ("followers".equals(audience) && !graph.follows(target, viewer))) {
-            throw ApiException.forbidden("This person only accepts messages from people they follow.");
-        }
+        boolean blocked = restriction == SendRestriction.YOU_BLOCKED || graph.hasBlocked(target, viewer);
+        if (existing.isPresent() && !blocked) return conversation(viewer, existing.get());
+        if (restriction != null) throw ApiException.forbidden(restriction.message());
         UUID id = Ids.newId();
         chat.insertConversation(id, "direct", null, viewer, key);
         chat.addMember(id, viewer, "admin");
@@ -287,7 +286,9 @@ public class ChatService {
         if (others.size() < 2) throw ApiException.validation("Add at least two people to the group.");
         for (UUID member : others) {
             UserRow user = users.findById(member).filter(UserRow::onboarded).orElseThrow(() -> ApiException.validation("Some people were not found."));
-            if (graph.blockedEitherWay(viewer, user.id())) throw ApiException.validation("Some people can't be added.");
+            // Adding someone to a group is messaging them: their "Who can message me" applies (PLAN.md §31.1).
+            if (directRestriction(viewer, user.id(), preferences.whoCanMessage(user.id())) != null)
+                throw ApiException.validation("Some people can't be added.");
         }
         UUID id = Ids.newId();
         try {
@@ -316,10 +317,29 @@ public class ChatService {
 
     private void requireDirectSendAllowed(UUID sender, UUID recipient) {
         graph.lockPair(sender, recipient);
-        if (graph.blockedEitherWay(sender, recipient)) throw ApiException.forbidden("Messaging is unavailable.");
-        String audience = preferences.whoCanMessageForShare(recipient);
-        if ("nobody".equals(audience) || ("followers".equals(audience) && !graph.follows(recipient, sender)))
-            throw ApiException.forbidden("Messaging is unavailable.");
+        SendRestriction restriction = directRestriction(sender, recipient, preferences.whoCanMessageForShare(recipient));
+        if (restriction != null) throw ApiException.forbidden(restriction.message());
+    }
+
+    /**
+     * Why {@code sender} can't message {@code recipient} directly, or null (PLAN.md §31.1). "People I follow" also
+     * accepts someone the recipient asked to follow: the pending request already shows the recipient's interest.
+     * {@code audience} is the recipient's "Who can message me", read with a lock when sending.
+     */
+    SendRestriction directRestriction(UUID sender, UUID recipient, String audience) {
+        if (graph.hasBlocked(sender, recipient)) return SendRestriction.YOU_BLOCKED;
+        if (graph.hasBlocked(recipient, sender) || "nobody".equals(audience)) return SendRestriction.UNAVAILABLE;
+        if ("followers".equals(audience) && !graph.follows(recipient, sender) && !graph.requested(recipient, sender))
+            return SendRestriction.FOLLOWERS_ONLY;
+        return null;
+    }
+
+    private String sendRestriction(UUID viewer, String kind, List<MemberRow> members) {
+        if (!"direct".equals(kind)) return null;
+        return members.stream().map(m -> m.user().id()).filter(id -> !id.equals(viewer)).findFirst()
+                .map(other -> directRestriction(viewer, other, preferences.whoCanMessage(other)))
+                .map(SendRestriction::wireName)
+                .orElse(null);
     }
 
     private static List<UUID> userIds(Collection<MemberRow> members) {
@@ -349,14 +369,15 @@ public class ChatService {
                     row.avatarUrl(),
                     row.createdBy(),
                     list.stream().map(m -> {
-                        boolean hidden = "direct".equals(row.kind()) && graph.blockedEitherWay(viewer, m.user().id());
+                        boolean visible = graph.presenceVisible(viewer, m.user().id());
                         return new ConversationMemberDto(m.user(), m.role(), m.receivingLanguage(),
-                            m.lastReadMessageId(), !hidden && presence.isOnline(m.user().id()), hidden ? null : m.lastSeenAt());
+                            m.lastReadMessageId(), visible && presence.isOnline(m.user().id()), visible ? m.lastSeenAt() : null);
                     }).toList(),
                     last,
                     me == null ? 0 : chat.unreadCount(row.id(), viewer, me.lastReadAt()),
                     me == null ? null : me.mutedUntil(),
-                    last != null && last.createdAt().isAfter(row.updatedAt()) ? last.createdAt() : row.updatedAt()));
+                    last != null && last.createdAt().isAfter(row.updatedAt()) ? last.createdAt() : row.updatedAt(),
+                    sendRestriction(viewer, row.kind(), list)));
         }
         result.sort((a, b) -> b.updatedAt().compareTo(a.updatedAt()));
         return result;

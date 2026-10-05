@@ -16,6 +16,8 @@ export interface PrivacyPreferences {
   profileVisibility: "public" | "private";
   whoCanMessage: Audience;
   whoCanComment: Audience;
+  /** Online indicator and "last seen" (PLAN.md §31.1). */
+  whoCanSeeOnline: Audience;
 }
 
 export interface NotificationPreferences {

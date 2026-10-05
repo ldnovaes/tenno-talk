@@ -182,8 +182,8 @@ export const mockProfileService: ProfileService = {
       const db = mockDb.read();
       const viewerId = requireViewerId();
       const user = findByUsername(db, username);
-      if (!user || !user.onboardingCompletedAt || blockedEitherWay(db, viewerId, user.id))
-        throw new AppError("not_found", "User not found.");
+      // A block shows a notice or a minimal profile instead of hiding it (PLAN.md §31.1).
+      if (!user || !user.onboardingCompletedAt) throw new AppError("not_found", "User not found.");
       return toUserProfile(user, db, viewerId);
     });
   },

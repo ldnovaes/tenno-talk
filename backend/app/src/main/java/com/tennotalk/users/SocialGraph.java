@@ -89,6 +89,11 @@ public class SocialGraph {
                 .single();
     }
 
+    public boolean presenceVisible(UUID viewer, UUID owner) {
+        return jdbc.sql("SELECT " + PresenceVisibility.visibleTo(":viewer", ":owner"))
+                .param("viewer", viewer).param("owner", owner).query(Boolean.class).single();
+    }
+
     /** Serializes a direct send and a block of the same pair until their transactions commit. */
     public void lockPair(UUID a, UUID b) {
         String pair = a.compareTo(b) < 0 ? a + ":" + b : b + ":" + a;

@@ -9,6 +9,11 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
     autoTranslateStories: true,
     learningMode: false,
   },
-  privacy: { profileVisibility: "public", whoCanMessage: "everyone", whoCanComment: "everyone" },
+  privacy: {
+    profileVisibility: "public",
+    whoCanMessage: "everyone",
+    whoCanComment: "everyone",
+    whoCanSeeOnline: "everyone",
+  },
   notifications: { messages: true, comments: true, likes: true, followers: true },
 };

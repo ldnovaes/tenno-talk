@@ -30,7 +30,8 @@ public class PreferencesRepository {
                         new Preferences.Privacy(
                                 rs.getString("profile_visibility"),
                                 rs.getString("who_can_message"),
-                                rs.getString("who_can_comment")),
+                                rs.getString("who_can_comment"),
+                                rs.getString("who_can_see_online")),
                         new Preferences.Notifications(
                                 rs.getBoolean("notify_messages"),
                                 rs.getBoolean("notify_comments"),
@@ -68,7 +69,7 @@ public class PreferencesRepository {
                 UPDATE user_preferences SET interface_language = :interfaceLanguage,
                     receiving_language = :receiving, display_mode = :mode,
                     auto_translate_posts = :autoPosts, auto_translate_stories = :autoStories, learning_mode = :learning,
-                    profile_visibility = :visibility, who_can_message = :message, who_can_comment = :comment,
+                    profile_visibility = :visibility, who_can_message = :message, who_can_comment = :comment, who_can_see_online = :online,
                     notify_messages = :nMessages, notify_comments = :nComments, notify_likes = :nLikes,
                     notify_followers = :nFollowers
                 WHERE user_id = :id
@@ -82,6 +83,7 @@ public class PreferencesRepository {
                 .param("visibility", p.privacy().profileVisibility())
                 .param("message", p.privacy().whoCanMessage())
                 .param("comment", p.privacy().whoCanComment())
+                .param("online", p.privacy().whoCanSeeOnline())
                 .param("nMessages", p.notifications().messages())
                 .param("nComments", p.notifications().comments())
                 .param("nLikes", p.notifications().likes())
@@ -95,6 +97,12 @@ public class PreferencesRepository {
                 .param("id", userId)
                 .query(String.class)
                 .single();
+    }
+
+    /** For reads (conversation listing); sends use {@link #whoCanMessageForShare}. */
+    public String whoCanMessage(UUID userId) {
+        return jdbc.sql("SELECT who_can_message FROM user_preferences WHERE user_id = :id")
+                .param("id", userId).query(String.class).single();
     }
 
     /** A shared row lock makes a completed privacy change authoritative for later sends. */

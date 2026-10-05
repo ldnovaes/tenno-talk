@@ -3,7 +3,11 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { listPending, updatePending } from "@/services/outbox/store";
 import { dispatchPending } from "@/services/outbox/dispatch";
+import { toAppError } from "@/lib/errors";
+
 import { upsertMessage } from "../lib/messageCache";
+import { dispatchable } from "../lib/outboxQueue";
+import { chatKeys } from "../lib/queryKeys";
 
 export function useOutbox(userId: string) {
   const client = useQueryClient();
@@ -23,9 +27,7 @@ export function useOutbox(userId: string) {
             preview.release();
             previews.delete(key);
           }
-        const waiting = new Set<string>();
         for (const entry of pending) {
-          if (stopped) break;
           let preview = previews.get(entry.key);
           if (!preview) {
             preview = pendingPreview(entry);
@@ -35,6 +37,10 @@ export function useOutbox(userId: string) {
             ...preview.message,
             deliveryStatus: entry.message.deliveryStatus,
           });
+        }
+        const waiting = new Set<string>();
+        for (const entry of dispatchable(pending)) {
+          if (stopped) break;
           if (waiting.has(entry.input.conversationId)) continue;
           waiting.add(entry.input.conversationId);
           try {
@@ -43,8 +49,11 @@ export function useOutbox(userId: string) {
               upsertMessage(client, message);
               waiting.delete(entry.input.conversationId);
             }
-          } catch {
-            /* Persisted failure state is displayed on the next pass. */
+          } catch (error) {
+            // Persisted failure state is displayed on the next pass. A refusal also refreshes the
+            // conversation, which then says why it can't send (PLAN.md §31.1).
+            if (toAppError(error).code === "forbidden")
+              void client.invalidateQueries({ queryKey: chatKeys.conversations() });
           }
         }
       } finally {

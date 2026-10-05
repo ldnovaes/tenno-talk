@@ -95,6 +95,26 @@ public class TestData {
         jdbc.sql("INSERT INTO blocks (blocker_id, blocked_id) VALUES (:a, :b)").param("a", blocker).param("b", blocked).update();
     }
 
+    /** A pending request to follow a private profile. */
+    public void requestFollow(UUID follower, UUID followee) {
+        jdbc.sql("INSERT INTO follow_requests (follower_id, followee_id) VALUES (:a, :b)").param("a", follower).param("b", followee).update();
+    }
+
+    /** A direct conversation created without the messaging rules (it may predate a block or a settings change). */
+    public UUID directConversation(UUID a, UUID b) {
+        UUID id = UUID.randomUUID();
+        String key = a.compareTo(b) < 0 ? a + ":" + b : b + ":" + a;
+        jdbc.sql("INSERT INTO conversations (id, kind, created_by, direct_key) VALUES (:id, 'direct', :a, :key)")
+                .param("id", id).param("a", a).param("key", key).update();
+        jdbc.sql("INSERT INTO conversation_members (conversation_id, user_id, role) VALUES (:c, :a, 'admin'), (:c, :b, 'member')")
+                .param("c", id).param("a", a).param("b", b).update();
+        return id;
+    }
+
+    public void lastSeen(UUID user, Instant at) {
+        jdbc.sql("UPDATE users SET last_seen_at = :at WHERE id = :id").param("at", Timestamp.from(at)).param("id", user).update();
+    }
+
     public void setPreference(UUID user, String column, Object value) {
         jdbc.sql("UPDATE user_preferences SET " + column + " = :v WHERE user_id = :id").param("v", value).param("id", user).update();
     }

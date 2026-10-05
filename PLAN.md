@@ -1443,7 +1443,7 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **Autorização no backend:** Spring Security + checagem de membership em todo acesso a conversa, mensagem e mídia (`ConversationAccessPolicy`). Sem RLS, então **todo endpoint tem teste de autorização**.
 - **Validação:** Bean Validation nos DTOs; tamanho máximo do texto da mensagem (ex.: 4.000 caracteres).
 - **Rate limit:** Bucket4j em memória (uma instância), por usuário autenticado ou por IP. Respostas 429 com `Retry-After` e `code: rate_limited`. Regras em `RateLimitRules` (por minuto): auth 10 · envio de mensagem/resposta a story 60 · upload 30 · tradução 60 · social (follow, block, like, comentário, reação) 120 · criação (post, story, conversa) 30 · admin 10. Leituras não têm limite. Bloqueio progressivo após falhas de login: depois.
-- **"Quem pode me mandar mensagem / comentar":** `everyone`, `followers` ou `nobody`. `followers` significa **pessoas que eu sigo** (rótulo "People I follow"). "Pessoas que me seguem" não protegeria nada, porque qualquer um pode seguir.
+- **"Quem pode me mandar mensagem / comentar / ver quando estou online":** `everyone`, `followers` ou `nobody`. `followers` significa **pessoas que eu sigo** (rótulo "People I follow"). "Pessoas que me seguem" não protegeria nada, porque qualquer um pode seguir. Todas as combinações estão na matriz do §31.1.
 - **Visibilidade:** perfil privado mostra posts e stories só a quem segue; bloqueio esconde conteúdo nos dois sentidos. A regra fica numa única função SQL (`Visibility.authorVisible`).
 - **Grupos:** no máximo 1 criado por pessoa (índice único parcial + checagem no serviço).
 - **Uploads:** MIME real, armazenamento fora da raiz web, servidos só por endpoint autorizado.
@@ -1458,6 +1458,39 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **Testes de segurança:** `SecurityMatrixIT` descobre todos os endpoints do Spring MVC e verifica que cada um responde 401 sem sessão, 403 sem CSRF nas escritas e 403 nas rotas de admin para quem não é admin. Nunca usar `dangerouslySetInnerHTML` com conteúdo de usuário.
 - **VPS:** acesso SSH só por chave, firewall (apenas 80/443/22), fail2ban, atualizações automáticas, Postgres sem porta exposta.
 - **Backups:** `pg_dump` diário + cópia de `/data/media` para fora da VPS, com restauração testada.
+
+### 31.1 Matriz de privacidade (2026-10-05)
+
+Fonte para os Termos de Uso. Cada regra vale no **backend** (o frontend só reflete) e é verificada por `PrivacyMatrixIT` (backend) e por `privacyMatrix.test.ts` (mock), com os mesmos casos. "Dono" é a pessoa dona do perfil, do conteúdo ou da configuração; "eu" é quem vê ou age. "Segue" sempre quer dizer **follow aprovado**: pedido pendente não dá acesso a conteúdo.
+
+**Relações cobertas:** estranho · eu sigo o dono · o dono me segue · mútuo · eu pedi para seguir (pendente) · o dono pediu para me seguir (pendente) · eu bloqueei o dono · o dono me bloqueou · mesmo grupo.
+
+**Configurações do dono** (Settings → Privacy):
+
+| Configuração | Valores | Padrão |
+|---|---|---|
+| Profile visibility | `public` · `private` | `public` |
+| Who can message me | `everyone` · `followers` (**pessoas que eu sigo**) · `nobody` | `everyone` |
+| Who can comment | `everyone` · `followers` (pessoas que eu sigo) · `nobody` | `everyone` |
+| Who can see when I'm online | `everyone` · `followers` (pessoas que eu sigo) · `nobody` | `everyone` |
+
+| Superfície | Regra |
+|---|---|
+| **Perfil** (`GET /api/profiles/{username}`) | Visível para todos. Se **eu bloqueei** o dono: perfil com `blockStatus: blocked_by_me` (nome, avatar, bio, país, idiomas e contadores; sem presença, posts, stories e follow), aviso "You blocked …" e botão Unblock. Se **o dono me bloqueou**: perfil mínimo `blocked_me` (nome, username, avatar, país e idioma nativo, que aparecem em qualquer menção à pessoa; bio, idiomas que aprende e contadores vazios), texto "This profile isn't available", sem menu nem ações |
+| **Busca e sugestões** | Mostram perfis públicos e privados; nunca quem tem bloqueio com o viewer, em qualquer sentido |
+| **Presença** (online e "last seen") | Visível se o dono escolheu `everyone`, ou `followers` e o dono me segue; nunca com `nobody` nem com bloqueio. Vale no perfil, na busca, nas sugestões, nas listas, nos membros das conversas e nos eventos `user.online`/`user.offline`. Oculta = `isOnline: false` e `lastSeenAt: null` (indistinguível de "offline sem histórico") |
+| **Posts, mídia de posts e stories** | Perfil público: todos sem bloqueio. Perfil privado: só quem segue (aprovado). Bloqueio esconde nos dois sentidos. Curtir, comentar, reagir, ver mídia e denunciar exigem poder ver (`Visibility.authorVisible`) |
+| **Comentar** | Exige ver o post e `Who can comment`: `everyone`; `followers` = o dono segue quem comenta; `nobody` = só o dono. Comentários de quem tem bloqueio comigo ficam ocultos para mim |
+| **Mensagem direta** (iniciar, enviar, encaminhar, responder story) | Recusada com bloqueio em qualquer sentido. Senão, vale o `Who can message me` do **destinatário**: `everyone`; `followers` = o destinatário segue o remetente **ou já pediu para segui-lo** (pedido pendente do destinatário para o remetente; quem pediu já demonstrou interesse); `nobody` = ninguém. Checado **em cada envio**, inclusive em conversa antiga |
+| **Motivo mostrado ao remetente** | `ConversationDto.sendRestriction` (o 403 traz o mesmo motivo no texto): `you_blocked` ("You blocked …" + Unblock), `followers_only` ("… only accepts messages from people they follow"), `unavailable` (o dono me bloqueou **ou** escolheu `nobody`: mesmo texto genérico, para nunca revelar um bloqueio) |
+| **Grupos** | Só posso adicionar quem aceitaria uma mensagem direta minha (mesma regra acima). Depois disso, mensagens do grupo chegam a todos os membros; entre membros com bloqueio, digitação, presença, recibos e reações não são enviados |
+| **Conversa direta com bloqueio** | Continua listada e legível para os dois; digitação, presença, recibos e reações não passam; o composer vira o aviso do motivo. Uma mensagem recusada (403) fica com Retry/Discard, não segura as seguintes e sai sozinha quando a restrição acaba (desbloqueio, follow de volta, mudança de configuração) |
+| **Notificações e push** | Nunca entre um par com bloqueio (as antigas ficam ocultas enquanto o bloqueio existir); respeitam as preferências de notificação; o push traz o nome de quem agiu e a ação, nunca o texto da mensagem |
+| **Seguir** | Perfil público: follow imediato. Privado: pedido, que o dono aprova ou recusa. Tornar o perfil público aprova os pedidos pendentes. Bloquear apaga follows e pedidos nos dois sentidos; **desbloquear não os restaura** |
+| **Mídia de mensagens** | Só membros da conversa onde foi enviada |
+| **Avatar** | Qualquer pessoa autenticada (§29) |
+
+**O que as configurações não controlam** (precisa estar nos Termos): recibos de entrega e leitura e "digitando" (sempre ligados fora de bloqueio); contadores de seguidores, seguindo e posts, bio, país e idiomas de perfis privados (visíveis a todos sem bloqueio); a existência de um perfil privado na busca; o conteúdo das mensagens é processado pelas APIs de IA para tradução (§31, LGPD).
 
 ## 32. Deploy (VPS)
 
@@ -1539,7 +1572,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | 9 | Infra | **Uma VPS** com backend + frontend (Docker Compose + Caddy) |
 | 10 | Criptografia ponta a ponta | Não se aplica: a tradução acontece no servidor (consequência das decisões 2 e 3; informada nos termos) |
 | 11 | Acesso a dados | `JdbcClient` + SQL explícito, sem JPA (Phase 8) |
-| 12 | Privacidade "followers" | Significa **pessoas que eu sigo**, para mensagens e comentários (§31) |
+| 12 | Privacidade "followers" | Significa **pessoas que eu sigo**, para mensagens, comentários e presença (§31). Para mensagens, um pedido de seguir pendente do destinatário para o remetente também conta (2026-10-05) |
 | 13 | Feed | Posts de todos os autores visíveis ao viewer, do mais novo para o mais antigo (escala atual: duas pessoas); ranking/seguidos depois |
 | 14 | Stories | Duram **24 horas**; o tray mostra autores visíveis (eu → não vistos → vistos) |
 | 15 | Notificações | `follow`, `follow_request`, `follow_accepted`, `like`, `comment`, `story_reaction` e `new_message`, respeitando as preferências (pedidos e aceites usam `followers`) e nunca para a própria ação. O pedido de seguir é retirado quando decidido, cancelado, bloqueado ou quando o perfil fica público |
@@ -1548,6 +1581,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | 18 | Moderação | Denúncias de pessoa, mensagem e post, revisadas por admin (§31) |
 | 19 | Login social | Opcional por provedor; o app funciona só com e-mail e senha (§30) |
 | 20 | Discover | Feed vertical de posts ranqueado por um módulo Maven puro (`tenno-recommender`), extensível só por decorators, com garantia de exposição; interesses aprendidos de comportamento, hashtags e IA; sem filtros (2026-10-05, §37) |
+| 21 | Privacidade (2026-10-05) | Matriz completa no §31.1: perfil de quem bloqueei aparece com aviso e Unblock, de quem me bloqueou aparece mínimo; desbloquear não restaura follows; grupos respeitam "Who can message me"; nova configuração "Who can see when I'm online"; a conversa mostra o motivo de não poder enviar sem revelar bloqueio |
 
 ### 34.2 Ainda em aberto
 
@@ -1582,7 +1616,7 @@ Status: release `1821cbe` publicado em `https://tenno.eldialabs.com` com migrati
 
 ### 36.1 Privacidade e bloqueio em conversas existentes
 
-- As regras de mensagens valem em **cada envio direto**, inclusive encaminhamento e resposta a story, não apenas na criação da conversa. A mensagem idempotente já persistida continua consultável, mas uma nova tentativa com outro `clientId` após a restrição é recusada. O destinatário nunca recebe evento ou aviso sobre o bloqueio; o remetente vê apenas erro genérico de envio indisponível.
+- As regras de mensagens valem em **cada envio direto**, inclusive encaminhamento e resposta a story, não apenas na criação da conversa. A mensagem idempotente já persistida continua consultável, mas uma nova tentativa com outro `clientId` após a restrição é recusada. O destinatário nunca recebe evento ou aviso sobre o bloqueio. O remetente vê o motivo só quando não revela nada: `you_blocked` (foi ele quem bloqueou) e `followers_only`; "me bloqueou" e `nobody` usam o mesmo texto genérico (§31.1, revisto em 2026-10-05).
 - Bloqueio e envio direto usam o mesmo lock transacional por par de usuários para que uma confirmação de bloqueio não seja seguida por mensagem que atravessou a checagem numa transação concorrente. A preferência de mensagens é lida com lock compartilhado; a resposta de alteração só chega depois dos envios anteriores terminarem.
 - Em grupos, participantes bloqueados deixam de receber eventos diretos de digitação/presença entre si. O bloqueio não encerra o grupo para os demais participantes.
 - Uma conta privada exige aprovação de novos seguidores: seguir cria solicitação, aprovar transforma em follow, rejeitar/cancelar remove a solicitação. Seguidores aprovados antes de tornar a conta privada permanecem. Bloquear elimina follows e solicitações nos dois sentidos. O conteúdo usa apenas a tabela de follows aprovados.

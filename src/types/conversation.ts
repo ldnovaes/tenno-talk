@@ -25,4 +25,9 @@ export interface Conversation {
   unreadCount: number;
   mutedUntil: ISODateString | null;
   updatedAt: ISODateString;
+  /** Direct conversations only: why the viewer can't send right now (PLAN.md §31.1). */
+  sendRestriction: SendRestriction | null;
 }
+
+/** `unavailable` covers "they blocked you" and "they accept messages from nobody", so a block is never revealed. */
+export type SendRestriction = "you_blocked" | "followers_only" | "unavailable";

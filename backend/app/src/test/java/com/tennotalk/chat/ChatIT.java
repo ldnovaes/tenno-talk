@@ -94,11 +94,12 @@ class ChatIT extends IntegrationTest {
         steps.send(rafael, conversation, "Allowed by Linh", "allowed");
         mvc.perform(put("/api/profiles/" + rafael + "/block").with(as(linh)).with(csrf()))
                 .andExpect(status().isNoContent());
-        for (UUID sender : List.of(rafael, linh)) {
+        // The blocker is told why; the blocked person gets the generic text that never reveals a block (PLAN.md §31.1).
+        for (var sender : Map.of(linh, "You blocked this person.", rafael, "Messaging is unavailable.").entrySet()) {
             mvc.perform(withJson(post("/api/conversations/" + conversation + "/messages"),
-                    Map.of("clientId", "blocked-" + sender, "text", "Blocked")).with(as(sender)))
+                    Map.of("clientId", "blocked-" + sender.getKey(), "text", "Blocked")).with(as(sender.getKey())))
                     .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.detail").value("Messaging is unavailable."));
+                    .andExpect(jsonPath("$.detail").value(sender.getValue()));
         }
         assertThat(count("SELECT count(*) FROM messages")).isEqualTo(2);
         assertThat(count("SELECT count(*) FROM notifications WHERE recipient_id = '" + linh + "'")).isEqualTo(2);

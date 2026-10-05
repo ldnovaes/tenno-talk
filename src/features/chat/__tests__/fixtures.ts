@@ -49,6 +49,7 @@ export function makeConversation(overrides: Partial<Conversation> = {}): Convers
     unreadCount: 0,
     mutedUntil: null,
     updatedAt: "2026-10-03T09:00:00.000Z",
+    sendRestriction: null,
     ...overrides,
   };
 }

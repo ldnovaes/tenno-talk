@@ -19,6 +19,8 @@ As configurações do mock (latência curta, sem falhas aleatórias) ficam em `s
 
 `e2e/stack/` testa o deploy de verdade: Caddy (TLS, HTTP/2, CSP) + build do SPA + backend Java + PostgreSQL. Duas contas novas conversam ao vivo por `wss://`, uma envia foto, e o teste confere a CSP (nenhum erro no console) e os atributos do cookie de sessão.
 
+`privacy.spec.ts` repete os caminhos de privacidade que falharam em produção em 05/10 (bloquear, desbloquear e "People I follow"; remetente privado e pedido de seguir pendente) e confere o badge de Chats do outro lado (PLAN.md §31.1).
+
 `outbox.spec.ts` também pode rodar contra frontend, API e PostgreSQL locais. Ele bloqueia temporariamente os POSTs de mensagem e mídia, recarrega a página e confirma que texto e anexo são enviados uma única vez quando a rede volta. O teste requer `STACK_URL` apontando para o frontend HTTP conectado à API real.
 
 ```sh

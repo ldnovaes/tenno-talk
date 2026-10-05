@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -29,6 +29,17 @@ export function useUpdateProfile() {
   });
 }
 
+/** A block changes what both people see everywhere (PLAN.md §31.1). */
+function refreshAfterBlockChange(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: profileKeys.all }),
+    queryClient.invalidateQueries({ queryKey: ["feed"] }),
+    queryClient.invalidateQueries({ queryKey: ["stories"] }),
+    queryClient.invalidateQueries({ queryKey: ["chat"] }),
+    queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  ]);
+}
+
 export function useBlockUser() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -36,13 +47,26 @@ export function useBlockUser() {
     mutationFn: ({ userId }: { userId: string; name: string }) => profileService.block(userId),
     onSuccess: (_result, { name }) => {
       toast.success(t("profile.blocked", { name }));
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: profileKeys.all }),
-        queryClient.invalidateQueries({ queryKey: ["feed"] }),
-        queryClient.invalidateQueries({ queryKey: ["stories"] }),
-        queryClient.invalidateQueries({ queryKey: ["chat"] }),
-        queryClient.invalidateQueries({ queryKey: ["notifications"] }),
-      ]);
+      void refreshAfterBlockChange(queryClient);
     },
+  });
+}
+
+export function useUnblockUser() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: ({ userId }: { userId: string; name: string }) => profileService.unblock(userId),
+    onSuccess: (_result, { name }) => {
+      toast.success(t("profile.unblocked", { name }));
+      void refreshAfterBlockChange(queryClient);
+    },
+  });
+}
+
+export function useBlockedUsers() {
+  return useQuery({
+    queryKey: profileKeys.blocked(),
+    queryFn: () => profileService.getBlockedUsers(),
   });
 }

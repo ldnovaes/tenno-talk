@@ -6,12 +6,21 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
+import { chatKeys } from "@/features/chat/lib/queryKeys";
 import { notificationService } from "@/services/notificationService";
+import type { NotificationType } from "@/types/notification";
 import { realtimeClient } from "@/services/realtime/realtimeClient";
 
 import { notificationDestination } from "../lib/destination";
 import { describeNotification } from "../lib/notificationText";
 import { notificationKeys } from "../lib/queryKeys";
+
+/** A follow, a request or an approval can lift a "People I follow" restriction in a chat (PLAN.md §31.1). */
+const CHANGES_WHO_CAN_MESSAGE = new Set<NotificationType>([
+  "follow",
+  "follow_request",
+  "follow_accepted",
+]);
 
 export function useNotifications() {
   return useInfiniteQuery({
@@ -56,6 +65,8 @@ export function useNotificationsRealtime() {
     const unsubscribers = [
       realtimeClient.subscribe("notification.created", ({ notification }) => {
         refresh();
+        if (CHANGES_WHO_CAN_MESSAGE.has(notification.type))
+          void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
         const destination = notificationDestination(notification, me.id);
         toast(notification.actor.displayName, {
           id: notification.id,

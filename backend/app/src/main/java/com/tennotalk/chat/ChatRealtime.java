@@ -21,6 +21,7 @@ import com.tennotalk.chat.ChatEvents.TranslationChanged;
 import com.tennotalk.realtime.PresenceChanged;
 import com.tennotalk.realtime.RealtimeHub;
 import com.tennotalk.realtime.TypingReceived;
+import com.tennotalk.users.PresenceVisibility;
 import com.tennotalk.users.SocialGraph;
 
 /**
@@ -119,16 +120,14 @@ public class ChatRealtime {
         }
     }
 
-    /** Online/offline to everyone who shares a conversation with the user. */
+    /** Online/offline to the people who share a conversation with the user and may see it (PLAN.md §31.1). */
     @EventListener
     public void onPresence(PresenceChanged event) {
         Set<UUID> contacts = new HashSet<>(jdbc.sql("""
                 SELECT DISTINCT other.user_id FROM conversation_members mine
                 JOIN conversation_members other ON other.conversation_id = mine.conversation_id AND other.user_id <> mine.user_id
-                WHERE mine.user_id = :u
-                AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id = :u AND b.blocked_id = other.user_id)
-                                                        OR (b.blocker_id = other.user_id AND b.blocked_id = :u))
-                """).param("u", event.userId()).query(UUID.class).list());
+                WHERE mine.user_id = :u AND %s
+                """.formatted(PresenceVisibility.visibleTo("other.user_id", ":u"))).param("u", event.userId()).query(UUID.class).list());
         Map<String, Object> payload = event.online()
                 ? Map.of("userId", event.userId())
                 : Map.of("userId", event.userId(), "lastSeenAt", event.at().toString());

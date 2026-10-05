@@ -1,8 +1,9 @@
 spring:
   task:
     scheduling:
+      # One thread per @Scheduled task (SchedulingPoolIT): a slow AI worker must never delay the realtime dispatch.
       pool:
-        size: 4
+        size: 12
   application:
     name: tenno-talk
   datasource:

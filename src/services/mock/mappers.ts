@@ -1,5 +1,6 @@
 import type { CurrentUser, User, UserProfile } from "@/types/user";
 
+import { blockStatus, presenceVisible } from "./privacy";
 import type { MockDatabase, UserRecord } from "./schema";
 
 export function toUser(record: UserRecord): User {
@@ -12,7 +13,8 @@ export function toUser(record: UserRecord): User {
 }
 
 export function toUserProfile(record: UserRecord, db: MockDatabase, viewerId: string): UserProfile {
-  return {
+  const showPresence = presenceVisible(db, viewerId, record.id);
+  return redactBlocked({
     ...toUser(record),
     bio: record.bio,
     country: record.country,
@@ -26,9 +28,29 @@ export function toUserProfile(record: UserRecord, db: MockDatabase, viewerId: st
     followRequestPending: db.followRequests.some(
       (r) => r.followerId === viewerId && r.followeeId === record.id,
     ),
-    isOnline: record.isOnline,
-    lastSeenAt: record.lastSeenAt,
-  };
+    isOnline: showPresence && record.isOnline,
+    lastSeenAt: showPresence ? record.lastSeenAt : null,
+    blockStatus: blockStatus(db, viewerId, record.id),
+  });
+}
+
+/** What a block leaves of a profile (PLAN.md §31.1), like ProfileQueries.redact in the backend. */
+function redactBlocked(profile: UserProfile): UserProfile {
+  if (profile.blockStatus === "blocked_by_me")
+    return { ...profile, isFollowing: false, followRequestPending: false };
+  if (profile.blockStatus === "blocked_me")
+    return {
+      ...profile,
+      bio: null,
+      learningLanguages: [],
+      followersCount: 0,
+      followingCount: 0,
+      postsCount: 0,
+      isFollowing: false,
+      isPrivate: false,
+      followRequestPending: false,
+    };
+  return profile;
 }
 
 export function toCurrentUser(record: UserRecord, db: MockDatabase): CurrentUser {

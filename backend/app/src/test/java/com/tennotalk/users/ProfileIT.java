@@ -206,15 +206,17 @@ class ProfileIT extends IntegrationTest {
     }
 
     @Test
-    void blockingHidesPeopleBothWaysAndRemovesFollows() throws Exception {
+    void blockingMarksProfilesBothWaysAndRemovesFollows() throws Exception {
         UUID rafael = data.user("rafael", "pt-BR");
         UUID linh = data.user("linh", "vi-VN");
         data.follow(rafael, linh);
         data.follow(linh, rafael);
         mvc.perform(put("/api/profiles/" + linh + "/block").with(as(rafael)).with(csrf())).andExpect(status().isNoContent());
         assertThat(jdbc.sql("SELECT count(*) FROM follows").query(Long.class).single()).isZero();
-        mvc.perform(get("/api/profiles/linh").with(as(rafael))).andExpect(status().isNotFound());
-        mvc.perform(get("/api/profiles/rafael").with(as(linh))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/profiles/linh").with(as(rafael)))
+                .andExpect(jsonPath("$.blockStatus").value("blocked_by_me")).andExpect(jsonPath("$.lastSeenAt").isEmpty());
+        mvc.perform(get("/api/profiles/rafael").with(as(linh)))
+                .andExpect(jsonPath("$.blockStatus").value("blocked_me")).andExpect(jsonPath("$.postsCount").value(0));
         mvc.perform(put("/api/profiles/" + rafael + "/follow").with(as(linh)).with(csrf())).andExpect(status().isNotFound());
         mvc.perform(get("/api/me/blocked").with(as(rafael))).andExpect(jsonPath("$[0].username").value("linh"));
         mvc.perform(delete("/api/profiles/" + linh + "/block").with(as(rafael)).with(csrf())).andExpect(status().isNoContent());

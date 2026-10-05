@@ -82,6 +82,7 @@ public class ProfileService {
                 false,
                 presence.isOnline(viewer),
                 user.lastSeenAt(),
+                "none",
                 user.email(),
                 user.role(),
                 users.providers(viewer, user.passwordHash() != null),
@@ -158,10 +159,12 @@ public class ProfileService {
             if (pp.profileVisibility() != null) requireOneOf(VISIBILITY, pp.profileVisibility(), "profileVisibility");
             if (pp.whoCanMessage() != null) requireOneOf(AUDIENCES, pp.whoCanMessage(), "whoCanMessage");
             if (pp.whoCanComment() != null) requireOneOf(AUDIENCES, pp.whoCanComment(), "whoCanComment");
+            if (pp.whoCanSeeOnline() != null) requireOneOf(AUDIENCES, pp.whoCanSeeOnline(), "whoCanSeeOnline");
             p = new Preferences.Privacy(
                     Objects.requireNonNullElse(pp.profileVisibility(), p.profileVisibility()),
                     Objects.requireNonNullElse(pp.whoCanMessage(), p.whoCanMessage()),
-                    Objects.requireNonNullElse(pp.whoCanComment(), p.whoCanComment()));
+                    Objects.requireNonNullElse(pp.whoCanComment(), p.whoCanComment()),
+                    Objects.requireNonNullElse(pp.whoCanSeeOnline(), p.whoCanSeeOnline()));
         }
         if (patch.notifications() != null) {
             var np = patch.notifications();
@@ -190,9 +193,7 @@ public class ProfileService {
         UserRow user = users.findByUsername(Usernames.normalize(username))
                 .filter(UserRow::onboarded)
                 .orElseThrow(() -> ApiException.notFound("User not found."));
-        if (!user.id().equals(viewer) && graph.blockedEitherWay(viewer, user.id())) {
-            throw ApiException.notFound("User not found.");
-        }
+        // A block shows a notice (blocker) or a minimal profile (blocked) instead of hiding it (PLAN.md §31.1).
         return profiles.byId(viewer, user.id()).orElseThrow();
     }
 

@@ -1,9 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 
-import { UserAvatar } from "@/components/common/UserAvatar";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,11 +11,10 @@ import {
 } from "@/components/ui/select";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { useUpdatePreferences } from "@/features/auth/hooks/useUpdatePreferences";
-import { profileKeys } from "@/features/auth/lib/queryKeys";
-import { profileService } from "@/services/profileService";
 import type { Audience } from "@/types/preferences";
 
 import { SettingsGroup } from "../SettingsRow";
+import { BlockedUsers } from "./BlockedUsers";
 import { FollowRequests } from "./FollowRequests";
 
 const AUDIENCES: Audience[] = ["everyone", "followers", "nobody"];
@@ -50,46 +46,6 @@ function AudienceSelect({
         </SelectContent>
       </Select>
     </div>
-  );
-}
-
-function BlockedUsers() {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const blocked = useQuery({
-    queryKey: profileKeys.blocked(),
-    queryFn: () => profileService.getBlockedUsers(),
-  });
-  const unblock = useMutation({
-    mutationFn: (userId: string) => profileService.unblock(userId),
-    onSuccess: () => {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: profileKeys.all }),
-        queryClient.invalidateQueries({ queryKey: ["feed"] }),
-        queryClient.invalidateQueries({ queryKey: ["stories"] }),
-        queryClient.invalidateQueries({ queryKey: ["chat"] }),
-      ]);
-    },
-  });
-  if (blocked.data?.length === 0) {
-    return (
-      <p className="px-4 py-3 text-sm text-muted-foreground">
-        {t("settings.privacySection.noBlocked")}
-      </p>
-    );
-  }
-  return (
-    <ul>
-      {blocked.data?.map((profile) => (
-        <li key={profile.id} className="flex items-center gap-3 px-4 py-2">
-          <UserAvatar user={profile} size="sm" />
-          <span className="min-w-0 flex-1 truncate font-medium">{profile.displayName}</span>
-          <Button size="sm" variant="secondary" onClick={() => unblock.mutate(profile.id)}>
-            {t("settings.privacySection.unblock")}
-          </Button>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -128,6 +84,11 @@ export function PrivacySettings() {
           label={t("settings.privacySection.whoCanComment")}
           value={privacy.whoCanComment}
           onChange={(value) => update.mutate({ privacy: { whoCanComment: value as Audience } })}
+        />
+        <AudienceSelect
+          label={t("settings.privacySection.whoCanSeeOnline")}
+          value={privacy.whoCanSeeOnline}
+          onChange={(value) => update.mutate({ privacy: { whoCanSeeOnline: value as Audience } })}
         />
       </SettingsGroup>
       {privacy.profileVisibility === "private" && (

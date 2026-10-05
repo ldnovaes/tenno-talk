@@ -92,5 +92,7 @@ public final class ChatDtos {
             MessageDto lastMessage,
             int unreadCount,
             Instant mutedUntil,
-            Instant updatedAt) {}
+            Instant updatedAt,
+            /** Direct conversations only: why the viewer can't send right now (you_blocked, followers_only, unavailable), or null. */
+            String sendRestriction) {}
 }

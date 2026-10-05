@@ -16,6 +16,7 @@ import { useComposerStore } from "../../stores/composerStore";
 import { ForwardDialog } from "../actions/ForwardDialog";
 import { MessageActionsContext, type MessageActionsValue } from "../actions/messageActionsContext";
 import { Composer } from "../composer/Composer";
+import { SendRestrictionNotice } from "../composer/SendRestrictionNotice";
 import { ConversationHeader } from "./ConversationHeader";
 import { MessageList } from "./MessageList";
 
@@ -73,12 +74,19 @@ export function ConversationView({
       <div className="flex h-full min-h-0 flex-col bg-chat-bg">
         <ConversationHeader conversation={conversation} viewerId={viewerId} />
         <MessageList conversation={conversation} viewerId={viewerId} />
-        <Composer
-          key={conversation.id}
-          conversationId={conversation.id}
-          senderName={senderName}
-          viewerId={viewerId}
-        />
+        {conversation.sendRestriction ? (
+          <SendRestrictionNotice
+            restriction={conversation.sendRestriction}
+            other={conversation.members.find((m) => m.user.id !== viewerId)?.user}
+          />
+        ) : (
+          <Composer
+            key={conversation.id}
+            conversationId={conversation.id}
+            senderName={senderName}
+            viewerId={viewerId}
+          />
+        )}
       </div>
       <ForwardDialog message={forwarding} viewerId={viewerId} onClose={() => setForwarding(null)} />
       <LearningPanel

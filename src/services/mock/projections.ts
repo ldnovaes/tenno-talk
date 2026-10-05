@@ -16,6 +16,7 @@ import type {
   MessageRecord,
   MockDatabase,
 } from "./schema";
+import { conversationRestriction, presenceVisible } from "./privacy";
 
 export function originalOf(content: MessageContentRecord): OriginalText | null {
   switch (content.type) {
@@ -219,12 +220,13 @@ export function projectConversation(
         role: user.id === conversation.createdBy ? ("admin" as const) : ("member" as const),
         receivingLanguage: user.preferences.translation.receivingLanguage,
         lastReadMessageId: conversation.lastReadMessageId[user.id] ?? null,
-        isOnline: user.isOnline,
-        lastSeenAt: user.lastSeenAt,
+        isOnline: presenceVisible(db, viewerId, user.id) && user.isOnline,
+        lastSeenAt: presenceVisible(db, viewerId, user.id) ? user.lastSeenAt : null,
       })),
     lastMessage: last ? projectMessage(db, last, viewerId) : null,
     unreadCount: unreadCountFor(db, conversation, viewerId),
     mutedUntil: conversation.mutedUntil[viewerId] ?? null,
     updatedAt: last?.createdAt ?? conversation.updatedAt,
+    sendRestriction: conversationRestriction(db, conversation, viewerId),
   };
 }

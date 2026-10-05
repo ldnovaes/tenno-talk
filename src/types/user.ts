@@ -22,7 +22,11 @@ export interface UserProfile extends User {
   followRequestPending: boolean;
   isOnline: boolean;
   lastSeenAt: ISODateString | null;
+  /** A block between the viewer and this person (PLAN.md §31.1). */
+  blockStatus: BlockStatus;
 }
+
+export type BlockStatus = "none" | "blocked_by_me" | "blocked_me";
 
 export type UserRole = "user" | "admin";
 export type AuthProvider = "google" | "facebook" | "password";

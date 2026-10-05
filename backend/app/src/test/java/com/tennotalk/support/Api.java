@@ -28,6 +28,11 @@ public record Api(MockMvc mvc, JsonMapper json) {
         return mvc.perform(request);
     }
 
+    public ResultActions patch(UUID user, String path, Object body) throws Exception {
+        return mvc.perform(MockMvcRequestBuilders.patch(path).with(as(user)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)));
+    }
+
     public ResultActions put(UUID user, String path) throws Exception {
         return mvc.perform(MockMvcRequestBuilders.put(path).with(as(user)).with(csrf()));
     }
