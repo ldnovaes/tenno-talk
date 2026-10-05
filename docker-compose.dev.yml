@@ -1,4 +1,4 @@
-# Local development: only PostgreSQL. Backend: cd backend && ./mvnw spring-boot:run. Frontend: VITE_DATA_SOURCE=http bun run dev
+# Local development: only PostgreSQL. Backend: cd backend && ./mvnw -pl app -am spring-boot:run. Frontend: VITE_DATA_SOURCE=http bun run dev
 services:
   postgres:
     image: postgres:16-alpine

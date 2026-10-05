@@ -53,13 +53,14 @@ const NETWORK_ERROR = "Connection problem. Check your internet and try again.";
 export async function http<T>(
   method: Method,
   path: string,
-  options: { body?: unknown; query?: Query; accountId?: string } = {},
+  options: { body?: unknown; query?: Query; accountId?: string; keepalive?: boolean } = {},
 ): Promise<T> {
   let response: Response;
   try {
     response = await fetch(withQuery(path, options.query), {
       method,
       credentials: "same-origin",
+      ...(options.keepalive ? { keepalive: true } : {}),
       headers: {
         Accept: "application/json",
         ...(options.accountId ? { "X-Tenno-User": options.accountId } : {}),

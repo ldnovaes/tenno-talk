@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { signUpAndOnboard } from "./support";
+import { PNG_8x8, signUpAndOnboard } from "./support";
 
 /** Two real accounts through Caddy: TLS, CSP, WebSocket, upload and cookies as in production. */
-const PNG_8x8 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGMwnvAGK2IYWhIA6+9rwT6p4IQAAAAASUVORK5CYII=";
 
 test("two people chat, send a photo and stay within the CSP", async ({ browser }) => {
   const problems: string[] = [];

@@ -3,9 +3,12 @@ FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
-RUN ./mvnw -q -B dependency:go-offline
-COPY src src
-RUN ./mvnw -q -B -DskipTests package && cp target/tenno-talk-backend-*.jar /app.jar
+COPY recommender/pom.xml recommender/pom.xml
+COPY app/pom.xml app/pom.xml
+RUN ./mvnw -q -B -pl app -am dependency:go-offline
+COPY recommender/src recommender/src
+COPY app/src app/src
+RUN ./mvnw -q -B -DskipTests package && cp app/target/tenno-talk-backend-*.jar /app.jar
 
 FROM eclipse-temurin:21-jre
 # curl only for the health check.

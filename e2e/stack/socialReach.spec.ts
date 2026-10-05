@@ -1,9 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { signUpAndOnboard } from "./support";
+import { publishPost, signUpAndOnboard } from "./support";
 
 /**
  * The path reported broken in production on 2026-10-04: open a profile from Discover and from a
- * chat, and see the Chats and Notifications badges rise when a message arrives.
+ * chat, and see the Chats and Notifications badges rise when a message arrives. Discover shows posts
+ * since PLAN.md §37, so Bo posts first: a brand-new post reaches someone who knows nothing about Bo.
  */
 function railLink(page: Page, name: string): Locator {
   return page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name });
@@ -16,8 +17,12 @@ test("profiles open from Discover and chats, and an arriving message raises both
   const ana = await signUpAndOnboard(browser, "Ana", "pt-BR", /^Bra[sz]il$/, problems);
   const bo = await signUpAndOnboard(browser, "Bo", "vi-VN", /Vi[eệ]t ?Nam/i, problems);
 
+  await publishPost(bo.page, "Xin chào #travel");
+
   await ana.page.goto("/discover");
-  await ana.page.getByRole("link", { name: new RegExp(`@${bo.username}`) }).click();
+  const post = ana.page.getByRole("article", { name: "Post by Bo" });
+  await expect(post.getByText("Xin chào #travel")).toBeVisible();
+  await post.getByRole("link", { name: new RegExp(`@${bo.username}`) }).click();
   const boProfile = ana.page.getByRole("dialog");
   await expect(boProfile.getByRole("heading", { name: `@${bo.username}` })).toBeVisible();
   await expect(boProfile.getByText("User not found")).toHaveCount(0);

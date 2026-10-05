@@ -38,8 +38,8 @@ Requisitos: Java 21 e Docker (Postgres local e testes com Testcontainers).
 
 ```sh
 docker compose -f docker-compose.dev.yml up -d     # Postgres em localhost:5432
-cd backend
-COOKIE_SECURE=false ./mvnw spring-boot:run          # http://localhost:8080
+cd backend                                          # reactor: recommender/ (algoritmo do Discover) + app/
+COOKIE_SECURE=false ./mvnw -pl app -am spring-boot:run   # http://localhost:8080
 ./mvnw test                                          # unitários + integração (Postgres real via Testcontainers)
 ```
 
@@ -49,7 +49,7 @@ Com o backend no ar, rode o frontend contra ele:
 VITE_DATA_SOURCE=http bun run dev   # o Vite repassa /api, /oauth2, /login/oauth2 e /ws para :8080
 ```
 
-As traduções usam as APIs da OpenAI (principal) e da Anthropic (reserva), com `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no ambiente do backend (PLAN.md §28). Localmente: `infisical run --projectId=<tenno-talk> --env=prod -- ./mvnw spring-boot:run`, ou exporte as variáveis. Sem nenhuma chave, as mensagens continuam funcionando e as traduções esperam na fila.
+As traduções usam as APIs da OpenAI (principal) e da Anthropic (reserva), com `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` no ambiente do backend (PLAN.md §28). Localmente: `infisical run --projectId=<tenno-talk> --env=prod -- ./mvnw -pl app -am spring-boot:run`, ou exporte as variáveis. Sem nenhuma chave, as mensagens continuam funcionando e as traduções esperam na fila.
 
 ## Produção (uma VPS)
 

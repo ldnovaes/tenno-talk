@@ -556,6 +556,48 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 - [ ] Todas as telas oferecem retorno/fechamento seguro ou navegação principal na raiz, inclusive por link direto
 - [ ] Critérios da matriz de validação do PLANO_UX.md verificados; nenhuma etapa declarada concluída apenas por teste mock
 
+## Phase 12 — Algoritmo de descoberta
+
+> Planejada em 2026-10-05. Desenho em [PLAN.md §37](PLAN.md#37-algoritmo-de-descoberta-2026-10-05). Branch `feat/discover-algorithm`.
+
+### 12.1 Módulo `tenno-recommender`
+- [x] Reactor Maven: `backend/pom.xml` aggregator, `backend/app` (git mv) e `backend/recommender`; Dockerfile, deploy.sh, CI e README ajustados
+- [x] Modelo imutável (`Candidate`, `Viewer`, `RankRequest`, `Ranking`, `SparseVector`, `PostStats`, `Diagnostics`)
+- [x] Núcleo congelado: Sanitize, HardFilter, BaseScore, ExposureFloor, InvariantCheck, fallback total
+- [x] Envelope antifalha: `Guarded` automático, orçamento de tempo, limites, circuit breaker
+- [x] Decorators v1 de score e rerank (§37.4) e `RankingWeights`
+- [x] `SignalUpdater`, `Hashtags`, `Topics`
+- [x] Testes: propriedades (jqwik), caos, simulação de exposição, kit de contrato obrigatório, cenários, desempenho, PIT ≥ 90% (94,7% medido)
+
+### 12.2 Dados e sinais (backend)
+- [x] Migration V7 (§37.5)
+- [x] `POST /api/discover/events` idempotente e com rate limit; eventos gerados por like, comentário, follow e mensagem direta
+- [x] Worker de sinais (`post_stats` + afinidades) e job de vizinhos
+- [x] Hashtags ao criar post; worker de classificação de tópicos por IA (OpenAI/Anthropic, espera sem chave)
+- [x] Export de dados e exclusão de conta com eventos/afinidades; retenção de 90 dias
+
+### 12.3 Leitura (backend)
+- [x] Pacote `discovery`: `ViewerLoader`, fontes de candidatos independentes, sessões, `GET /api/discover`, fallback cronológico, métricas
+- [x] Remover o discover de pessoas (`ProfileService.discover`)
+- [x] ArchUnit da fronteira; `DiscoverIT`, `DiscoverEventsIT`, `TopicClassificationIT`, matriz de segurança, export
+
+### 12.4 Frontend
+- [x] `discoverService.getPosts`/`trackEvents` (mock + http) e tipos
+- [x] `engagement.ts` (puro) + `useEngagementTracker`, `useDiscoverFeed`, `useNotInterested`
+- [x] `DiscoverFeed`, `DiscoverSlide`, `DiscoverSlideMenu`; remover filtros e grade de pessoas; strings i18n
+- [~] Testes Vitest e e2e (mock) feitos; `e2e/stack/socialReach.spec.ts` atualizado para postar antes de abrir o Discover, ainda não rodado contra a pilha real
+
+> Notas: 246 testes no módulo (propriedades jqwik, caos, simulação de população, contratos, cenários, desempenho ~1,3 ms para 500 candidatos); ITs `DiscoverIT`, `DiscoverEventsIT`, `DiscoverFallbackIT`, `TopicClassificationIT` e ArchUnit no app. Desvios do plano em [PLAN.md §37.9](PLAN.md#379-como-ficou-na-implementação-2026-10-05).
+
+**Done when**
+
+- [x] Um post novo aparece no Discover de outra conta mesmo sem nenhum sinal de interesse
+- [ ] Like, tempo de visualização e "Not interested" mudam o ranking da sessão seguinte
+- [x] Privacidade e bloqueio nunca vazam pelo Discover, inclusive mudando no meio da sessão
+- [x] Um decorator sabotado (lança, NaN, lento) não muda a validade nem a disponibilidade do Discover
+- [ ] Primeira página com p95 < 80 ms e páginas seguintes < 20 ms no servidor
+- [x] Lint, typecheck, testes (frontend e reactor) e build verdes
+
 ## Troca de idioma não retraduz o passado (2026-10-04)
 
 Antes, abrir uma conversa depois de trocar o idioma de recebimento traduzia de novo as 30 mensagens visíveis (e mais 30 a cada rolagem), gastando IA com o histórico. Regra nova em PLAN.md §21.

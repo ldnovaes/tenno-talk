@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.tennotalk</groupId>
+    <artifactId>tenno-talk-parent</artifactId>
+    <version>0.1.0</version>
+  </parent>
+
+  <!--
+    Discover ranking (PLAN.md §37). Plain JDK, no runtime dependencies: no Spring, no SQL, no I/O.
+    The core pipeline is frozen; new signals are ScoreDecorator / RerankDecorator subclasses with a contract test.
+  -->
+  <artifactId>tenno-recommender</artifactId>
+  <name>TENNO TALK recommender</name>
+
+  <properties>
+    <!-- Lets `./mvnw -pl app -am spring-boot:run` start the app from the reactor. -->
+    <spring-boot.run.skip>true</spring-boot.run.skip>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.jqwik</groupId>
+      <artifactId>jqwik</artifactId>
+      <version>${jqwik.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <!-- Mutation testing: ./mvnw -pl recommender org.pitest:pitest-maven:mutationCoverage -->
+        <groupId>org.pitest</groupId>
+        <artifactId>pitest-maven</artifactId>
+        <version>${pitest.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-junit5-plugin</artifactId>
+            <version>${pitest-junit5.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <targetClasses><param>com.tennotalk.recommender.*</param></targetClasses>
+          <targetTests><param>com.tennotalk.recommender.*</param></targetTests>
+          <mutationThreshold>90</mutationThreshold>
+          <timestampedReports>false</timestampedReports>
+          <outputFormats><param>XML</param><param>HTML</param></outputFormats>
+          <excludedGroups><param>simulation</param></excludedGroups>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

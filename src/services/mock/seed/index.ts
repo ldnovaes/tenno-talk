@@ -24,5 +24,6 @@ export function createSeed(now = Date.now()): MockDatabase {
     comments,
     stories: seedStories(users, now),
     notifications: seedNotifications(now),
+    discover: { hiddenPosts: [], hiddenAuthors: [], seen: [] },
   };
 }

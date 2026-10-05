@@ -1,16 +1,17 @@
 import type { Page } from "@/types/api";
-import type { LanguageCode } from "@/types/language";
-import type { UserProfile } from "@/types/user";
+import type { DiscoverEvent } from "@/types/discover";
+import type { Post } from "@/types/post";
 
 import { mockDiscoverService } from "./mock/implementations/mockDiscoverService";
 import { httpDiscoverService } from "./http/httpDiscoverService";
 
-export interface DiscoverFilters {
-  nativeLanguage: LanguageCode | null;
-}
-
+/** Discover "For You" (PLAN.md §37): posts ranked by the server; the client reports what it showed. */
 export interface DiscoverService {
-  getPeople(filters: DiscoverFilters, cursor: string | null): Promise<Page<UserProfile>>;
+  getPosts(cursor: string | null): Promise<Page<Post>>;
+  /** {@code keepalive} lets the request outlive the page (flush on tab close). */
+  trackEvents(events: DiscoverEvent[], options?: { keepalive?: boolean }): Promise<void>;
+  unhidePost(postId: string): Promise<void>;
+  unhideAuthor(authorId: string): Promise<void>;
 }
 
 export const discoverService: DiscoverService = __USE_HTTP__

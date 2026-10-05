@@ -41,7 +41,7 @@ echo "[deploy] Building the site (real backend)..."
 [ -f "$ROOT_DIR/dist/index.html" ] || { echo "[deploy] ERROR: dist/index.html missing" >&2; exit 1; }
 echo "[deploy] Building the backend..."
 (cd "$ROOT_DIR/backend" && ./mvnw -q -B -DskipTests package)
-JAR="$(find "$ROOT_DIR/backend/target" -maxdepth 1 -name 'tenno-talk-backend-*.jar' ! -name '*.original' | head -1)"
+JAR="$(find "$ROOT_DIR/backend/app/target" -maxdepth 1 -name 'tenno-talk-backend-*.jar' ! -name '*.original' | head -1)"
 [ -n "$JAR" ] || { echo "[deploy] ERROR: backend jar missing" >&2; exit 1; }
 
 # --- (d) transfer ---

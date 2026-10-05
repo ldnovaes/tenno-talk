@@ -1,17 +1,35 @@
 import useEmblaCarousel from "embla-carousel-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import type { MediaAttachment } from "@/types/media";
 
-function Slide({ media }: { media: MediaAttachment }) {
+/** {@code playing}: autoplay muted and looping (Discover's active slide); undefined keeps the controls. */
+function Slide({
+  media,
+  fill,
+  playing,
+}: {
+  media: MediaAttachment;
+  fill: boolean;
+  playing: boolean | undefined;
+}) {
+  const video = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (playing === undefined || !video.current) return;
+    if (playing) void video.current.play().catch(() => undefined);
+    else video.current.pause();
+  }, [playing]);
   if (media.kind === "video") {
     return (
       <video
+        ref={video}
         src={media.url}
-        controls
+        controls={playing === undefined}
+        muted={playing !== undefined}
+        loop={playing !== undefined}
         playsInline
         preload="metadata"
         className="h-full w-full bg-black object-contain"
@@ -25,18 +43,25 @@ function Slide({ media }: { media: MediaAttachment }) {
       loading="lazy"
       decoding="async"
       draggable={false}
-      className="h-full w-full object-cover"
+      className={cn("h-full w-full", fill ? "object-contain" : "object-cover")}
     />
   );
 }
 
-/** Swipeable media with dots; arrows on pointer devices (PLAN.md §9.7). */
+/**
+ * Swipeable media with dots; arrows on pointer devices (PLAN.md §9.7). {@code fill} takes the parent's
+ * height (Discover) instead of the 4:5 card; {@code playing} autoplays the visible video.
+ */
 export function MediaCarousel({
   media,
   overlay,
+  fill = false,
+  playing,
 }: {
   media: MediaAttachment[];
   overlay?: ReactNode;
+  fill?: boolean;
+  playing?: boolean;
 }) {
   const { t } = useTranslation();
   const [viewport, api] = useEmblaCarousel({ loop: false });
@@ -52,7 +77,12 @@ export function MediaCarousel({
   }, [api, onSelect]);
 
   return (
-    <div className="group/carousel relative aspect-[4/5] w-full overflow-hidden bg-muted">
+    <div
+      className={cn(
+        "group/carousel relative w-full overflow-hidden",
+        fill ? "h-full bg-black" : "aspect-[4/5] bg-muted",
+      )}
+    >
       <div ref={viewport} className="h-full overflow-hidden">
         <div className="flex h-full">
           {media.map((item, index) => (
@@ -63,7 +93,11 @@ export function MediaCarousel({
               aria-roledescription="slide"
               aria-label={t("feed.slide", { index: index + 1, count: media.length })}
             >
-              <Slide media={item} />
+              <Slide
+                media={item}
+                fill={fill}
+                playing={playing === undefined ? undefined : playing && index === selected}
+              />
             </div>
           ))}
         </div>

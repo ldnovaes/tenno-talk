@@ -1,0 +1,20 @@
+tenno:
+  cookie-secure: false
+  public-url: http://localhost:5173
+  media:
+    root: ${java.io.tmpdir}/tenno-test-media
+  translation:
+    worker-enabled: false
+    timeout: 5s
+  rate-limit:
+    enabled: false
+  discover:
+    # Tests run the workers and jobs directly.
+    worker-enabled: false
+logging:
+  level:
+    org.springframework.security: WARN
+management:
+  health:
+    diskspace:
+      threshold: 1MB

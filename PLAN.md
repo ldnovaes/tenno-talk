@@ -51,6 +51,7 @@
 34. [Decisões de backend](#34-decisões-de-backend)
 35. [Regras de desenvolvimento](#35-regras-de-desenvolvimento)
 36. [Revisão da experiência social](#36-revisão-da-experiência-social-2026-10-04)
+37. [Algoritmo de descoberta](#37-algoritmo-de-descoberta-2026-10-05)
 
 ---
 
@@ -475,20 +476,7 @@ O rascunho fica em `onboardingDraftStore` (Zustand persistido em `sessionStorage
 
 ### 9.5 Discover
 
-Grid responsivo (1 coluna mobile, 2 tablet, 2–3 desktop) de `PersonCard`:
-
-```
-┌───────────────────────────────┐
-│ (avatar)  Linh Pham          │
-│           @linh · 🇻🇳 Vietnam   │
-│ Native    Vietnamese          │
-│ Learning  Portuguese, English │
-│ "Love coffee and photography" │
-│ [ Message ]  [ Follow ]       │
-└───────────────────────────────┘
-```
-
-Barra de filtros preparada (Country, Native language, Learning language, Interests). No MVP só existe o filtro por idioma nativo; os outros entram no futuro. Paginação infinita.
+Feed vertical de posts estilo "For You" (um post por tela, `scroll-snap`), ordenado pelo algoritmo de descoberta (§37). Sem filtros: idioma, país e interesses entram no ranking. Ações iguais às do Feed, mais "Not interested" e "Hide posts from @x". Paginação infinita com prefetch. A grade de `PersonCard` saiu do Discover (revisto em 2026-10-05); pessoas continuam na busca e no onboarding.
 
 ### 9.6 Perfil
 
@@ -1288,7 +1276,8 @@ PostgreSQL (volume)                      /data/media (volume)
 |---|---|
 | Auth | `GET /api/auth/session` · `POST /api/auth/signup` · `POST /api/auth/signin` · `POST /api/auth/signout` · `POST /api/auth/password` · `GET /oauth2/authorization/{google\|facebook}` |
 | Eu | `GET /api/me` · `POST /api/me/terms` · `POST /api/me/onboarding` · `PUT /api/me/profile` · `PATCH /api/me/preferences` · `GET /api/me/blocked` · `DELETE /api/me` |
-| Pessoas | `GET /api/usernames/{u}/availability` · `GET /api/profiles/{username}` · `PUT\|DELETE /api/profiles/{id}/follow` · `PUT\|DELETE /api/profiles/{id}/block` · `GET /api/people/suggestions` · `GET /api/people/search` · `GET /api/discover` |
+| Pessoas | `GET /api/usernames/{u}/availability` · `GET /api/profiles/{username}` · `PUT\|DELETE /api/profiles/{id}/follow` · `PUT\|DELETE /api/profiles/{id}/block` · `GET /api/people/suggestions` · `GET /api/people/search` |
+| Discover | `GET /api/discover` (posts ranqueados, §37) · `POST /api/discover/events` · `DELETE /api/discover/hidden/{posts\|authors}/{id}` |
 | Chat | `GET /api/conversations` · `GET /api/conversations/{id}` · `GET\|POST /api/conversations/{id}/messages` · `POST /api/conversations/{id}/read` · `PUT /api/conversations/{id}/mute` · `POST /api/conversations/direct` · `POST /api/conversations/groups` · `POST /api/messages/{id}/reactions` · `POST /api/messages/{id}/forward` |
 | Tradução | `POST /api/messages/{id}/translation/retry` · `GET /api/messages/{id}/insight?lang=` · `POST /api/translations/{post\|comment\|story}/{id}?lang=` |
 | Feed | `GET /api/feed` · `GET /api/users/{id}/posts` · `GET\|POST /api/posts…` · `PUT\|DELETE /api/posts/{id}/like` · `GET\|POST /api/posts/{id}/comments` |
@@ -1338,6 +1327,7 @@ PostgreSQL com migrations Flyway. As sessões HTTP ficam nas tabelas do Spring S
 | `message_media` | `message_id`, `media_id`, `position` |
 | `message_reactions` | `message_id`, `user_id`, `emoji` |
 | `posts`, `post_media`, `comments`, `likes`, `content_translations`, `stories`, `story_views`, `follows`, `blocks`, `reports`, `notifications` | Conforme o modelo de domínio (§12); entram nas fases 6–7 |
+| `interaction_events`, `post_stats`, `post_topics`, `user_affinities`, `hidden_posts`, `hidden_authors`, `user_neighbors`, `discover_sessions`, `classification_jobs` | Algoritmo de descoberta (§37.5) |
 
 Observações:
 
@@ -1557,6 +1547,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | 17 | Virtualização da lista de mensagens | Adiada: medido sem necessidade com 330 mensagens (§22) |
 | 18 | Moderação | Denúncias de pessoa, mensagem e post, revisadas por admin (§31) |
 | 19 | Login social | Opcional por provedor; o app funciona só com e-mail e senha (§30) |
+| 20 | Discover | Feed vertical de posts ranqueado por um módulo Maven puro (`tenno-recommender`), extensível só por decorators, com garantia de exposição; interesses aprendidos de comportamento, hashtags e IA; sem filtros (2026-10-05, §37) |
 
 ### 34.2 Ainda em aberto
 
@@ -1615,3 +1606,94 @@ Esta revisão evolui as decisões das seções 6, 8, 9, 13, 17 e 26 para resolve
 - Corrigir digitação na primeira entrada, reconexão e múltiplas sessões, com renovação/expiração efêmeras e UI consistente. Não persistir typing na fila de mensagens. Detalhamento e aceite na seção 10 do PLANO_UX.md.
 
 Escopo confirmado pelo usuário: notificações internas **e push com o app fechado**, fila persistente e reenvio, ACK real e distribuição assíncrona. Stories mantêm respostas privadas; comentários públicos e sincronização incremental ficam fora desta fase. As fases anteriores do checklist registram entregas históricas; seus itens concluídos não comprovam os novos critérios de aceite. A ausência de push e a entrega por socket descritas nas seções anteriores representam o comportamento anterior a esta revisão.
+
+## 37. Algoritmo de descoberta (2026-10-05)
+
+O Discover deixa de ser uma grade de pessoas com filtros e vira um **feed vertical de posts, estilo "For You"**, ordenado por um algoritmo de recomendação. Os filtros (idioma nativo, país, aprendendo, interesses) saem: o algoritmo considera tudo isso. Pessoas continuam na busca e no onboarding (`/api/people/suggestions`, `/api/people/search`).
+
+### 37.1 Requisitos
+
+- **Tudo conta:** comportamento implícito (impressão, tempo de visualização, like, comentário, share, visita ao perfil, follow, conversa, "não tenho interesse"), tópicos do post (hashtags + classificação por IA), idiomas (nativo, aprendendo, recebendo), país, grafo social, engajamento e frescor. Não há catálogo explícito de interesses: eles são aprendidos.
+- **Rápido:** p95 < 80 ms no servidor para a primeira página; páginas seguintes < 20 ms (fatia de um snapshot).
+- **Desacoplado:** o algoritmo é um módulo Maven puro (`backend/recommender`, JDK sem dependências de runtime), sem Spring nem SQL. O backend só fornece adaptadores.
+- **Extensível só por decorators:** o núcleo é congelado. Sinal novo = nova subclasse de `ScoreDecorator` ou `RerankDecorator` + teste de contrato.
+- **Antifalha:** o núcleo é total (nunca lança) e tem **garantia de exposição**: nenhum post deixa de ser visto por falha nossa.
+
+### 37.2 Estrutura
+
+`backend/` vira um reactor Maven: `backend/pom.xml` (aggregator), `backend/recommender` (`tenno-recommender`) e `backend/app` (o backend atual, que depende do módulo). O módulo não enxerga o app (não está no classpath); no app, uma regra ArchUnit garante que só `com.tennotalk.discovery` importa `com.tennotalk.recommender`.
+
+Modelo do núcleo (`com.tennotalk.recommender`), todo imutável, com `now` e semente injetados (determinístico):
+
+| Tipo | Papel |
+|---|---|
+| `Candidate` | post, autor, data, idioma, tipo de mídia, `SparseVector topics` (taxonomia + `tag:*`), `PostStats` (impressões, likes, comentários, shares, hides, dwell) |
+| `Viewer` | id, idiomas, país, afinidades (tópicos, autores, países), seguidos, 2º grau, parceiros de conversa, vizinhos, vistos, ocultados |
+| `RankRequest` | viewer, candidatos, `limit`, `seed`, orçamento de tempo |
+| `Ranking` | `Ranked(postId, score, reasons)` em ordem + `Diagnostics` (falhas, pulos, fallback) |
+| `Scorer` / `ScoreDecorator` | score de um candidato; o decorator envolve um `Scorer` interno e só implementa `adjust` |
+| `Reranker` / `RerankDecorator` | reordenação da lista (diversidade) |
+| `Recommender` | fachada construída por `Recommender.builder()`; único ponto de entrada |
+| `SignalUpdater`, `Hashtags`, `Topics` | funções puras de afinidade (decaimento exponencial), extração de hashtags e taxonomia fixa versionada |
+
+### 37.3 Núcleo congelado
+
+```
+candidatos ─▶ Sanitize ─▶ HardFilter ─▶ BaseScore ─▶ [decorators de score] ─▶ Sort
+           ─▶ [decorators de rerank] ─▶ ExposureFloor ─▶ InvariantCheck ─▶ Ranking
+```
+
+- **Sanitize:** descarta ids nulos/duplicados e normaliza números (NaN/∞ → 0).
+- **HardFilter:** defesa em profundidade (o SQL já filtra): próprio post, autores ocultados e posts ocultados.
+- **BaseScore:** frescor puro (meia-vida). Sozinho já produz um feed válido.
+- **ExposureFloor:** reserva `k` de cada `n` posições (padrão 2 de 10) para posts **sub-expostos** (menos de `minImpressions` impressões, padrão 50, e idade < 72 h), escolhidos pelo melhor score entre eles com rodízio de autores. Fica no núcleo, não é decorator.
+- **InvariantCheck:** saída sem duplicatas, `size ≤ limit`, só candidatos válidos. Violou → resultado de `BaseScore + ExposureFloor`.
+
+**Envelope antifalha**, aplicado pelo builder a todo decorator, sem como pular: exceção → contribuição 0 daquele decorator; saída não finita ou fora de `[-cap, cap]` → ignorada; orçamento de tempo por requisição (checagem cooperativa) → decorators restantes pulados; circuit breaker por decorator. `Recommender.rank` captura `Throwable` e devolve o fallback cronológico com exposição.
+
+### 37.4 Sinais v1 (decorators)
+
+Pesos em `RankingWeights` (`tenno.discover.weights.*`): `TopicAffinity` (cosseno viewer × post), `AuthorAffinity`, `LanguageExchange` (post no idioma que o viewer aprende; autor nativo desse idioma), `SocialProximity` (seguido, 2º grau, conversa), `CountryAffinity`, `Engagement` (taxa bayesiana por impressão), `CollaborativeNeighbors` (engajado por vizinhos de interesse), `Exploration` (bônus UCB + ruído semeado), `NegativeFeedback` (hides, tópicos ocultados), `SeenPenalty`. Rerankers: `AuthorSpacing` (1 post por autor a cada 4 posições) e `TopicDiversity` (MMR leve).
+
+### 37.5 Dados (migration V7)
+
+| Tabela | Colunas-chave |
+|---|---|
+| `interaction_events` | `id`, `user_id`, `post_id`, `author_id`, `kind`, `value` (ms de dwell), `client_id` (único por usuário), `created_at`, `processed_at`. Retenção 90 dias |
+| `post_stats` | contadores desnormalizados por post (`impressions`, `likes`, `comments`, `shares`, `hides`, `dwell_ms_sum`) |
+| `post_topics` | `post_id`, `topic`, `weight`, `source (hashtag \| ai)` |
+| `user_affinities` | `user_id`, `key` (`topic:x`, `author:<uuid>`, `country:XX`), `score`, `updated_at` |
+| `hidden_posts`, `hidden_authors` | `user_id` + `post_id` / `author_id` (com FK; desfeitos por `DELETE /api/discover/hidden/{posts\|authors}/{id}`) |
+| `user_neighbors` | `user_id`, `neighbor_id`, `similarity` (top-K) |
+| `discover_sessions` | `id`, `user_id`, `post_ids uuid[]`, `expires_at` (30 min) |
+| `classification_jobs` | fila em tabela como `translation_jobs` |
+
+Escrita nunca bloqueia a UI: o cliente envia lotes para `POST /api/discover/events` (idempotente por `clientId`); likes, comentários, follows e mensagens diretas geram eventos nos serviços existentes. Um worker aplica o `SignalUpdater` e atualiza `post_stats` e afinidades. Hashtags são extraídas ao criar o post; um worker classifica legenda + hashtags na taxonomia via OpenAI/Anthropic (porta `TopicClassifier`); sem chave, o job espera e o post segue ranqueável. Um job recalcula vizinhos a cada 15 min. Eventos e afinidades entram no export de dados e são apagados com a conta; a Política de Privacidade precisa mencionar o uso de interações para recomendação.
+
+### 37.6 Leitura
+
+`GET /api/discover?cursor=` → `Page<Post>`:
+
+1. Sem cursor: carrega o `Viewer` (cache de 60 s), busca candidatos em **fontes independentes** (tópicos, autores afins, grafo, vizinhos, frescos, populares, sub-expostos; janela de 14 dias, até 500, sempre com `Visibility.authorVisible`), ranqueia em memória e grava até 300 ids em `discover_sessions`. Falha de uma fonte não derruba as outras.
+2. Com cursor (`sessão:offset`): fatia o snapshot, revalida a visibilidade da página e projeta como o Feed. Snapshot esgotado ou expirado → nova sessão sem os já vistos.
+3. Qualquer falha do ranking → lista cronológica de posts visíveis. O Discover nunca responde erro por causa do algoritmo.
+
+Métricas: `discover.rank.latency`, `discover.decorator.failures`, `discover.fallback`, `discover.exposure.floor`.
+
+### 37.7 Frontend
+
+`discoverService.getPosts(cursor)` e `trackEvents(events)`. `DiscoverFeed` com `scroll-snap` vertical (tela cheia no mobile, coluna central no desktop, ↑/↓ no teclado), `DiscoverSlide` reaproveitando `MediaCarousel`, ações e legenda traduzida do Feed, menu com "Not interested" e "Hide posts from @x". O rastreamento (`features/discover/lib/engagement.ts`, puro) mede impressão e tempo visível e envia em lotes.
+
+### 37.8 Testes
+
+O módulo tem a suíte mais pesada: propriedades com jqwik (nunca lança, sem duplicatas, limite, filtrados ausentes, determinismo, monotonicidade), caos (decorators que lançam, estouram o tempo, devolvem NaN), simulação de população para a garantia de exposição, kit de contrato obrigatório para todo decorator, cenários nomeados e orçamento de desempenho. No app: ITs de visibilidade, paginação, fallback, eventos e classificação.
+
+### 37.9 Como ficou na implementação (2026-10-05)
+
+- **Eventos dos serviços:** `FeedService`, `ProfileService` e `ReportService` publicam `common.Interaction`; o `InteractionRecorder` grava **depois do commit**, em `try/catch` — registrar um sinal nunca derruba um like, comentário, follow ou denúncia. Clientes só podem enviar `impression`, `dwell`, `share`, `profile_open`, `hide_post` e `hide_author` (não forjam likes). Mensagens diretas não geram `message_author`: o grafo de conversas já entra como `chatPartners` (`SocialProximity`).
+- **Leitura:** consultas do ranking rodam fora de transação, com timeout por statement (`DiscoverReads`); cada parte do viewer e cada fonte de candidatos degrada sozinha (métrica `discover.degraded{part}`). O ranking roda num executor limitado com timeout duro (`rank-timeout`, 250 ms): o envelope do módulo é cooperativo, e é o timeout do app que garante que um laço infinito não segura a requisição. Sem cache do viewer (uma carga por sessão basta).
+- **Fallbacks em camadas:** ranking seguro do próprio módulo → mais novos entre os candidatos (ranking atrasado/rejeitado) → mais novos visíveis direto do banco (todas as fontes fora) — métrica `discover.fallback{reason}`.
+- **IA:** porta `TopicClassifier`, implementada pelos dois adaptadores existentes (mesmo cliente e regras de erro). O laço de fallback do `FallbackTranslator` virou genérico (`ProviderOutcome<T>`), servindo tradução e tópicos com as mesmas regras de chave/cota (§28.3). A taxonomia vem do módulo como parâmetro (o pacote `translation` não importa o recommender).
+- **Não feito no v1:** `?explain=true` para admin (as contribuições existem em `Ranked.contributions`, só não há endpoint).
+- **Frontend:** `MediaCarousel` ganhou `fill` (tela cheia, tarja preta) e `playing` (autoplay mudo do slide ativo). "Not interested" remove do cache na hora e o toast oferece desfazer.
+

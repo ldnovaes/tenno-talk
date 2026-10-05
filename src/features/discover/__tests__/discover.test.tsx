@@ -1,71 +1,89 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { mockDiscoverService } from "@/services/mock/implementations/mockDiscoverService";
 import { mockDb } from "@/services/mock/db";
-import { writeMockSession } from "@/services/mock/session";
+import { discoverService } from "@/services/discoverService";
 import { renderApp, signInAs } from "@/test/utils";
 
-describe("discover service", () => {
-  beforeEach(() => writeMockSession("usr_rafael"));
+function slides() {
+  return within(screen.getByRole("feed", { name: "Posts for you" })).getAllByRole("article");
+}
 
-  it("pages through everyone except the viewer, best matches first", async () => {
-    const first = await mockDiscoverService.getPeople({ nativeLanguage: null }, null);
-    expect(first.items).toHaveLength(6);
-    // People learning Portuguese come first for a Brazilian viewer.
-    expect(first.items[0]?.learningLanguages.some((l) => l.startsWith("pt"))).toBe(true);
-    const second = await mockDiscoverService.getPeople({ nativeLanguage: null }, first.nextCursor);
-    const ids = [...first.items, ...second.items].map((p) => p.id);
-    expect(ids).not.toContain("usr_rafael");
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(second.nextCursor).toBeNull();
-  });
-
-  it("filters by native language (any regional variant)", async () => {
-    const page = await mockDiscoverService.getPeople({ nativeLanguage: "vi-VN" }, null);
-    expect(page.items.map((p) => p.id).sort()).toEqual(["usr_linh", "usr_minh"]);
-  });
-
-  it("hides people blocked in either direction", async () => {
-    mockDb.update((db) => {
-      db.users["usr_rafael"]?.blockedUserIds.push("usr_linh");
-      db.users["usr_minh"]?.blockedUserIds.push("usr_rafael");
-    });
-    const page = await mockDiscoverService.getPeople({ nativeLanguage: "vi-VN" }, null);
-    expect(page.items).toEqual([]);
-  });
-});
+async function openMenu(slide: HTMLElement) {
+  const user = userEvent.setup();
+  await user.click(within(slide).getByRole("button", { name: "More options" }));
+  return user;
+}
 
 describe("discover page", () => {
-  beforeEach(() => signInAs("usr_rafael"));
-
-  it("shows people cards with languages and actions", async () => {
-    renderApp("/discover");
-    const card = (await screen.findByText("Sofía Martínez")).closest("article");
-    if (!(card instanceof HTMLElement)) throw new Error("card not found");
-    expect(within(card).getByText("Español")).toHaveAttribute("lang", "es-ES");
-    expect(within(card).getByText("Spain")).toBeInTheDocument();
-    expect(within(card).getByRole("button", { name: "Message" })).toBeInTheDocument();
+  beforeEach(() => {
+    mockDb.reset();
+    signInAs("usr_rafael");
   });
 
-  it("filters by native language", async () => {
-    const user = userEvent.setup();
+  it("shows other people's posts one per screen, never the viewer's own", async () => {
     renderApp("/discover");
-    await screen.findByText("Sofía Martínez");
-    await user.click(screen.getByRole("combobox", { name: "Native language" }));
-    await user.click(await screen.findByRole("option", { name: /Tiếng Việt/ }));
-    await waitFor(() => expect(screen.queryByText("Sofía Martínez")).not.toBeInTheDocument());
-    expect(screen.getByText("Linh Pham")).toBeInTheDocument();
-    expect(screen.getByText("Minh Tran")).toBeInTheDocument();
+    await screen.findByRole("feed", { name: "Posts for you" });
+    expect(slides().length).toBeGreaterThan(0);
+    expect(screen.queryByRole("article", { name: "Post by Rafael Souza" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Native language" })).not.toBeInTheDocument();
   });
 
-  it("starts a conversation from a card", async () => {
-    const user = userEvent.setup();
+  it("hides a post on 'Not interested' and brings it back with Undo", async () => {
+    const hide = vi.spyOn(discoverService, "trackEvents");
     renderApp("/discover");
-    const card = (await screen.findByText("Arjun Mehta")).closest("article");
-    if (!(card instanceof HTMLElement)) throw new Error("card not found");
-    await user.click(within(card).getByRole("button", { name: "Message" }));
-    expect(await screen.findByText("Say hi to Arjun Mehta 👋")).toBeInTheDocument();
+    await screen.findByRole("feed");
+    const first = slides()[0];
+    if (!first) throw new Error("no slide");
+    const label = first.getAttribute("aria-label") ?? "";
+    const count = slides().length;
+
+    const user = await openMenu(first);
+    await user.click(await screen.findByRole("menuitem", { name: "Not interested" }));
+
+    await waitFor(() => expect(slides()).toHaveLength(count - 1));
+    expect(hide).toHaveBeenCalledWith([expect.objectContaining({ kind: "hide_post" })]);
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(slides()).toHaveLength(count));
+    expect(slides()[0]).toHaveAttribute("aria-label", label);
+  });
+
+  it("hides every post of an author", async () => {
+    renderApp("/discover");
+    await screen.findByRole("feed");
+    const linh = screen.getAllByRole("article", { name: "Post by Linh Pham" })[0];
+    if (!linh) throw new Error("no post by Linh in the first page");
+    const user = await openMenu(linh);
+    await user.click(await screen.findByRole("menuitem", { name: "Hide posts from @linh" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("article", { name: "Post by Linh Pham" })).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("You won't see posts from @linh here")).toBeInTheDocument();
+  });
+
+  it("likes from the slide", async () => {
+    renderApp("/discover");
+    await screen.findByRole("feed");
+    const slide = slides().find((article) =>
+      within(article).queryByRole("button", { name: "Like" }),
+    );
+    if (!slide) throw new Error("every slide is already liked");
+    const user = userEvent.setup();
+    await user.click(within(slide).getByRole("button", { name: "Like" }));
+    expect(await within(slide).findByRole("button", { name: "Unlike" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("says when there is nothing to discover", async () => {
+    mockDb.update((db) => {
+      for (const post of Object.values(db.posts)) {
+        db.discover.hiddenPosts.push({ userId: "usr_rafael", postId: post.id });
+      }
+    });
+    renderApp("/discover");
+    expect(await screen.findByText("Nothing new right now")).toBeInTheDocument();
   });
 });

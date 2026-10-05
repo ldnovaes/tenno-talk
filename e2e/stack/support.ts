@@ -1,5 +1,9 @@
 import { expect, type Browser, type Page } from "@playwright/test";
 
+/** An 8×8 PNG: the smallest real photo the media pipeline accepts. */
+export const PNG_8x8 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGMwnvAGK2IYWhIA6+9rwT6p4IQAAAAASUVORK5CYII=";
+
 function watch(page: Page, problems: string[]) {
   page.on("console", (m) => {
     if (m.type() === "error" || /Content Security Policy/i.test(m.text())) problems.push(m.text());
@@ -36,4 +40,17 @@ export async function signUpAndOnboard(
   await page.getByRole("button", { name: "Start chatting" }).click();
   await expect(page).toHaveURL(/\/chats/);
   return { context, page, username };
+}
+
+/** Publishes a photo post through the UI and waits until it is posted. */
+export async function publishPost(page: Page, caption: string) {
+  await page.goto("/create");
+  await page.getByLabel("Select photos or videos").setInputFiles({
+    name: "post.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(PNG_8x8, "base64"),
+  });
+  await page.getByLabel("Caption").fill(caption);
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(page.getByText("Posted")).toBeVisible();
 }

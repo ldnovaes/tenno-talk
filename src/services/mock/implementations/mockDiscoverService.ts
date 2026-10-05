@@ -1,45 +1,90 @@
-import { AppError } from "@/lib/errors";
-import { isSameLanguage } from "@/lib/languages";
 import type { DiscoverService } from "@/services/discoverService";
 
 import { mockDb } from "../db";
+import { rankDiscover } from "../discoverRanking";
 import { mockRequest } from "../latency";
-import { toUserProfile } from "../mappers";
+import { canSeePosts, projectPost } from "../postProjections";
+import type { PostRecord } from "../schema";
 import { requireViewerId } from "../session";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 5;
+
+/** Ranked once per session and sliced, like the server, so pages never repeat (PLAN.md §37.6). */
+const sessions = new Map<string, string[]>();
+
+function parseCursor(cursor: string | null): { session: string; offset: number } | null {
+  if (!cursor) return null;
+  const [session, offset] = cursor.split(":");
+  return session && offset ? { session, offset: Number(offset) || 0 } : null;
+}
 
 export const mockDiscoverService: DiscoverService = {
-  getPeople(filters, cursor) {
+  getPosts(cursor) {
     return mockRequest(() => {
       const viewerId = requireViewerId();
       const db = mockDb.read();
-      const viewer = db.users[viewerId];
-      if (!viewer) throw new AppError("unauthenticated", "Your session has expired.");
-      const people = Object.values(db.users)
-        .filter((user) => user.id !== viewerId && user.onboardingCompletedAt)
+      const position = parseCursor(cursor);
+      let session = position ? sessions.get(position.session) : undefined;
+      let sessionId = position?.session ?? "";
+      let offset = position?.offset ?? 0;
+      if (!session || offset >= session.length) {
+        const shown = new Set(session ?? []);
+        sessionId = crypto.randomUUID();
+        session = rankDiscover(db, viewerId, Date.now()).filter((id) => !shown.has(id));
+        sessions.set(sessionId, session);
+        offset = 0;
+      }
+      const end = Math.min(session.length, offset + PAGE_SIZE);
+      const items = session
+        .slice(offset, end)
+        .map((id) => db.posts[id])
         .filter(
-          (user) =>
-            !viewer.blockedUserIds.includes(user.id) && !user.blockedUserIds.includes(viewerId),
+          (post): post is PostRecord =>
+            post !== undefined && canSeePosts(db, post.authorId, viewerId),
         )
-        .filter(
-          (user) =>
-            !filters.nativeLanguage || isSameLanguage(user.nativeLanguage, filters.nativeLanguage),
-        )
-        // People learning the viewer's language first: the best matches for a conversation.
-        .sort((a, b) => {
-          const score = (learning: string[]) =>
-            learning.some((l) => isSameLanguage(l, viewer.nativeLanguage)) ? 1 : 0;
-          return (
-            score(b.learningLanguages) - score(a.learningLanguages) || a.id.localeCompare(b.id)
-          );
-        });
-      const start = cursor ? Number(cursor) : 0;
-      const items = people
-        .slice(start, start + PAGE_SIZE)
-        .map((user) => toUserProfile(user, db, viewerId));
-      const next = start + PAGE_SIZE;
-      return { items, nextCursor: next < people.length ? String(next) : null };
+        .map((post) => projectPost(db, post, viewerId));
+      return { items, nextCursor: session.length === 0 ? null : `${sessionId}:${end}` };
+    });
+  },
+
+  trackEvents(events) {
+    return mockRequest(() => {
+      const viewerId = requireViewerId();
+      mockDb.update((db) => {
+        for (const event of events) {
+          const post = db.posts[event.postId];
+          if (!post || post.authorId === viewerId) continue;
+          if (event.kind === "impression")
+            db.discover.seen.push({ userId: viewerId, postId: post.id });
+          if (event.kind === "hide_post")
+            db.discover.hiddenPosts.push({ userId: viewerId, postId: post.id });
+          if (event.kind === "hide_author") {
+            db.discover.hiddenAuthors.push({ userId: viewerId, authorId: post.authorId });
+          }
+        }
+      });
+    });
+  },
+
+  unhidePost(postId) {
+    return mockRequest(() => {
+      const viewerId = requireViewerId();
+      mockDb.update((db) => {
+        db.discover.hiddenPosts = db.discover.hiddenPosts.filter(
+          (h) => !(h.userId === viewerId && h.postId === postId),
+        );
+      });
+    });
+  },
+
+  unhideAuthor(authorId) {
+    return mockRequest(() => {
+      const viewerId = requireViewerId();
+      mockDb.update((db) => {
+        db.discover.hiddenAuthors = db.discover.hiddenAuthors.filter(
+          (h) => !(h.userId === viewerId && h.authorId === authorId),
+        );
+      });
     });
   },
 };

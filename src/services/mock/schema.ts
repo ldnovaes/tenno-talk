@@ -133,6 +133,14 @@ export interface NotificationRecord {
   createdAt: ISODateString;
 }
 
+/** What the mock Discover learned (the server keeps much more, PLAN.md §37.5). */
+export interface DiscoverRecord {
+  hiddenPosts: { userId: string; postId: string }[];
+  hiddenAuthors: { userId: string; authorId: string }[];
+  /** Posts already shown to each user (impressions). */
+  seen: { userId: string; postId: string }[];
+}
+
 export interface MockDatabase {
   users: Record<string, UserRecord>;
   follows: FollowRecord[];
@@ -143,4 +151,5 @@ export interface MockDatabase {
   comments: Record<string, CommentRecord>;
   stories: Record<string, StoryRecord>;
   notifications: Record<string, NotificationRecord>;
+  discover: DiscoverRecord;
 }

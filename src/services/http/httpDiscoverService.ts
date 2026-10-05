@@ -1,12 +1,16 @@
 import type { DiscoverService } from "@/services/discoverService";
 import type { Page } from "@/types/api";
-import type { UserProfile } from "@/types/user";
+import type { Post } from "@/types/post";
 
 import { http } from "./httpClient";
 
 export const httpDiscoverService: DiscoverService = {
-  getPeople: (filters, cursor) =>
-    http<Page<UserProfile>>("GET", "/api/discover", {
-      query: { nativeLanguage: filters.nativeLanguage, cursor },
+  getPosts: (cursor) => http<Page<Post>>("GET", "/api/discover", { query: { cursor } }),
+  trackEvents: (events, options) =>
+    http<void>("POST", "/api/discover/events", {
+      body: { events },
+      keepalive: options?.keepalive ?? false,
     }),
+  unhidePost: (postId) => http<void>("DELETE", `/api/discover/hidden/posts/${postId}`),
+  unhideAuthor: (authorId) => http<void>("DELETE", `/api/discover/hidden/authors/${authorId}`),
 };

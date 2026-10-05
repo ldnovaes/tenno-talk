@@ -1,23 +1,12 @@
 import { Heart, MessageCircle, Send } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 
-import { paths } from "@/app/router/paths";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Post } from "@/types/post";
 
 import { useToggleLike } from "../hooks/useFeed";
-
-async function share(post: Post, copied: string) {
-  const url = `${window.location.origin}${paths.post(post.id)}`;
-  if (navigator.share) {
-    await navigator.share({ url }).catch(() => undefined);
-    return;
-  }
-  await navigator.clipboard?.writeText(url);
-  toast.success(copied);
-}
+import { sharePost } from "../lib/share";
 
 export function PostActions({ post, onComment }: { post: Post; onComment: () => void }) {
   const { t } = useTranslation();
@@ -45,7 +34,7 @@ export function PostActions({ post, onComment }: { post: Post; onComment: () => 
         variant="ghost"
         size="icon"
         aria-label={t("feed.share")}
-        onClick={() => void share(post, t("feed.linkCopied"))}
+        onClick={() => void sharePost(post, t("feed.linkCopied"))}
       >
         <Send className="size-6 rtl:-scale-x-100" />
       </Button>
