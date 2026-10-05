@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function ConversationListSkeleton() {
+/** Loading rows shaped like the app's list items: avatar, title and one line of text. */
+export function AvatarListSkeleton() {
   return (
     <div className="space-y-1 px-2" aria-busy="true">
       {["a", "b", "c", "d", "e", "f"].map((key) => (

@@ -356,7 +356,6 @@ export const en = {
     repliedLabel: "Replied to a story",
   },
   notifications: {
-    newActivity: "New activity from {{name}}",
     pushDenied:
       "Notifications are blocked in this browser. Allow them in site settings to enable push.",
     pushTitle: "Notifications on this device",
@@ -373,13 +372,25 @@ export const en = {
     today: "Today",
     thisWeek: "This week",
     earlier: "Earlier",
-    like: "liked your post.",
-    comment: "commented on your post.",
-    follow: "started following you.",
-    storyReaction: "reacted {{emoji}} to your story.",
-    newMessage: "sent you a message.",
+    // Same wording as the push sent by the server (PushDelivery.body).
+    like: "Liked your post.",
+    comment: "Commented on your post.",
+    follow: "Started following you.",
+    followRequest: "Requested to follow you.",
+    followAccepted: "Accepted your follow request.",
+    storyReaction: "Reacted {{emoji}} to your story.",
+    newMessage: "Sent you a message.",
+    unread: "Unread",
     followBack: "Follow back",
+    confirmRequest: "Confirm",
+    deleteRequest: "Delete",
     view: "View",
+    pushPromptTitle: "Turn on notifications",
+    pushPromptBody: "Get messages, follow requests and activity even when TENNO TALK is closed.",
+    pushPromptInstall:
+      "On iPhone or iPad, add TENNO TALK to your Home Screen first, then turn notifications on here.",
+    pushPromptAction: "Turn on",
+    pushPromptLater: "Not now",
   },
   groups: {
     newGroup: "New group",

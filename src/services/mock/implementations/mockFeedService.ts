@@ -5,6 +5,7 @@ import type { MediaAttachment } from "@/types/media";
 import { mockDb } from "../db";
 import { publish } from "../events";
 import { mockRequest, sleep } from "../latency";
+import { addNotification } from "../notificationRecords";
 import { canSeePosts, projectComment, projectPost } from "../postProjections";
 import type { MockDatabase, PostRecord } from "../schema";
 import { requireViewerId } from "../session";
@@ -26,35 +27,6 @@ function visiblePost(db: MockDatabase, postId: string, viewerId: string): PostRe
   if (!post || !canSeePosts(db, post.authorId, viewerId))
     throw new AppError("not_found", "Post not found.");
   return post;
-}
-
-function notify(
-  db: MockDatabase,
-  recipientId: string,
-  actorId: string,
-  type: "like" | "comment",
-  postId: string,
-  commentId: string | null,
-) {
-  if (recipientId === actorId) return null;
-  const recipient = db.users[recipientId];
-  if (!recipient?.preferences.notifications[type === "like" ? "likes" : "comments"]) return null;
-  const id = `ntf_${crypto.randomUUID()}`;
-  db.notifications[id] = {
-    id,
-    recipientId,
-    actorId,
-    type,
-    postId,
-    commentId,
-    storyId: null,
-    emoji: null,
-    conversationId: null,
-    messageId: null,
-    readAt: null,
-    createdAt: new Date().toISOString(),
-  };
-  return id;
 }
 
 export const mockFeedService: FeedService = {
@@ -104,7 +76,9 @@ export const mockFeedService: FeedService = {
         let notificationId: string | null = null;
         if (!post.likedBy.includes(viewerId)) {
           post.likedBy.push(viewerId);
-          notificationId = notify(db, post.authorId, viewerId, "like", post.id, null);
+          notificationId = addNotification(db, post.authorId, viewerId, "like", {
+            postId: post.id,
+          });
         }
         return {
           post: projectPost(db, post, viewerId),
@@ -197,7 +171,10 @@ export const mockFeedService: FeedService = {
         };
         const comment = db.comments[id];
         if (!comment) throw new AppError("unknown", "Could not save the comment.");
-        const notificationId = notify(db, post.authorId, viewerId, "comment", postId, id);
+        const notificationId = addNotification(db, post.authorId, viewerId, "comment", {
+          postId,
+          commentId: id,
+        });
         return {
           comment: projectComment(db, comment, viewerId),
           notificationId,

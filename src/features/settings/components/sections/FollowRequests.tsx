@@ -1,29 +1,20 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { ErrorState } from "@/components/common/ErrorState";
 import { UserAvatar } from "@/components/common/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { profileKeys } from "@/features/auth/lib/queryKeys";
+import { useFollowRequestDecision } from "@/features/profile/hooks/useFollowRequestDecision";
 import { profileService } from "@/services/profileService";
 
 export function FollowRequests() {
   const { t } = useTranslation();
-  const client = useQueryClient();
   const requests = useQuery({
     queryKey: profileKeys.followRequests(),
     queryFn: () => profileService.getFollowRequests(),
   });
-  const decide = useMutation({
-    mutationFn: ({ userId, approve }: { userId: string; approve: boolean }) =>
-      approve
-        ? profileService.approveFollowRequest(userId)
-        : profileService.rejectFollowRequest(userId),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: profileKeys.all });
-      void client.invalidateQueries({ queryKey: profileKeys.me() });
-    },
-  });
+  const decide = useFollowRequestDecision();
   if (requests.isPending)
     return <p className="px-4 py-3 text-sm text-muted-foreground">{t("common.loading")}</p>;
   if (requests.isError)

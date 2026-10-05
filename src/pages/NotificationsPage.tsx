@@ -6,18 +6,20 @@ import { useNavigate } from "react-router";
 
 import { useOverlayNavigate } from "@/app/router/overlay";
 import { notificationDestination } from "@/features/notifications/lib/destination";
+import { AvatarListSkeleton } from "@/components/common/AvatarListSkeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
+import { InfiniteScrollTrigger } from "@/components/common/InfiniteScrollTrigger";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SectionTitle } from "@/components/common/SectionTitle";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
 import { NotificationItem } from "@/features/notifications/components/NotificationItem";
+import { PushPrompt } from "@/features/notifications/components/PushPrompt";
 import {
   useMarkNotificationsRead,
   useNotifications,
 } from "@/features/notifications/hooks/useNotifications";
 import { groupNotifications } from "@/features/notifications/lib/groupNotifications";
-import { useFollowToggle } from "@/features/profile/hooks/useFollowToggle";
 import { ContentColumn } from "@/layouts/ContentColumn";
 import type { Notification } from "@/types/notification";
 
@@ -30,7 +32,6 @@ export default function NotificationsPage() {
   const notifications = useNotifications();
   const markAllRead = useMarkNotificationsRead();
   const items = notifications.data?.pages.flat() ?? [];
-  const follow = useFollowToggle();
   const { mutate: markRead } = markAllRead;
   const groups = groupNotifications(items, new Date());
 
@@ -56,13 +57,8 @@ export default function NotificationsPage() {
           </Button>
         }
       />
-      {notifications.isPending && (
-        <div className="space-y-3 p-4">
-          {["a", "b", "c"].map((key) => (
-            <Skeleton key={key} className="h-12" />
-          ))}
-        </div>
-      )}
+      <PushPrompt />
+      {notifications.isPending && <AvatarListSkeleton />}
       {notifications.isError && <ErrorState onRetry={() => void notifications.refetch()} />}
       {notifications.isSuccess && items.length === 0 && (
         <EmptyState
@@ -71,32 +67,24 @@ export default function NotificationsPage() {
           description={t("notifications.emptyDescription")}
         />
       )}
-      {notifications.hasNextPage && (
-        <Button
-          variant="ghost"
-          disabled={notifications.isFetchingNextPage}
-          onClick={() => void notifications.fetchNextPage()}
-        >
-          {t("common.loadMore")}
-        </Button>
-      )}
-      {groups.map((group) => (
-        <section key={group.period} aria-labelledby={`notifications-${group.period}`}>
-          <h2 id={`notifications-${group.period}`} className="px-4 pb-1 pt-4 text-sm font-semibold">
-            {t(`notifications.${group.period}`)}
-          </h2>
-          <ul>
-            {group.items.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onOpen={open}
-                onFollowBack={(userId) => follow.mutate({ userId, follow: true })}
-              />
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className="px-2 pb-2">
+        {groups.map((group) => (
+          <section key={group.period} aria-labelledby={`notifications-${group.period}`}>
+            <SectionTitle id={`notifications-${group.period}`}>
+              {t(`notifications.${group.period}`)}
+            </SectionTitle>
+            <ul>
+              {group.items.map((notification) => (
+                <NotificationItem key={notification.id} notification={notification} onOpen={open} />
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+      <InfiniteScrollTrigger
+        disabled={!notifications.hasNextPage || notifications.isFetchingNextPage}
+        onVisible={() => void notifications.fetchNextPage()}
+      />
     </ContentColumn>
   );
 }

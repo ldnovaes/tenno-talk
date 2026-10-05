@@ -1542,7 +1542,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | 12 | Privacidade "followers" | Significa **pessoas que eu sigo**, para mensagens e comentários (§31) |
 | 13 | Feed | Posts de todos os autores visíveis ao viewer, do mais novo para o mais antigo (escala atual: duas pessoas); ranking/seguidos depois |
 | 14 | Stories | Duram **24 horas**; o tray mostra autores visíveis (eu → não vistos → vistos) |
-| 15 | Notificações | `follow`, `like`, `comment` e `story_reaction`, respeitando as preferências e nunca para a própria ação. Mensagens novas não geram notificação (o chat já tem contador de não lidas) |
+| 15 | Notificações | `follow`, `follow_request`, `follow_accepted`, `like`, `comment`, `story_reaction` e `new_message`, respeitando as preferências (pedidos e aceites usam `followers`) e nunca para a própria ação. O pedido de seguir é retirado quando decidido, cancelado, bloqueado ou quando o perfil fica público |
 | 16 | Avatar | Só uma imagem do próprio usuário enviada ao backend (§29) |
 | 17 | Virtualização da lista de mensagens | Adiada: medido sem necessidade com 330 mensagens (§22) |
 | 18 | Moderação | Denúncias de pessoa, mensagem e post, revisadas por admin (§31) |
@@ -1606,6 +1606,13 @@ Esta revisão evolui as decisões das seções 6, 8, 9, 13, 17 e 26 para resolve
 - Corrigir digitação na primeira entrada, reconexão e múltiplas sessões, com renovação/expiração efêmeras e UI consistente. Não persistir typing na fila de mensagens. Detalhamento e aceite na seção 10 do PLANO_UX.md.
 
 Escopo confirmado pelo usuário: notificações internas **e push com o app fechado**, fila persistente e reenvio, ACK real e distribuição assíncrona. Stories mantêm respostas privadas; comentários públicos e sincronização incremental ficam fora desta fase. As fases anteriores do checklist registram entregas históricas; seus itens concluídos não comprovam os novos critérios de aceite. A ausência de push e a entrega por socket descritas nas seções anteriores representam o comportamento anterior a esta revisão.
+
+### 36.2 Notificações no layout do app e convite de push (2026-10-05)
+
+- **Pedido de seguir vira notificação.** Seguir um perfil privado cria `follow_request` (com push) para o dono, com as ações Confirm/Delete na própria central. Aprovar cria `follow_accepted` para quem pediu e registra a interação `follow` do recomendador. Settings → Privacy continua listando os pedidos, com o mesmo hook (`useFollowRequestDecision`).
+- **Linha de notificação = linha de lista do app.** Mesma anatomia do `ConversationListItem`: avatar, nome + hora, uma linha de ação (até duas no mobile) e ponto `bg-unread` para não lidas. A linha inteira abre o destino; só há botões contextuais (Follow back, Confirm/Delete). Títulos de período com `SectionTitle` (igual aos grupos de Settings), skeleton `AvatarListSkeleton` e paginação por `InfiniteScrollTrigger`.
+- **Mesmo texto em todo lugar.** `describeNotification` alimenta a lista e o toast (título = ator, descrição = ação). O push do servidor usa o mesmo texto (`PushDelivery.body`), com o nome do ator como título. Só existe o locale `en`; quando houver outros, o servidor usará `interface_language`.
+- **Convite de push.** A central mostra um card “Turn on notifications” quando o servidor tem VAPID, o navegador suporta push, a permissão ainda é `default` e o dispositivo não está inscrito. A permissão só é pedida no toque. “Not now” adia por 30 dias (preferência do dispositivo). Em iPhone/iPad fora da Tela de Início, o card explica a instalação em vez de oferecer o botão. Settings → Notifications continua com o controle completo.
 
 ## 37. Algoritmo de descoberta (2026-10-05)
 

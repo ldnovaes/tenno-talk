@@ -2,56 +2,53 @@ import { useTranslation } from "react-i18next";
 
 import { RelativeTime } from "@/components/common/RelativeTime";
 import { UserAvatar } from "@/components/common/UserAvatar";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { Notification } from "@/types/notification";
 
-function describe(notification: Notification, t: ReturnType<typeof useTranslation>["t"]): string {
-  switch (notification.type) {
-    case "like":
-      return t("notifications.like");
-    case "comment":
-      return t("notifications.comment");
-    case "follow":
-      return t("notifications.follow");
-    case "story_reaction":
-      return t("notifications.storyReaction", { emoji: notification.emoji });
-    case "new_message":
-      return t("notifications.newMessage");
-  }
-}
+import { describeNotification } from "../lib/notificationText";
+import { NotificationActions } from "./NotificationActions";
 
 interface NotificationItemProps {
   notification: Notification;
   onOpen: (notification: Notification) => void;
-  onFollowBack?: ((userId: string) => void) | undefined;
 }
 
-export function NotificationItem({ notification, onOpen, onFollowBack }: NotificationItemProps) {
+/** Same row anatomy as the conversation list: avatar, name + time, then one line of detail. */
+export function NotificationItem({ notification, onOpen }: NotificationItemProps) {
   const { t } = useTranslation();
+  const unread = !notification.readAt;
   return (
-    <li className={cn("flex items-center gap-3 px-4 py-3", !notification.readAt && "bg-accent/40")}>
+    <li className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted">
       <button
         type="button"
         onClick={() => onOpen(notification)}
-        className="flex min-w-0 flex-1 items-center gap-3 text-start"
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-start outline-offset-2"
       >
-        <UserAvatar user={notification.actor} size="md" />
-        <span className="min-w-0 flex-1 text-sm">
-          <span className="font-semibold">{notification.actor.displayName}</span>{" "}
-          {describe(notification, t)}{" "}
-          <RelativeTime iso={notification.createdAt} className="text-muted-foreground" />
+        <UserAvatar user={notification.actor} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-semibold" dir="auto">
+              {notification.actor.displayName}
+            </span>
+            <RelativeTime
+              iso={notification.createdAt}
+              className="ms-auto shrink-0 text-xs text-muted-foreground"
+            />
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="line-clamp-2 text-sm text-muted-foreground">
+              {describeNotification(notification, t)}
+            </span>
+            {unread && (
+              <span
+                role="img"
+                aria-label={t("notifications.unread")}
+                className="ms-auto size-2.5 shrink-0 rounded-full bg-unread"
+              />
+            )}
+          </span>
         </span>
       </button>
-      {notification.type === "follow" && onFollowBack ? (
-        <Button size="sm" onClick={() => onFollowBack(notification.actor.id)}>
-          {t("notifications.followBack")}
-        </Button>
-      ) : (
-        <Button size="sm" variant="secondary" onClick={() => onOpen(notification)}>
-          {t("notifications.view")}
-        </Button>
-      )}
+      <NotificationActions notification={notification} />
     </li>
   );
 }

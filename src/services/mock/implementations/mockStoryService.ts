@@ -5,6 +5,7 @@ import type { Story, StoryTrayItem } from "@/types/story";
 import { mockDb } from "../db";
 import { publish } from "../events";
 import { mockRequest } from "../latency";
+import { addNotification } from "../notificationRecords";
 import { toUser } from "../mappers";
 import { canSeePosts, contentTranslationFor } from "../postProjections";
 import type { MockDatabase, StoryRecord } from "../schema";
@@ -119,23 +120,11 @@ export const mockStoryService: StoryService = {
       mockDb.update((db) => {
         const story = visibleStory(db, storyId, viewerId);
         story.reactions.push({ userId: viewerId, emoji });
-        if (story.authorId === viewerId) return null;
-        const id = `ntf_${crypto.randomUUID()}`;
-        db.notifications[id] = {
-          id,
-          recipientId: story.authorId,
-          actorId: viewerId,
-          type: "story_reaction",
-          postId: null,
-          commentId: null,
+        const id = addNotification(db, story.authorId, viewerId, "story_reaction", {
           storyId,
           emoji,
-          conversationId: null,
-          messageId: null,
-          readAt: null,
-          createdAt: new Date().toISOString(),
-        };
-        return { id, recipientId: story.authorId };
+        });
+        return id ? { id, recipientId: story.authorId } : null;
       }),
     );
     if (result)

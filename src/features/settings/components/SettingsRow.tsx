@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 
+import { SectionTitle } from "@/components/common/SectionTitle";
 import { Switch } from "@/components/ui/switch";
 
 /** Labelled switch row: saves immediately (optimistic). */
@@ -29,7 +30,7 @@ export function SwitchRow({
 export function SettingsGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <section className="py-2">
-      {title && <h2 className="px-4 pb-1 pt-2 text-sm font-semibold text-primary">{title}</h2>}
+      {title && <SectionTitle>{title}</SectionTitle>}
       <div className="divide-y divide-border/60">{children}</div>
     </section>
   );

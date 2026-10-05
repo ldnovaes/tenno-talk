@@ -177,8 +177,10 @@ public class ProfileService {
             interfaceLanguage = patch.interfaceLanguage();
         }
         preferences.save(viewer, new Preferences(interfaceLanguage, t, p, n));
-        if ("private".equals(current.privacy().profileVisibility()) && "public".equals(p.profileVisibility()))
+        if ("private".equals(current.privacy().profileVisibility()) && "public".equals(p.profileVisibility())) {
             graph.approveAll(viewer);
+            notifications.retractAll(viewer, "follow_request");
+        }
         recordReceivingChange(viewer, current, t.receivingLanguage());
         return me(viewer);
     }
@@ -216,7 +218,8 @@ public class ProfileService {
         if (graph.blockedEitherWay(viewer, target)) throw ApiException.notFound("User not found.");
         if (graph.follows(viewer, target)) return profiles.byId(viewer, target).orElseThrow();
         if ("private".equals(preferences.profileVisibilityForShare(target))) {
-            graph.requestFollow(viewer, target);
+            if (graph.requestFollow(viewer, target))
+                notifications.notify(target, viewer, "follow_request", com.tennotalk.notifications.NotificationService.Target.none());
         } else if (graph.follow(viewer, target)) {
             notifications.notify(target, viewer, "follow", com.tennotalk.notifications.NotificationService.Target.none());
             events.publishEvent(new com.tennotalk.common.Interaction(viewer, null, target, "follow"));
@@ -229,6 +232,7 @@ public class ProfileService {
         graph.lockPair(viewer, target);
         boolean wasFollowing = graph.follows(viewer, target);
         graph.unfollow(viewer, target);
+        notifications.retract(target, viewer, "follow_request");
         if (wasFollowing) events.publishEvent(new com.tennotalk.common.Interaction(viewer, null, target, "unfollow"));
         return profiles.byId(viewer, target).orElseThrow(() -> ApiException.notFound("User not found."));
     }
@@ -250,8 +254,14 @@ public class ProfileService {
         graph.lockPair(viewer, follower);
         if (!graph.requested(follower, viewer)) throw ApiException.notFound("Follow request not found.");
         if (graph.blockedEitherWay(viewer, follower)) throw ApiException.notFound("Follow request not found.");
-        if (approve) graph.approveFollow(follower, viewer);
-        else graph.rejectFollow(follower, viewer);
+        notifications.retract(viewer, follower, "follow_request");
+        if (!approve) {
+            graph.rejectFollow(follower, viewer);
+            return;
+        }
+        graph.approveFollow(follower, viewer);
+        notifications.notify(follower, viewer, "follow_accepted", com.tennotalk.notifications.NotificationService.Target.none());
+        events.publishEvent(new com.tennotalk.common.Interaction(follower, null, viewer, "follow"));
     }
 
     @Transactional
@@ -260,6 +270,9 @@ public class ProfileService {
         users.findById(target).orElseThrow(() -> ApiException.notFound("User not found."));
         graph.lockPair(viewer, target);
         graph.block(viewer, target);
+        // Blocking cancels follow requests both ways (SocialGraph.block), so their notifications go too.
+        notifications.retract(viewer, target, "follow_request");
+        notifications.retract(target, viewer, "follow_request");
     }
 
     @Transactional

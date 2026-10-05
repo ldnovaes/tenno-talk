@@ -139,6 +139,44 @@ describe("mockProfileService", () => {
     });
   });
 
+  it("turns a follow request into notifications for both people", async () => {
+    mockDb.update((db) => {
+      const emma = db.users["usr_emma"];
+      if (emma) emma.preferences.privacy.profileVisibility = "private";
+    });
+    const typesFor = (userId: string) =>
+      Object.values(mockDb.read().notifications)
+        .filter((n) => n.recipientId === userId)
+        .map((n) => n.type);
+    const before = typesFor("usr_emma").length;
+    await mockProfileService.follow("usr_emma");
+    await mockProfileService.follow("usr_emma");
+    expect(typesFor("usr_emma").filter((type) => type === "follow_request")).toHaveLength(1);
+
+    writeMockSession("usr_emma");
+    await mockProfileService.approveFollowRequest("usr_rafael");
+    expect(typesFor("usr_emma")).not.toContain("follow_request");
+    expect(typesFor("usr_emma")).toHaveLength(before);
+    expect(typesFor("usr_rafael")).toContain("follow_accepted");
+  });
+
+  it("retracts the request notification when declined or cancelled", async () => {
+    mockDb.update((db) => {
+      const emma = db.users["usr_emma"];
+      if (emma) emma.preferences.privacy.profileVisibility = "private";
+    });
+    const requests = () =>
+      Object.values(mockDb.read().notifications).filter((n) => n.type === "follow_request");
+    await mockProfileService.follow("usr_emma");
+    writeMockSession("usr_emma");
+    await mockProfileService.rejectFollowRequest("usr_rafael");
+    expect(requests()).toHaveLength(0);
+    writeMockSession("usr_rafael");
+    await mockProfileService.follow("usr_emma");
+    await mockProfileService.unfollow("usr_emma");
+    expect(requests()).toHaveLength(0);
+  });
+
   it("does not follow yourself", async () => {
     await expect(mockProfileService.follow("usr_rafael")).rejects.toMatchObject({
       code: "validation",

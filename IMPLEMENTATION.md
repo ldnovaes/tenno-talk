@@ -538,6 +538,10 @@ Troca das CLIs dos planos de assinatura (`codex`, `claude`) pelas APIs da OpenAI
 - [x] 11.10 — Autorizar download direto de mídia de story pelas mesmas regras de privacidade e bloqueio do story; exigir revalidação de mídia em cache após mudar o acesso
 - [x] 11.10 — Serializar mudanças rápidas de preferências no cliente e invalidar caches de perfis, Feed, stories e chat após alterações de privacidade/bloqueio
 - [ ] 11.10 — Confirmar privacidade, bloqueio, pedidos de seguir e ausência de push após bloqueio em dois dispositivos reais
+- [x] 11.11 — Pedido de seguir como notificação (`follow_request`/`follow_accepted`, migration V8) com Confirm/Delete na central, retração ao decidir/cancelar/bloquear/tornar público e paridade HTTP/mock (PLAN.md §36.2)
+- [x] 11.11 — Central de notificações no layout de lista do app (`NotificationItem`, `SectionTitle`, `AvatarListSkeleton`, paginação no fim) e mesmo texto na lista, no toast e no push do servidor
+- [x] 11.11 — Convite de push na central (permissão só no toque, adiamento de 30 dias, orientação de Tela de Início no iOS)
+- [ ] 11.11 — Validar com o backend real e VAPID: pedido de seguir chega como push com o app fechado e o clique abre `/notifications`
 
 **Done when**
 

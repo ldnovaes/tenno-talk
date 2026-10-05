@@ -10,6 +10,8 @@ export function notificationDestination(notification: Notification, viewerId: st
         overlay: false,
       };
     case "follow":
+    case "follow_request":
+    case "follow_accepted":
       return { to: paths.profile(notification.actor.username), overlay: true };
     case "like":
       return { to: paths.post(notification.postId), overlay: true };

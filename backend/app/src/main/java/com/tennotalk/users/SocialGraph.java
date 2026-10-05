@@ -35,9 +35,9 @@ public class SocialGraph {
                 .param("a", follower).param("b", followee).query(Boolean.class).single();
     }
 
-    public void requestFollow(UUID follower, UUID followee) {
-        jdbc.sql("INSERT INTO follow_requests (follower_id, followee_id) VALUES (:a, :b) ON CONFLICT DO NOTHING")
-                .param("a", follower).param("b", followee).update();
+    public boolean requestFollow(UUID follower, UUID followee) {
+        return jdbc.sql("INSERT INTO follow_requests (follower_id, followee_id) VALUES (:a, :b) ON CONFLICT DO NOTHING")
+                .param("a", follower).param("b", followee).update() > 0;
     }
 
     public boolean approveFollow(UUID follower, UUID followee) {

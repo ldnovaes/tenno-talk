@@ -11,7 +11,9 @@ import com.tennotalk.support.IntegrationTest;
 
 import tools.jackson.databind.JsonNode;
 
+import static com.tennotalk.support.TestData.as;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class NotificationsIT extends IntegrationTest {
@@ -112,5 +114,65 @@ class NotificationsIT extends IntegrationTest {
         api.put(rafael, "/api/posts/" + post + "/like");
         api.postOk(rafael, "/api/posts/" + post + "/comments", Map.of("text", "eu"));
         assertThat(api.getOk(rafael, "/api/notifications").size()).isZero();
+    }
+
+    private List<String> types(UUID user) throws Exception {
+        return api.getOk(user, "/api/notifications").valueStream().map(n -> n.get("type").asString()).toList();
+    }
+
+    @Test
+    void aFollowRequestNotifiesTheOwnerOnce() throws Exception {
+        data.setPreference(rafael, "profile_visibility", "private");
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+        JsonNode list = api.getOk(rafael, "/api/notifications");
+        assertThat(list.size()).isOne();
+        assertThat(list.at("/0/type").asString()).isEqualTo("follow_request");
+        assertThat(list.at("/0/actor/username").asString()).isEqualTo("linh");
+        assertThat(unread(rafael)).isOne();
+    }
+
+    @Test
+    void approvingReplacesTheRequestAndTellsTheRequester() throws Exception {
+        data.setPreference(rafael, "profile_visibility", "private");
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        api.post(rafael, "/api/me/follow-requests/" + linh + "/approve", null).andExpect(status().isNoContent());
+        assertThat(types(rafael)).isEmpty();
+        assertThat(unread(rafael)).isZero();
+        assertThat(types(linh)).containsExactly("follow_accepted");
+        assertThat(api.getOk(linh, "/api/profiles/rafael").get("isFollowing").asBoolean()).isTrue();
+    }
+
+    @Test
+    void decliningOrCancellingRetractsTheRequest() throws Exception {
+        data.setPreference(rafael, "profile_visibility", "private");
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        api.delete(rafael, "/api/me/follow-requests/" + linh).andExpect(status().isNoContent());
+        assertThat(types(rafael)).isEmpty();
+        assertThat(types(linh)).isEmpty();
+
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        api.delete(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+        assertThat(types(rafael)).isEmpty();
+    }
+
+    @Test
+    void goingPublicRetractsPendingRequests() throws Exception {
+        data.setPreference(rafael, "profile_visibility", "private");
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        mvc.perform(withJson(patch("/api/me/preferences"), Map.of("privacy", Map.of("profileVisibility", "public")))
+                        .with(as(rafael)))
+                .andExpect(status().isOk());
+        assertThat(types(rafael)).isEmpty();
+        assertThat(api.getOk(linh, "/api/profiles/rafael").get("isFollowing").asBoolean()).isTrue();
+    }
+
+    @Test
+    void followRequestsHonorTheFollowersPreference() throws Exception {
+        data.setPreference(rafael, "profile_visibility", "private");
+        data.setPreference(rafael, "notify_followers", false);
+        api.put(linh, "/api/profiles/" + rafael + "/follow");
+        assertThat(types(rafael)).isEmpty();
+        assertThat(api.getOk(rafael, "/api/me/follow-requests").size()).isOne();
     }
 }

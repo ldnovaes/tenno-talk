@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 
 export function PushSettings() {
   const { t } = useTranslation();
-  const { config, status, toggle, supported } = usePushSettings();
-  const denied = supported && Notification.permission === "denied";
+  const { config, status, toggle, supported, permission } = usePushSettings();
+  const denied = supported && permission === "denied";
   return (
     <div className="space-y-3 px-4 py-4">
       <p className="font-medium">{t("notifications.pushTitle")}</p>

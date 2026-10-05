@@ -7,6 +7,9 @@ import type { ThemePreference } from "@/types/preferences";
 interface DevicePreferencesState {
   theme: ThemePreference;
   setTheme: (theme: ThemePreference) => void;
+  /** When this device last answered "Not now" to the push invitation (epoch ms). */
+  pushPromptDismissedAt: number | null;
+  dismissPushPrompt: () => void;
 }
 
 /** Keep in sync with the inline theme script in index.html. */
@@ -17,6 +20,8 @@ export const useDevicePreferencesStore = create<DevicePreferencesState>()(
     (set) => ({
       theme: "system",
       setTheme: (theme) => set({ theme }),
+      pushPromptDismissedAt: null,
+      dismissPushPrompt: () => set({ pushPromptDismissedAt: Date.now() }),
     }),
     { name: DEVICE_PREFERENCES_KEY, version: 1 },
   ),

@@ -10,6 +10,7 @@ import { notificationService } from "@/services/notificationService";
 import { realtimeClient } from "@/services/realtime/realtimeClient";
 
 import { notificationDestination } from "../lib/destination";
+import { describeNotification } from "../lib/notificationText";
 import { notificationKeys } from "../lib/queryKeys";
 
 export function useNotifications() {
@@ -56,8 +57,9 @@ export function useNotificationsRealtime() {
       realtimeClient.subscribe("notification.created", ({ notification }) => {
         refresh();
         const destination = notificationDestination(notification, me.id);
-        toast(t("notifications.newActivity", { name: notification.actor.displayName }), {
+        toast(notification.actor.displayName, {
           id: notification.id,
+          description: describeNotification(notification, t),
           action: {
             label: t("notifications.view"),
             onClick: () =>

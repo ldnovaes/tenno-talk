@@ -9,7 +9,9 @@ import type {
 import type { LanguageCode } from "@/types/language";
 
 import { mockDb } from "../db";
+import { publish, type ServerEvent } from "../events";
 import { mockRequest } from "../latency";
+import { addNotification, retractNotifications } from "../notificationRecords";
 import { blockedEitherWay } from "../privacy";
 import { toCurrentUser, toUserProfile } from "../mappers";
 import type { MockDatabase, UserRecord } from "../schema";
@@ -51,6 +53,34 @@ function findUser(db: MockDatabase, userId: string): UserRecord {
 function recordReceivingChange(user: UserRecord, language: LanguageCode): void {
   if (user.preferences.translation.receivingLanguage === language) return;
   user.receivingLanguageHistory.push({ language, since: new Date().toISOString() });
+}
+
+/** Runs a write, then announces the notifications it created or retracted (like the server). */
+async function writeAndAnnounce<T>(
+  write: (db: MockDatabase, announce: (event: ServerEvent) => void) => T,
+): Promise<T> {
+  const events: ServerEvent[] = [];
+  const result = await mockRequest(() => mockDb.update((db) => write(db, (e) => events.push(e))));
+  events.forEach(publish);
+  return result;
+}
+
+function announceCreated(
+  announce: (event: ServerEvent) => void,
+  notificationId: string | null,
+  recipientId: string,
+) {
+  if (notificationId) announce({ kind: "notification.created", notificationId, recipientId });
+}
+
+function retractRequest(
+  db: MockDatabase,
+  announce: (event: ServerEvent) => void,
+  ownerId: string,
+  requesterId?: string,
+) {
+  if (retractNotifications(db, ownerId, "follow_request", requesterId))
+    announce({ kind: "notifications.read", recipientId: ownerId });
 }
 
 export const mockProfileService: ProfileService = {
@@ -121,32 +151,30 @@ export const mockProfileService: ProfileService = {
   },
 
   updatePreferences(patch: PreferencesPatch) {
-    return mockRequest(() =>
-      mockDb.update((db) => {
-        const viewer = viewerRecord(db);
-        const current = viewer.preferences;
-        if (patch.translation?.receivingLanguage) {
-          recordReceivingChange(viewer, patch.translation.receivingLanguage);
+    return writeAndAnnounce((db, announce) => {
+      const viewer = viewerRecord(db);
+      const current = viewer.preferences;
+      if (patch.translation?.receivingLanguage) {
+        recordReceivingChange(viewer, patch.translation.receivingLanguage);
+      }
+      viewer.preferences = {
+        interfaceLanguage: patch.interfaceLanguage ?? current.interfaceLanguage,
+        translation: { ...current.translation, ...patch.translation },
+        privacy: { ...current.privacy, ...patch.privacy },
+        notifications: { ...current.notifications, ...patch.notifications },
+      };
+      if (
+        current.privacy.profileVisibility === "private" &&
+        viewer.preferences.privacy.profileVisibility === "public"
+      ) {
+        for (const request of db.followRequests.filter((item) => item.followeeId === viewer.id)) {
+          if (!blockedEitherWay(db, request.followerId, viewer.id)) db.follows.push({ ...request });
         }
-        viewer.preferences = {
-          interfaceLanguage: patch.interfaceLanguage ?? current.interfaceLanguage,
-          translation: { ...current.translation, ...patch.translation },
-          privacy: { ...current.privacy, ...patch.privacy },
-          notifications: { ...current.notifications, ...patch.notifications },
-        };
-        if (
-          current.privacy.profileVisibility === "private" &&
-          viewer.preferences.privacy.profileVisibility === "public"
-        ) {
-          for (const request of db.followRequests.filter((item) => item.followeeId === viewer.id)) {
-            if (!blockedEitherWay(db, request.followerId, viewer.id))
-              db.follows.push({ ...request });
-          }
-          db.followRequests = db.followRequests.filter((item) => item.followeeId !== viewer.id);
-        }
-        return toCurrentUser(viewer, db);
-      }),
-    );
+        db.followRequests = db.followRequests.filter((item) => item.followeeId !== viewer.id);
+        retractRequest(db, announce, viewer.id);
+      }
+      return toCurrentUser(viewer, db);
+    });
   },
 
   getProfile(username) {
@@ -193,50 +221,51 @@ export const mockProfileService: ProfileService = {
   },
 
   follow(userId) {
-    return mockRequest(() =>
-      mockDb.update((db) => {
-        const viewer = viewerRecord(db);
-        const target = findUser(db, userId);
-        if (target.id === viewer.id) throw new AppError("validation", "You can't follow yourself.");
-        if (blockedEitherWay(db, viewer.id, target.id))
-          throw new AppError("not_found", "User not found.");
-        const exists = db.follows.some(
-          (f) => f.followerId === viewer.id && f.followeeId === userId,
-        );
-        if (!exists) {
-          const entry = {
-            followerId: viewer.id,
-            followeeId: userId,
-            createdAt: new Date().toISOString(),
-          };
-          if (target.preferences.privacy.profileVisibility === "private") {
-            if (
-              !db.followRequests.some(
-                (item) => item.followerId === viewer.id && item.followeeId === userId,
-              )
+    return writeAndAnnounce((db, announce) => {
+      const viewer = viewerRecord(db);
+      const target = findUser(db, userId);
+      if (target.id === viewer.id) throw new AppError("validation", "You can't follow yourself.");
+      if (blockedEitherWay(db, viewer.id, target.id))
+        throw new AppError("not_found", "User not found.");
+      const exists = db.follows.some((f) => f.followerId === viewer.id && f.followeeId === userId);
+      if (!exists) {
+        const entry = {
+          followerId: viewer.id,
+          followeeId: userId,
+          createdAt: new Date().toISOString(),
+        };
+        if (target.preferences.privacy.profileVisibility === "private") {
+          if (
+            !db.followRequests.some(
+              (item) => item.followerId === viewer.id && item.followeeId === userId,
             )
-              db.followRequests.push(entry);
-          } else db.follows.push(entry);
+          ) {
+            db.followRequests.push(entry);
+            const id = addNotification(db, userId, viewer.id, "follow_request");
+            announceCreated(announce, id, userId);
+          }
+        } else {
+          db.follows.push(entry);
+          announceCreated(announce, addNotification(db, userId, viewer.id, "follow"), userId);
         }
-        return toUserProfile(target, db, viewer.id);
-      }),
-    );
+      }
+      return toUserProfile(target, db, viewer.id);
+    });
   },
 
   unfollow(userId) {
-    return mockRequest(() =>
-      mockDb.update((db) => {
-        const viewer = viewerRecord(db);
-        const target = findUser(db, userId);
-        db.follows = db.follows.filter(
-          (f) => !(f.followerId === viewer.id && f.followeeId === userId),
-        );
-        db.followRequests = db.followRequests.filter(
-          (r) => !(r.followerId === viewer.id && r.followeeId === userId),
-        );
-        return toUserProfile(target, db, viewer.id);
-      }),
-    );
+    return writeAndAnnounce((db, announce) => {
+      const viewer = viewerRecord(db);
+      const target = findUser(db, userId);
+      db.follows = db.follows.filter(
+        (f) => !(f.followerId === viewer.id && f.followeeId === userId),
+      );
+      db.followRequests = db.followRequests.filter(
+        (r) => !(r.followerId === viewer.id && r.followeeId === userId),
+      );
+      retractRequest(db, announce, userId, viewer.id);
+      return toUserProfile(target, db, viewer.id);
+    });
   },
 
   getFollowRequests() {
@@ -252,34 +281,34 @@ export const mockProfileService: ProfileService = {
   },
 
   approveFollowRequest(userId) {
-    return mockRequest(() =>
-      mockDb.update((db) => {
-        const viewerId = requireViewerId();
-        const request = db.followRequests.find(
-          (item) => item.followerId === userId && item.followeeId === viewerId,
-        );
-        if (!request || blockedEitherWay(db, viewerId, userId))
-          throw new AppError("not_found", "Follow request not found.");
-        db.followRequests = db.followRequests.filter((item) => item !== request);
-        if (!db.follows.some((item) => item.followerId === userId && item.followeeId === viewerId))
-          db.follows.push({ ...request });
-      }),
-    );
+    return writeAndAnnounce((db, announce) => {
+      const viewerId = requireViewerId();
+      const request = db.followRequests.find(
+        (item) => item.followerId === userId && item.followeeId === viewerId,
+      );
+      if (!request || blockedEitherWay(db, viewerId, userId))
+        throw new AppError("not_found", "Follow request not found.");
+      db.followRequests = db.followRequests.filter((item) => item !== request);
+      if (!db.follows.some((item) => item.followerId === userId && item.followeeId === viewerId))
+        db.follows.push({ ...request });
+      retractRequest(db, announce, viewerId, userId);
+      const id = addNotification(db, userId, viewerId, "follow_accepted");
+      announceCreated(announce, id, userId);
+    });
   },
 
   rejectFollowRequest(userId) {
-    return mockRequest(() =>
-      mockDb.update((db) => {
-        const viewerId = requireViewerId();
-        const exists = db.followRequests.some(
-          (item) => item.followerId === userId && item.followeeId === viewerId,
-        );
-        if (!exists) throw new AppError("not_found", "Follow request not found.");
-        db.followRequests = db.followRequests.filter(
-          (item) => !(item.followerId === userId && item.followeeId === viewerId),
-        );
-      }),
-    );
+    return writeAndAnnounce((db, announce) => {
+      const viewerId = requireViewerId();
+      const exists = db.followRequests.some(
+        (item) => item.followerId === userId && item.followeeId === viewerId,
+      );
+      if (!exists) throw new AppError("not_found", "Follow request not found.");
+      db.followRequests = db.followRequests.filter(
+        (item) => !(item.followerId === userId && item.followeeId === viewerId),
+      );
+      retractRequest(db, announce, viewerId, userId);
+    });
   },
 
   getBlockedUsers() {
@@ -294,29 +323,29 @@ export const mockProfileService: ProfileService = {
   },
 
   block(userId) {
-    return mockRequest(() =>
-      mockDb.update((db) => {
-        const viewer = viewerRecord(db);
-        findUser(db, userId);
-        if (userId === viewer.id) throw new AppError("validation", "You can't block yourself.");
-        if (!viewer.blockedUserIds.includes(userId)) viewer.blockedUserIds.push(userId);
-        // Blocking also removes follows in both directions.
-        db.follows = db.follows.filter(
-          (f) =>
-            !(
-              (f.followerId === viewer.id && f.followeeId === userId) ||
-              (f.followerId === userId && f.followeeId === viewer.id)
-            ),
-        );
-        db.followRequests = db.followRequests.filter(
-          (r) =>
-            !(
-              (r.followerId === viewer.id && r.followeeId === userId) ||
-              (r.followerId === userId && r.followeeId === viewer.id)
-            ),
-        );
-      }),
-    );
+    return writeAndAnnounce((db, announce) => {
+      const viewer = viewerRecord(db);
+      findUser(db, userId);
+      if (userId === viewer.id) throw new AppError("validation", "You can't block yourself.");
+      if (!viewer.blockedUserIds.includes(userId)) viewer.blockedUserIds.push(userId);
+      // Blocking also removes follows in both directions.
+      db.follows = db.follows.filter(
+        (f) =>
+          !(
+            (f.followerId === viewer.id && f.followeeId === userId) ||
+            (f.followerId === userId && f.followeeId === viewer.id)
+          ),
+      );
+      db.followRequests = db.followRequests.filter(
+        (r) =>
+          !(
+            (r.followerId === viewer.id && r.followeeId === userId) ||
+            (r.followerId === userId && r.followeeId === viewer.id)
+          ),
+      );
+      retractRequest(db, announce, viewer.id, userId);
+      retractRequest(db, announce, userId, viewer.id);
+    });
   },
 
   exportMyData() {

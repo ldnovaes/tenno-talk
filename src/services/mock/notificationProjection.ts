@@ -23,7 +23,9 @@ export function projectNotification(
         ? { ...base, type: "comment", postId: record.postId, commentId: record.commentId }
         : null;
     case "follow":
-      return { ...base, type: "follow" };
+    case "follow_request":
+    case "follow_accepted":
+      return { ...base, type: record.type };
     case "story_reaction":
       return record.storyId && record.emoji
         ? { ...base, type: "story_reaction", storyId: record.storyId, emoji: record.emoji }

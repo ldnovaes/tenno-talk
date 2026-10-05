@@ -45,6 +45,7 @@ public class NotificationService {
 
     private static final Map<String, String> PREFERENCE = Map.of(
             "like", "notify_likes", "comment", "notify_comments", "follow", "notify_followers",
+            "follow_request", "notify_followers", "follow_accepted", "notify_followers",
             "story_reaction", "notify_likes", "new_message", "notify_messages");
 
     private final JdbcClient jdbc;
@@ -79,6 +80,22 @@ public class NotificationService {
                 .param("at", Timestamp.from(clock.instant()))
                 .update();
         events.publishEvent(new Created(id, recipient));
+    }
+
+    /** Removes a notification that no longer applies (e.g. a follow request already decided). */
+    @Transactional
+    public void retract(UUID recipient, UUID actor, String type) {
+        int removed = jdbc.sql("DELETE FROM notifications WHERE recipient_id = :r AND actor_id = :a AND type = :t")
+                .param("r", recipient).param("a", actor).param("t", type).update();
+        if (removed > 0) events.publishEvent(new Read(recipient));
+    }
+
+    /** {@link #retract} for every pending notification of a type sent to the recipient. */
+    @Transactional
+    public void retractAll(UUID recipient, String type) {
+        int removed = jdbc.sql("DELETE FROM notifications WHERE recipient_id = :r AND type = :t")
+                .param("r", recipient).param("t", type).update();
+        if (removed > 0) events.publishEvent(new Read(recipient));
     }
 
     private static final String SELECT = """

@@ -1,3 +1,5 @@
+import { needsHomeScreenInstall } from "@/lib/platform";
+
 import { http } from "./http/httpClient";
 
 export const pushService = {
@@ -6,6 +8,16 @@ export const pushService = {
     "serviceWorker" in navigator &&
     "PushManager" in window &&
     "Notification" in window,
+  /** "default" also where the API is missing (iPhone/iPad outside the Home Screen). */
+  permission: (): NotificationPermission =>
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default",
+  needsInstall: () =>
+    typeof window !== "undefined" &&
+    needsHomeScreenInstall(
+      navigator.userAgent,
+      window.matchMedia?.("(display-mode: standalone)").matches === true ||
+        ("standalone" in navigator && navigator.standalone === true),
+    ),
   config: () =>
     __USE_HTTP__
       ? http<{ enabled: boolean; publicKey: string }>("GET", "/api/push/config")

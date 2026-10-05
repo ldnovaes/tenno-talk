@@ -33,7 +33,22 @@ public class PushDelivery {
     public void enqueue(UUID notification) {
         if (sender != null) jdbc.sql("INSERT INTO push_jobs(notification_id) VALUES (:id) ON CONFLICT DO NOTHING").param("id", notification).update();
     }
-    record Target(UUID user, String type, UUID post, UUID story, UUID conversation, String username, UUID comment, UUID message) {}
+    record Target(UUID user, String type, UUID post, UUID story, UUID conversation, String username, UUID comment, UUID message,
+        String displayName, String emoji) {}
+
+    /** Same wording as the in-app list (src/app/locales/en.ts, notifications.*): actor as title, action as body. */
+    static String body(String type, String emoji) {
+        return switch (type) {
+            case "like" -> "Liked your post.";
+            case "comment" -> "Commented on your post.";
+            case "follow" -> "Started following you.";
+            case "follow_request" -> "Requested to follow you.";
+            case "follow_accepted" -> "Accepted your follow request.";
+            case "story_reaction" -> "Reacted " + (emoji == null ? "" : emoji + " ") + "to your story.";
+            case "new_message" -> "Sent you a message.";
+            default -> "You have new activity.";
+        };
+    }
     @Scheduled(fixedDelay = 1000)
     public synchronized void run() {
         if (sender == null) return;
@@ -46,15 +61,17 @@ public class PushDelivery {
         UUID id = job.get();
         try {
             var target = jdbc.sql("""
-                SELECT n.*, u.username FROM notifications n JOIN users u ON u.id = n.actor_id
+                SELECT n.*, u.username, u.display_name FROM notifications n JOIN users u ON u.id = n.actor_id
                 JOIN user_preferences p ON p.user_id = n.recipient_id
                 WHERE n.id = :id AND n.read_at IS NULL AND n.created_at > now() - interval '24 hours'
                 AND CASE n.type WHEN 'new_message' THEN p.notify_messages WHEN 'comment' THEN p.notify_comments
-                    WHEN 'follow' THEN p.notify_followers ELSE p.notify_likes END
+                    WHEN 'follow' THEN p.notify_followers WHEN 'follow_request' THEN p.notify_followers
+                    WHEN 'follow_accepted' THEN p.notify_followers ELSE p.notify_likes END
                 AND NOT EXISTS (SELECT 1 FROM blocks b WHERE (b.blocker_id=n.recipient_id AND b.blocked_id=n.actor_id) OR (b.blocker_id=n.actor_id AND b.blocked_id=n.recipient_id))
                 AND NOT EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id=n.conversation_id AND cm.user_id=n.recipient_id AND cm.muted_until>now())
                 """).param("id", id).query((rs, i) -> new Target(rs.getObject("recipient_id", UUID.class), rs.getString("type"),
-                    rs.getObject("post_id", UUID.class), rs.getObject("story_id", UUID.class), rs.getObject("conversation_id", UUID.class), rs.getString("username"), rs.getObject("comment_id", UUID.class), rs.getObject("message_id", UUID.class))).optional();
+                    rs.getObject("post_id", UUID.class), rs.getObject("story_id", UUID.class), rs.getObject("conversation_id", UUID.class), rs.getString("username"), rs.getObject("comment_id", UUID.class), rs.getObject("message_id", UUID.class),
+                    rs.getString("display_name"), rs.getString("emoji"))).optional();
             if (target.isPresent()) deliver(id, target.get());
             jdbc.sql("DELETE FROM push_jobs WHERE notification_id = :id").param("id", id).update();
         } catch (Exception error) {
@@ -68,10 +85,11 @@ public class PushDelivery {
             case "comment" -> "/posts/" + target.post() + "?commentId=" + target.comment();
             case "story_reaction" -> "/stories/" + target.user() + "?storyId=" + target.story();
             case "new_message" -> "/chats/" + target.conversation() + "?messageId=" + target.message();
-            case "follow" -> "/u/" + target.username();
+            case "follow", "follow_accepted" -> "/u/" + target.username();
             default -> "/notifications";
         };
-        byte[] payload = json.writeValueAsString(Map.of("title", "TENNO TALK", "body", "You have new activity.", "url", url,
+        byte[] payload = json.writeValueAsString(Map.of("title", target.displayName() == null ? "TENNO TALK" : target.displayName(),
+            "body", body(target.type(), target.emoji()), "url", url,
             "notificationId", id, "userId", target.user())).getBytes(StandardCharsets.UTF_8);
         var config = RequestConfig.custom().setConnectTimeout(5000).setSocketTimeout(5000).setConnectionRequestTimeout(5000).build();
         try (var client = HttpClients.custom().disableRedirectHandling().setDefaultRequestConfig(config).build()) {

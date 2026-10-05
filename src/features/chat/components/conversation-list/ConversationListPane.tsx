@@ -16,7 +16,7 @@ import { filterConversations, type ConversationFilter } from "../../lib/conversa
 import { ChatsTitle } from "./ChatsTitle";
 import { ConversationFilters } from "./ConversationFilters";
 import { ConversationListItem } from "./ConversationListItem";
-import { ConversationListSkeleton } from "./ConversationListSkeleton";
+import { AvatarListSkeleton } from "@/components/common/AvatarListSkeleton";
 import { ConversationSearch } from "./ConversationSearch";
 import { NewChatDialog } from "./NewChatDialog";
 
@@ -80,7 +80,7 @@ export function ConversationListPane({ header }: { header?: ReactNode }) {
       <ConversationSearch ref={searchRef} value={query} onChange={setQuery} />
       <ConversationFilters value={filter} onChange={setFilter} showGroups={hasGroups} />
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-        {conversations.isPending && <ConversationListSkeleton />}
+        {conversations.isPending && <AvatarListSkeleton />}
         {conversations.isError && <ErrorState onRetry={() => void conversations.refetch()} />}
         {list?.length === 0 && (
           <EmptyState
