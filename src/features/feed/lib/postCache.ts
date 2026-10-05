@@ -11,13 +11,19 @@ function isInfinite(value: unknown): value is InfiniteData<Page<Post>, unknown> 
   return typeof value === "object" && value !== null && "pages" in value;
 }
 
+/** Every query under "feed" holds posts except the comment lists. */
+function isPostQuery(query: { queryKey: readonly unknown[] }): boolean {
+  return query.queryKey[1] !== feedKeys.comments("")[1];
+}
+
 /** Applies a patch to a post in every feed cache (feed, profile grids, single post). */
 export function patchPostInCaches(
   queryClient: QueryClient,
   postId: string,
   patch: (post: Post) => Post,
 ): void {
-  queryClient.setQueriesData<PostEntry>({ queryKey: feedKeys.all }, (entry) => {
+  const holdsPosts = { queryKey: feedKeys.all, predicate: isPostQuery };
+  queryClient.setQueriesData<PostEntry>(holdsPosts, (entry) => {
     if (!entry) return entry;
     if (isInfinite(entry)) {
       return {

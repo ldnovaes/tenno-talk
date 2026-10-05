@@ -1,5 +1,5 @@
 import type { CountryCode, LanguageCode } from "@/types/language";
-import type { UserPreferences } from "@/types/preferences";
+import type { PreferencesPatch } from "@/types/preferences";
 import type { CurrentUser, UserProfile } from "@/types/user";
 
 import { mockProfileService } from "./mock/implementations/mockProfileService";
@@ -26,11 +26,7 @@ export interface UpdateProfileInput {
 }
 
 /** Recursive partial used for optimistic preference updates. */
-export type PreferencesPatch = {
-  [K in keyof UserPreferences]?: UserPreferences[K] extends object
-    ? Partial<UserPreferences[K]>
-    : UserPreferences[K];
-};
+export type { PreferencesPatch } from "@/types/preferences";
 
 export interface ProfileService {
   getMe(): Promise<CurrentUser>;

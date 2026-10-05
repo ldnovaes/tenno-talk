@@ -32,6 +32,19 @@ function matches(item: Message, message: Pick<Message, "id" | "clientId">): bool
   );
 }
 
+/** A translation is replaced unless the current one is a newer version in the same language. */
+function keepsTranslation(
+  current: ContentTranslation | null,
+  incoming: ContentTranslation | null,
+): boolean {
+  return (
+    current !== null &&
+    incoming !== null &&
+    current.targetLanguage === incoming.targetLanguage &&
+    current.version > incoming.version
+  );
+}
+
 /** Never downgrade ticks or translations because of an out-of-order event. */
 export function mergeMessage(current: Message, incoming: Message): Message {
   if (incoming.id.startsWith("tmp_") && !current.id.startsWith("tmp_")) return current;
@@ -39,15 +52,12 @@ export function mergeMessage(current: Message, incoming: Message): Message {
     incoming.deliveryStatus !== "failed" &&
     current.deliveryStatus !== "failed" &&
     STATUS_RANK[current.deliveryStatus] > STATUS_RANK[incoming.deliveryStatus];
-  const keepTranslation =
-    current.translation !== null &&
-    incoming.translation !== null &&
-    current.translation.targetLanguage === incoming.translation.targetLanguage &&
-    current.translation.version > incoming.translation.version;
   return {
     ...incoming,
     deliveryStatus: keepStatus ? current.deliveryStatus : incoming.deliveryStatus,
-    translation: keepTranslation ? current.translation : incoming.translation,
+    translation: keepsTranslation(current.translation, incoming.translation)
+      ? current.translation
+      : incoming.translation,
   };
 }
 
@@ -110,56 +120,15 @@ export function applyTranslation(
   messageId: string,
   translation: ContentTranslation,
 ): MessagesData {
-  return patchInPages(data, { id: messageId, clientId: null }, (message) => {
-    const current = message.translation;
-    if (
-      current &&
-      current.targetLanguage === translation.targetLanguage &&
-      current.version > translation.version
-    ) {
-      return message;
-    }
-    return { ...message, translation };
-  });
-}
-
-/** Upgrades the viewer's own messages up to a cursor (delivered/read receipts). */
-export function applyReceipt(
-  data: MessagesData,
-  viewerId: string,
-  upToMessageId: string,
-  status: "delivered" | "read",
-): MessagesData {
-  const all = data.pages.flatMap((page) => page.items);
-  const cursor = all.find((message) => message.id === upToMessageId);
-  if (!cursor) return data;
-  let changed = false;
-  const pages = data.pages.map((page) => ({
-    ...page,
-    items: page.items.map((message) => {
-      if (message.senderId !== viewerId) return message;
-      if (message.deliveryStatus === "sending" || message.deliveryStatus === "failed")
-        return message;
-      if (compareMessages(message, cursor) > 0) return message;
-      if (STATUS_RANK[message.deliveryStatus] >= STATUS_RANK[status]) return message;
-      changed = true;
-      return { ...message, deliveryStatus: status };
-    }),
-  }));
-  return changed ? { ...data, pages } : data;
+  return patchInPages(data, { id: messageId, clientId: null }, (message) =>
+    keepsTranslation(message.translation, translation) ? message : { ...message, translation },
+  );
 }
 
 /** Chronological list across pages (page 0 is the newest). */
 export function flattenMessages(data: MessagesData | undefined): Message[] {
   if (!data) return [];
   return [...data.pages].reverse().flatMap((page) => page.items);
-}
-
-export function findMessage(
-  data: MessagesData | undefined,
-  messageId: string,
-): Message | undefined {
-  return data?.pages.flatMap((page) => page.items).find((message) => message.id === messageId);
 }
 
 function sortConversations(list: Conversation[]): Conversation[] {
@@ -288,23 +257,10 @@ export function setTranslation(
     list?.map((conversation) => {
       const last = conversation.lastMessage;
       if (conversation.id !== conversationId || !last || last.id !== messageId) return conversation;
-      if (last.translation && last.translation.version > translation.version) return conversation;
+      if (keepsTranslation(last.translation, translation)) return conversation;
       return { ...conversation, lastMessage: { ...last, translation } };
     }),
   );
-}
-
-export function setReceipt(
-  queryClient: QueryClient,
-  conversationId: string,
-  viewerId: string,
-  upToMessageId: string,
-  status: "delivered" | "read",
-): void {
-  queryClient.setQueryData<MessagesData>(chatKeys.messages(conversationId), (data) =>
-    data ? applyReceipt(data, viewerId, upToMessageId, status) : data,
-  );
-  void queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
 }
 
 export function setConversationUnread(

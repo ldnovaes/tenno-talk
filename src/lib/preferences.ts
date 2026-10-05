@@ -1,4 +1,4 @@
-import type { UserPreferences } from "@/types/preferences";
+import type { PreferencesPatch, UserPreferences } from "@/types/preferences";
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
   interfaceLanguage: "en-US",
@@ -17,3 +17,16 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   },
   notifications: { messages: true, comments: true, likes: true, followers: true },
 };
+
+/** Applies a partial update; groups merge field by field, absent keys keep their value. */
+export function mergePreferences(
+  current: UserPreferences,
+  patch: PreferencesPatch,
+): UserPreferences {
+  return {
+    interfaceLanguage: patch.interfaceLanguage ?? current.interfaceLanguage,
+    translation: { ...current.translation, ...patch.translation },
+    privacy: { ...current.privacy, ...patch.privacy },
+    notifications: { ...current.notifications, ...patch.notifications },
+  };
+}

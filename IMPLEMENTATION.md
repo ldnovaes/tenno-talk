@@ -646,3 +646,10 @@ Estratégia em [PLAN.md §23.1](PLAN.md#231-testes-por-combinação-2026-10-05).
 
 | # | Bug | Teste | Correção |
 |---|---|---|---|
+| 1 | iPad com Safari em modo "site para computador" (padrão desde o iPadOS 13) se identifica como Mac: nunca recebia a orientação de adicionar à Tela de Início, e o push nunca ficava disponível | `pushOffer.test.ts` (iPad desktop site) | `needsHomeScreenInstall` considera Mac com tela de toque como iPad |
+| 2 | No celular, `/admin/reports` mostrava a barra inferior, ao contrário de `/admin/ai` e das outras subpáginas de Settings | `routeHelpers.test.ts` (tabela de todas as rotas) | `/admin/reports` entra em `FULLSCREEN_MOBILE` |
+| 3 | A prévia da lista de conversas mantinha uma tradução de outro idioma quando ela tinha versão maior; a bolha da mensagem trocava. Os dois caminhos usavam regras diferentes | `messageCache.test.ts` (matriz atual × nova: bolha e prévia iguais) | Uma única regra, `keepsTranslation`, para `mergeMessage`, `applyTranslation` e `setTranslation`; removidos `applyReceipt`/`setReceipt`/`findMessage`, sem uso |
+| 4 | Uma mutation silenciosa (marcar story como visto, ler conversa…) que recebia 401 não encerrava a sessão; só as queries encerravam | `queryClient.test.ts` (código × query/mutation × carga × silent) | O 401 é tratado antes do `silent` também nas mutations |
+| 5 | Iniciais do avatar cortavam emojis e letras fora do BMP ao meio ("🌸 Linh" virava "�L") | `avatarUtils.test.ts` (alfabetos, emojis simples e compostos) | `initialsOf` usa o primeiro grafema (`Intl.Segmenter`, com fallback por ponto de código) |
+| 6 | Um ACK de entrega recusado numa conversa (ex.: 403 depois de sair do grupo) descartava os ACKs pendentes de todas as outras: as mensagens dos outros remetentes ficavam em "enviada" | `deliveryAcks.test.ts` | A recusa descarta só a conversa que falhou; erro transitório mantém tudo para a próxima tentativa |
+| 7 | (Latente) `patchPostInCaches` aplicava o patch de post também às listas de comentários sob `feed`; um comentário com o mesmo id do post seria corrompido | `postCache.test.ts` | O patch filtra as queries de comentários |

@@ -79,6 +79,28 @@ describe("problemToAppError", () => {
     expect(problemToAppError(403, { code: "something_new" }).code).toBe("forbidden");
   });
 
+  it.each([
+    "unauthenticated",
+    "not_found",
+    "forbidden",
+    "validation",
+    "conflict",
+    "rate_limited",
+    "unknown",
+  ])("a declared code %s wins over the status", (code) => {
+    expect(problemToAppError(code === "validation" ? 409 : 400, { code }).code).toBe(code);
+  });
+
+  it("a server can't declare a client-only code (network)", () => {
+    expect(problemToAppError(400, { code: "network" }).code).toBe("validation");
+  });
+
+  it("falls back to a generic message when the detail is missing or not text", () => {
+    expect(problemToAppError(500, { detail: 42 }).message).toBe("Something went wrong.");
+    expect(problemToAppError(500, ["detail"]).message).toBe("Something went wrong.");
+    expect(problemToAppError(400, { fieldErrors: "email" }).fieldErrors).toEqual({});
+  });
+
   it("rate limits and server errors are retryable", () => {
     expect(problemToAppError(429, {}).retryable).toBe(true);
     expect(problemToAppError(500, {}).retryable).toBe(true);

@@ -17,6 +17,7 @@ export const pushService = {
       navigator.userAgent,
       window.matchMedia?.("(display-mode: standalone)").matches === true ||
         ("standalone" in navigator && navigator.standalone === true),
+      navigator.maxTouchPoints,
     ),
   config: () =>
     __USE_HTTP__

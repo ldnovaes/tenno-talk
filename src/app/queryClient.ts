@@ -34,6 +34,8 @@ export function createQueryClient(): QueryClient {
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
+        // Even a silent mutation (e.g. marking a story seen) reveals an expired session.
+        if (toAppError(error).code === "unauthenticated") return notify(error);
         if (mutation.meta?.silent) return;
         notify(error);
       },

@@ -14,9 +14,21 @@ export function avatarColorFor(id: string): (typeof AVATAR_COLORS)[number] {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length] ?? AVATAR_COLORS[0];
 }
 
+const graphemes =
+  typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+
+/** First user-perceived character: never half of an emoji or of a letter outside the BMP. */
+function firstCharacter(word: string | undefined): string {
+  if (!word) return "";
+  if (graphemes) return graphemes.segment(word)[Symbol.iterator]().next().value?.segment ?? "";
+  return Array.from(word)[0] ?? "";
+}
+
 export function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "?";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  const first = firstCharacter(parts[0]) || "?";
+  const last = parts.length > 1 ? firstCharacter(parts[parts.length - 1]) : "";
   return (first + last).toUpperCase();
 }

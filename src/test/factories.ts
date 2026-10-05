@@ -1,7 +1,26 @@
+/** Test data builders shared by every test file (PLAN.md §23.1). Override only what matters. */
 import type { Conversation } from "@/types/conversation";
+import type { MediaAttachment } from "@/types/media";
 import type { Message } from "@/types/message";
 
 let counter = 0;
+
+export function makeMedia(overrides: Partial<MediaAttachment> = {}): MediaAttachment {
+  counter += 1;
+  return {
+    id: `media${counter}`,
+    kind: "image",
+    url: `/api/media/media${counter}`,
+    thumbnailUrl: null,
+    width: 800,
+    height: 600,
+    durationMs: null,
+    mimeType: "image/jpeg",
+    sizeBytes: 1024,
+    alt: null,
+    ...overrides,
+  };
+}
 
 export function makeMessage(overrides: Partial<Message> = {}): Message {
   counter += 1;

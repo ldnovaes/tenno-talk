@@ -8,6 +8,7 @@ const FULLSCREEN_MOBILE = [
   "/create",
   "/notifications",
   "/admin/ai",
+  "/admin/reports",
 ];
 
 export function hidesBottomNav(pathname: string): boolean {

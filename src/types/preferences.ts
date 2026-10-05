@@ -35,3 +35,10 @@ export interface UserPreferences {
 }
 
 export type ThemePreference = "light" | "dark" | "system";
+
+/** Partial update of the preferences: any top-level key, and any subset of each group. */
+export type PreferencesPatch = {
+  [K in keyof UserPreferences]?: UserPreferences[K] extends object
+    ? Partial<UserPreferences[K]>
+    : UserPreferences[K];
+};

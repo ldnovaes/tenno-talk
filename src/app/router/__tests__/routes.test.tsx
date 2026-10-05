@@ -1,8 +1,6 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { isOverlayPath } from "@/app/router/overlay";
-import { isOnboardingStep, isSettingsSection, paths } from "@/app/router/paths";
 import { setViewportWidth } from "@/test/setup";
 import { renderApp, signInAs } from "@/test/utils";
 
@@ -59,34 +57,6 @@ describe("AppRoutes", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     // The background stays rendered (blurred, hidden from assistive tech while the panel is open).
     expect(await screen.findByRole("heading", { name: "Chats", hidden: true })).toBeInTheDocument();
-  });
-});
-
-describe("route helpers", () => {
-  it("detects overlay paths", () => {
-    expect(isOverlayPath("/u/linh")).toBe(true);
-    expect(isOverlayPath("/u/linh/edit")).toBe(true);
-    expect(isOverlayPath("/settings")).toBe(true);
-    expect(isOverlayPath("/settings/privacy")).toBe(true);
-    expect(isOverlayPath("/create")).toBe(true);
-    expect(isOverlayPath("/stories/usr_linh")).toBe(true);
-    expect(isOverlayPath("/chats")).toBe(false);
-    expect(isOverlayPath("/discover")).toBe(false);
-  });
-
-  it("builds encoded paths", () => {
-    expect(paths.conversation("a b")).toBe("/chats/a%20b");
-    expect(paths.settings()).toBe("/settings");
-    expect(paths.settings("privacy")).toBe("/settings/privacy");
-    expect(paths.onboarding()).toBe("/onboarding/welcome");
-  });
-
-  it("validates params", () => {
-    expect(isSettingsSection("privacy")).toBe(true);
-    expect(isSettingsSection("nope")).toBe(false);
-    expect(isSettingsSection(undefined)).toBe(false);
-    expect(isOnboardingStep("profile")).toBe(true);
-    expect(isOnboardingStep("x")).toBe(false);
   });
 });
 

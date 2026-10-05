@@ -30,16 +30,17 @@ async function flush() {
   try {
     for (const [conversation, ids] of pending) {
       const batch = [...ids].slice(0, 100);
-      if (!batch.length) {
-        pending.delete(conversation);
-        continue;
+      try {
+        if (batch.length) await chatService.acknowledge(conversation, batch);
+        batch.forEach((id) => ids.delete(id));
+      } catch (error) {
+        // Transient: keep everything for the next attempt. Refused (e.g. no longer a member):
+        // drop that conversation only; the others still owe their senders a delivered tick.
+        if (toAppError(error).retryable) break;
+        ids.clear();
       }
-      await chatService.acknowledge(conversation, batch);
-      batch.forEach((id) => ids.delete(id));
       if (!ids.size) pending.delete(conversation);
     }
-  } catch (error) {
-    if (!toAppError(error).retryable) pending.clear();
   } finally {
     running = false;
     if (timer) clearTimeout(timer);

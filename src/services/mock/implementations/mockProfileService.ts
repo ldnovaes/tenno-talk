@@ -1,4 +1,5 @@
 import { AppError } from "@/lib/errors";
+import { mergePreferences } from "@/lib/preferences";
 import { normalizeUsername, validateUsername } from "@/lib/username";
 import type {
   CompleteOnboardingInput,
@@ -157,12 +158,7 @@ export const mockProfileService: ProfileService = {
       if (patch.translation?.receivingLanguage) {
         recordReceivingChange(viewer, patch.translation.receivingLanguage);
       }
-      viewer.preferences = {
-        interfaceLanguage: patch.interfaceLanguage ?? current.interfaceLanguage,
-        translation: { ...current.translation, ...patch.translation },
-        privacy: { ...current.privacy, ...patch.privacy },
-        notifications: { ...current.notifications, ...patch.notifications },
-      };
+      viewer.preferences = mergePreferences(current, patch);
       if (
         current.privacy.profileVisibility === "private" &&
         viewer.preferences.privacy.profileVisibility === "public"

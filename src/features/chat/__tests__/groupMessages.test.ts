@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { groupMessages } from "@/features/chat/lib/groupMessages";
 
-import { makeMessage } from "./fixtures";
+import { makeMessage } from "@/test/factories";
 
 const now = new Date(2026, 9, 3, 18, 0);
 const at = (day: number, hour: number, minute: number) =>
