@@ -260,6 +260,21 @@ class RealtimeWebSocketIT extends IntegrationTest {
     }
 
     @Test
+    void anOnlineRecipientGetsWhatRaisesTheChatAndNotificationBadges() throws Exception {
+        conversation = steps.direct(rafael, linh);
+        // Two devices: next() skips other frames, and the two events may arrive in either order.
+        Client forChats = connect("linh");
+        Client forNotifications = connect("linh");
+        String sent = steps.send(rafael, conversation, "Oi").get("id").asString();
+
+        assertThat(forChats.next("message.created").at("/message/id").asString()).isEqualTo(sent);
+        JsonNode notification = forNotifications.next("notification.created", payload ->
+                "new_message".equals(payload.at("/notification/type").asString())).get("notification");
+        assertThat(notification.get("messageId").asString()).isEqualTo(sent);
+        assertThat(notification.get("conversationId").asString()).isEqualTo(conversation.toString());
+    }
+
+    @Test
     void everyDeviceOfAUserReceivesEvents() throws Exception {
         conversation = steps.direct(rafael, linh);
         Client phone = connect("linh");
