@@ -627,3 +627,22 @@ Bugs de produção: o perfil de quem eu bloqueei dava "not found"; depois de des
 - [x] E2E stack (`e2e/stack/privacy.spec.ts`): bloqueio/desbloqueio e privado + "People I follow", com o badge de Chats subindo do outro lado
 
 > Notas: a investigação em produção (somente leitura) mostrou que os contadores não tinham defeito próprio: entre 10:46 e 10:59 de 05/10 nenhuma mensagem foi aceita (403), então não havia o que contar. Grupos ficaram fora do e2e da pilha; estão no IT e na matriz do mock.
+
+## Reforço de testes por combinação (2026-10-05)
+
+Estratégia em [PLAN.md §23.1](PLAN.md#231-testes-por-combinação-2026-10-05). Branch `test/combination-hardening`. Linha de base: frontend 816 testes, backend app 909, recommender 246, e2e mock 9 specs. Bugs encontrados pelos testes ficam listados no fim desta seção.
+
+- [ ] Bloco 0 — Infraestrutura: fábricas e helpers compartilhados, `cartesian`, stubs de IntersectionObserver e Push, projeto Vitest `http`, cobertura (Vitest e JaCoCo), jqwik no app, helpers do `TestData`
+- [ ] Bloco 1 — Frontend, funções puras exaustivas (tradução, prévias, notificações, presença, erros, push, rotas, caches, política de erro do Query, stores)
+- [ ] Bloco 5 — Backend: matriz de validação, superfícies e transições de privacidade, matriz de notificações, push, rate limit, realtime, tradução, chat/feed, auth, mídia/moderação/discover, constraints e migrations
+- [ ] Bloco 2 — Serviços mock (lacunas e paridade), serviços HTTP, `upload()`, outbox completa
+- [ ] Bloco 8 — `Retry-After` respeitado no cliente (queries e outbox)
+- [ ] Bloco 3 — Realtime → cache por tipo de evento
+- [ ] Bloco 7 — Reação a story como no Instagram (vira mensagem na DM)
+- [ ] Bloco 4 — Matrizes de componentes e telas (viewport, privacidade do outro lado, `lang`/`dir`)
+- [ ] Bloco 6 — E2E mock (settings, grupos, ações do chat, stories, notificações, conta, admin, RTL, a11y) e stack local
+
+### Bugs encontrados
+
+| # | Bug | Teste | Correção |
+|---|---|---|---|

@@ -29,5 +29,33 @@
     <archunit.version>1.5.1</archunit.version>
     <pitest.version>1.30.0</pitest.version>
     <pitest-junit5.version>1.2.3</pitest-junit5.version>
+    <jacoco.version>0.8.13</jacoco.version>
   </properties>
+
+  <profiles>
+    <!-- Coverage report only, never a gate (PLAN.md §23.1): ./mvnw verify -Pcoverage → */target/site/jacoco. -->
+    <profile>
+      <id>coverage</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <executions>
+              <execution>
+                <id>prepare</id>
+                <goals><goal>prepare-agent</goal></goals>
+              </execution>
+              <execution>
+                <id>report</id>
+                <phase>verify</phase>
+                <goals><goal>report</goal></goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

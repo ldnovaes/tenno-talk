@@ -1215,6 +1215,18 @@ Detalhes e medições em `e2e/README.md`.
 
 Regra: toda função pura de domínio nasce com teste.
 
+### 23.1 Testes por combinação (2026-10-05)
+
+Toda configuração que muda comportamento é um eixo de teste: modo de exibição, override, status de tradução, configurações de privacidade, relação entre pessoas, status de entrega, tipo de conteúdo, viewport, fonte de dados.
+
+- **Exaustivo onde é barato.** Funções puras, serviços mock e regras do backend testam o produto cartesiano completo dos eixos (`it.each` sobre `cartesian(...)`, `@ParameterizedTest`).
+- **Pairwise onde é caro.** Em telas (`renderApp`), ITs de várias etapas e e2e, cada par de valores aparece ao menos uma vez, sem repetir o que a camada barata já cobre.
+- **Oráculo pelo contrato.** As tabelas esperadas vêm deste documento (§14.3, §31.1, §36), nunca do código testado.
+- **Uma fonte por comportamento.** Uma matriz nova absorve os casos escritos à mão que ela cobre.
+- **Dois projetos no Vitest.** `mock` (padrão) e `http` (`__USE_HTTP__=true`, arquivos `*.http.test.ts`), para testar os serviços HTTP, a outbox e os ramos só HTTP com `fetch`/XHR falsos e `fake-indexeddb`.
+- **Cobertura só como relatório:** `bun run test:coverage` e `./mvnw verify -Pcoverage` (JaCoCo). Serve para achar código nunca executado; não é gate.
+- **Bug encontrado por teste:** o teste que falha entra primeiro, e a correção vem no mesmo bloco.
+
 ## 24. Plano de implementação em fases
 
 O detalhamento (checklist) está no [IMPLEMENTATION.md](IMPLEMENTATION.md).
