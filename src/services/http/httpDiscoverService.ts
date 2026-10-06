@@ -11,6 +11,8 @@ export const httpDiscoverService: DiscoverService = {
       body: { events },
       keepalive: options?.keepalive ?? false,
     }),
-  unhidePost: (postId) => http<void>("DELETE", `/api/discover/hidden/posts/${postId}`),
-  unhideAuthor: (authorId) => http<void>("DELETE", `/api/discover/hidden/authors/${authorId}`),
+  unhidePost: (postId) =>
+    http<void>("DELETE", `/api/discover/hidden/posts/${encodeURIComponent(postId)}`),
+  unhideAuthor: (authorId) =>
+    http<void>("DELETE", `/api/discover/hidden/authors/${encodeURIComponent(authorId)}`),
 };

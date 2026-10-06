@@ -3,6 +3,7 @@ import type { StoryService } from "@/services/storyService";
 import type { Story, StoryTrayItem } from "@/types/story";
 
 import { mockDb } from "../db";
+import { projectMessage } from "../projections";
 import { publish } from "../events";
 import { mockRequest } from "../latency";
 import { addNotification } from "../notificationRecords";
@@ -157,7 +158,11 @@ export const mockStoryService: StoryService = {
       }
     });
     publish({ kind: "message.updated", conversationId: conversation.id, messageId: message.id });
-    return { conversationId: conversation.id };
+    const record = mockDb.read().messages[message.id];
+    return {
+      conversationId: conversation.id,
+      message: record ? projectMessage(mockDb.read(), record, viewerId) : message,
+    };
   },
 
   createStory({ media, text }) {

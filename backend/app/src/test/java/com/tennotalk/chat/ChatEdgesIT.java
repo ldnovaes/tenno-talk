@@ -144,6 +144,29 @@ class ChatEdgesIT extends IntegrationTest {
         assertThat(steps.conversations(rafael).size()).as("but it stays in the list").isOne();
     }
 
+    // ---- Reactions don't cross a block (PLAN.md §31.1) ----
+
+    @ParameterizedTest(name = "blocked by {0}")
+    @CsvSource({"the reactor", "the author"})
+    void nobodyReactsInADirectConversationWithABlock(String blocker) throws Exception {
+        UUID conversation = steps.direct(rafael, linh);
+        String fromRafael = steps.send(rafael, conversation, "Oi").get("id").asString();
+        if (blocker.equals("the reactor")) data.block(linh, rafael);
+        else data.block(rafael, linh);
+
+        assertThat(status(api.post(linh, "/api/messages/" + fromRafael + "/reactions", Map.of("emoji", "❤️")))).isEqualTo(403);
+        assertThat(steps.lastMessage(rafael, conversation).get("reactions").size()).isZero();
+    }
+
+    @Test
+    void inAGroupABlockedPairCanStillReact() throws Exception {
+        UUID group = UUID.fromString(api.postOk(emma, "/api/conversations/groups",
+                Map.of("title", "Trio", "memberIds", List.of(rafael, linh))).get("id").asString());
+        String fromRafael = steps.send(rafael, group, "Oi").get("id").asString();
+        data.block(linh, rafael);
+        assertThat(status(api.post(linh, "/api/messages/" + fromRafael + "/reactions", Map.of("emoji", "❤️")))).isEqualTo(200);
+    }
+
     // ---- A profile's posts, page by page ----
 
     @Test

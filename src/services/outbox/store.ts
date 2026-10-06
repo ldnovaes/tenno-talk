@@ -61,6 +61,16 @@ export async function updatePending(
     tx.onabort = () => reject(tx.error);
   });
 }
+/** Back in the queue as "sending": a retry, a lifted restriction or the same account signing in again. */
+export function released(entry: PendingSend): PendingSend {
+  return {
+    ...entry,
+    blocked: false,
+    nextAttempt: 0,
+    message: { ...entry.message, deliveryStatus: "sending" },
+  };
+}
+
 export async function persistSend(
   userId: string,
   input: SendMessageInput,

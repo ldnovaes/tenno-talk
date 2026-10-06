@@ -233,6 +233,8 @@ public class ChatService {
     public MessageDto react(UUID viewer, UUID messageId, String emoji) {
         MessageRow message = chat.findMessage(messageId).orElseThrow(() -> ApiException.notFound("Message not found."));
         ConversationRow conversation = requireMember(message.conversationId(), viewer);
+        // A direct conversation with a block either way stays readable, but reactions don't pass (PLAN.md §31.1).
+        if (receiptsHidden(conversation, viewer)) throw ApiException.forbidden("You can't react in this conversation.");
         String clean = emoji.strip();
         if (clean.isEmpty()) throw ApiException.validation("Choose an emoji.");
         boolean added = chat.toggleReaction(messageId, viewer, clean);

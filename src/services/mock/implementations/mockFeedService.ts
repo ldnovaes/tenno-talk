@@ -122,7 +122,10 @@ export const mockFeedService: FeedService = {
             !db.users[comment.authorId]?.blockedUserIds.includes(viewerId),
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
-      const start = afterId ? ordered.findIndex((c) => c.id === afterId) + 1 : 0;
+      // Like the backend: an unknown cursor (or one from another post) gives nothing, never the first page again.
+      const position = afterId ? ordered.findIndex((c) => c.id === afterId) : -1;
+      if (afterId && position === -1) return [];
+      const start = position + 1;
       return ordered
         .slice(start, start + 50)
         .map((comment) => projectComment(db, comment, viewerId));

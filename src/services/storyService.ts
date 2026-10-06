@@ -1,3 +1,4 @@
+import type { Message } from "@/types/message";
 import type { Story, StoryTrayItem } from "@/types/story";
 
 import type { MediaInput } from "./chatService";
@@ -13,7 +14,12 @@ export interface StoryService {
   /** Quick reaction: notifies the author. */
   react(storyId: string, emoji: string): Promise<void>;
   /** Sends a direct message that references the story; returns the conversation id. */
-  reply(storyId: string, text: string, clientId?: string): Promise<{ conversationId: string }>;
+  /** The reply is a direct message: its conversation and the message as the sender sees it. */
+  reply(
+    storyId: string,
+    text: string,
+    clientId?: string,
+  ): Promise<{ conversationId: string; message: Message }>;
   createStory(input: { media: MediaInput; text: string }): Promise<Story>;
 }
 

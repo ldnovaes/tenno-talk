@@ -57,6 +57,11 @@ export interface ConversationRecord {
   /** Per-member cursors: delivery/read ticks are derived from them. */
   lastReadMessageId: Record<string, string | null>;
   lastDeliveredMessageId: Record<string, string | null>;
+  /**
+   * The read position the other members see (ticks). Falls back to lastReadMessageId; stays behind it while a
+   * block hides receipts in a direct conversation (PLAN.md §31.1), so unread counts still clear.
+   */
+  readReceiptMessageId?: Record<string, string | null>;
   mutedUntil: Record<string, ISODateString | null>;
   createdAt: ISODateString;
   updatedAt: ISODateString;

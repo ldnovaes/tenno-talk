@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { listPending, updatePending } from "@/services/outbox/store";
+import { listPending, released, updatePending } from "@/services/outbox/store";
 import type { SendRestriction } from "@/types/conversation";
 
 import { liftedRestrictions, refusedIn } from "../lib/outboxQueue";
@@ -24,9 +24,7 @@ export function useReleaseLiftedSends(userId: string) {
           lifted
             .flatMap((conversationId) => refusedIn(pending, conversationId))
             .map((entry) =>
-              updatePending(entry.key, (e) =>
-                e ? { ...e, blocked: false, nextAttempt: 0, leaseUntil: 0 } : e,
-              ),
+              updatePending(entry.key, (e) => (e ? { ...released(e), leaseUntil: 0 } : e)),
             ),
         ),
       )

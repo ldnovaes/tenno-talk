@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-import { persistSend, updatePending } from "@/services/outbox/store";
+import { persistSend, released, updatePending } from "@/services/outbox/store";
 import { toast } from "sonner";
 import { toAppError } from "@/lib/errors";
 import { useCurrentUser } from "@/features/auth/hooks/useMe";
@@ -121,8 +121,12 @@ export function useSendMessage(conversationId: string) {
   const retry = useCallback(
     (clientId: string) => {
       if (__USE_HTTP__) {
+        patchMessage(queryClient, conversationId, { id: `tmp_${clientId}`, clientId }, (m) => ({
+          ...m,
+          deliveryStatus: "sending",
+        }));
         void updatePending(`${me.id}:${clientId}`, (e) =>
-          e ? { ...e, blocked: false, nextAttempt: 0, leaseUntil: 0 } : e,
+          e ? { ...released(e), leaseUntil: 0 } : e,
         );
         return;
       }

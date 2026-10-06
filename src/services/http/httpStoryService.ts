@@ -1,3 +1,4 @@
+import type { Message } from "@/types/message";
 import type { StoryService } from "@/services/storyService";
 import type { Story, StoryTrayItem } from "@/types/story";
 
@@ -16,7 +17,7 @@ export const httpStoryService: StoryService = {
   react: (id, emoji) => http<void>("POST", `${story(id)}/reactions`, { body: { emoji } }),
 
   reply: (id, text, clientId = crypto.randomUUID()) =>
-    http<{ conversationId: string }>("POST", `${story(id)}/replies`, {
+    http<{ conversationId: string; message: Message }>("POST", `${story(id)}/replies`, {
       body: { clientId, text },
     }),
 

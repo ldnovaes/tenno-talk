@@ -99,6 +99,11 @@ function reached(db: MockDatabase, cursor: string | null, message: MessageRecord
   return at !== null && at >= message.createdAt;
 }
 
+function readReceiptOf(conversation: ConversationRecord, memberId: string): string | null {
+  const receipt = conversation.readReceiptMessageId?.[memberId];
+  return receipt !== undefined ? receipt : (conversation.lastReadMessageId[memberId] ?? null);
+}
+
 /** Ticks derived from the other members' cursors (PLAN.md §27). */
 export function deliveryStatusOf(
   db: MockDatabase,
@@ -113,15 +118,14 @@ export function deliveryStatusOf(
     ? Object.keys(message.receipts)
     : conversation.memberIds.filter((id) => id !== message.senderId);
   if (others.length === 0) return "sent";
-  if (others.every((id) => reached(db, conversation.lastReadMessageId[id] ?? null, message)))
-    return "read";
+  if (others.every((id) => reached(db, readReceiptOf(conversation, id), message))) return "read";
   if (
     others.every(
       (id) =>
         (message.receipts
           ? message.receipts[id]
           : reached(db, conversation.lastDeliveredMessageId[id] ?? null, message)) ||
-        reached(db, conversation.lastReadMessageId[id] ?? null, message),
+        reached(db, readReceiptOf(conversation, id), message),
     )
   ) {
     return "delivered";

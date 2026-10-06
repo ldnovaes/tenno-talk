@@ -1,7 +1,7 @@
 import { pendingPreview } from "@/services/outbox/preview";
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { listPending, updatePending } from "@/services/outbox/store";
+import { listPending, released, updatePending } from "@/services/outbox/store";
 import { dispatchPending } from "@/services/outbox/dispatch";
 import { toAppError } from "@/lib/errors";
 
@@ -66,9 +66,7 @@ export function useOutbox(userId: string) {
         Promise.all(
           items
             .filter((e) => !e.blocked || e.failureCode === "unauthenticated")
-            .map((e) =>
-              updatePending(e.key, (v) => (v ? { ...v, blocked: false, nextAttempt: 0 } : v)),
-            ),
+            .map((e) => updatePending(e.key, (v) => (v ? released(v) : v))),
         ),
       )
       .then(flush)

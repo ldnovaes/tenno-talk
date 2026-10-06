@@ -1,6 +1,7 @@
 import { onServerEvent, type ServerEvent } from "@/services/mock/events";
 import { acknowledgeDelivery } from "@/services/mock/implementations/mockChatService";
 import { mockDb } from "@/services/mock/db";
+import { blockedEitherWay } from "@/services/mock/privacy";
 import { announcePresence } from "@/services/mock/presence";
 import { projectNotification } from "@/services/mock/notificationProjection";
 import { projectMessage } from "@/services/mock/projections";
@@ -99,6 +100,19 @@ class MockRealtimeClient implements RealtimeClient {
     return Boolean(this.viewerId && conversation?.memberIds.includes(this.viewerId));
   }
 
+  private isDirect(conversationId: string): boolean {
+    return mockDb.read().conversations[conversationId]?.kind === "direct";
+  }
+
+  /** Between a blocked pair, typing, receipts and reactions never pass (PLAN.md §31.1, ChatRealtime). */
+  private blockedWith(userId: string): boolean {
+    return Boolean(
+      this.viewerId &&
+      userId !== this.viewerId &&
+      blockedEitherWay(mockDb.read(), this.viewerId, userId),
+    );
+  }
+
   private projected(messageId: string) {
     const db = mockDb.read();
     const record = db.messages[messageId];
@@ -114,6 +128,7 @@ class MockRealtimeClient implements RealtimeClient {
         if (!this.isMember(event.conversationId)) return;
         const message = this.projected(event.messageId);
         if (!message) return;
+        if (this.isDirect(event.conversationId) && this.blockedWith(message.senderId)) return;
         this.dispatch(event.kind, { message });
         if (event.kind === "message.created" && message.senderId !== viewerId) {
           acknowledgeDelivery(viewerId, event.conversationId, event.messageId);
@@ -133,7 +148,7 @@ class MockRealtimeClient implements RealtimeClient {
         return;
       }
       case "reaction":
-        if (!this.isMember(event.conversationId)) return;
+        if (!this.isMember(event.conversationId) || this.blockedWith(event.userId)) return;
         this.dispatch(event.added ? "reaction.created" : "reaction.deleted", {
           conversationId: event.conversationId,
           messageId: event.messageId,
@@ -143,6 +158,7 @@ class MockRealtimeClient implements RealtimeClient {
         return;
       case "receipt":
         if (event.userId === viewerId || !this.isMember(event.conversationId)) return;
+        if (this.blockedWith(event.userId)) return;
         if (event.receipt === "read") {
           this.dispatch("message.read", {
             conversationId: event.conversationId,
@@ -159,6 +175,7 @@ class MockRealtimeClient implements RealtimeClient {
         return;
       case "typing":
         if (event.userId === viewerId || !this.isMember(event.conversationId)) return;
+        if (this.blockedWith(event.userId)) return;
         this.dispatch(event.isTyping ? "typing.started" : "typing.stopped", {
           conversationId: event.conversationId,
           userId: event.userId,

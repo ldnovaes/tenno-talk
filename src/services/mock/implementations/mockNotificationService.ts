@@ -35,7 +35,10 @@ export const mockNotificationService: NotificationService = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map((n) => projectNotification(db, n))
         .filter((n): n is Notification => n !== null);
-      const start = beforeId ? ordered.findIndex((n) => n.id === beforeId) + 1 : 0;
+      // Like the backend: a cursor that isn't in this list gives nothing, never a restart from the top.
+      const position = beforeId ? ordered.findIndex((n) => n.id === beforeId) : -1;
+      if (beforeId && position === -1) return [];
+      const start = position + 1;
       return ordered.slice(start, start + 100);
     });
   },
@@ -64,6 +67,8 @@ export const mockNotificationService: NotificationService = {
             notification.readAt = now;
         }
       }),
-    );
+    ).then(() => {
+      publish({ kind: "notifications.read", recipientId: requireViewerId() });
+    });
   },
 };

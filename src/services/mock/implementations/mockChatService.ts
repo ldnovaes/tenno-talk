@@ -66,6 +66,17 @@ function buildContent(input: SendMessageInput, language: string): MessageContent
   return { type: "text", body };
 }
 
+/** In a direct conversation with a block either way, receipts don't pass (PLAN.md §31.1, ChatService). */
+export function receiptsHidden(
+  db: MockDatabase,
+  conversationId: string,
+  viewerId: string,
+): boolean {
+  const conversation = db.conversations[conversationId];
+  if (conversation?.kind !== "direct") return false;
+  return conversation.memberIds.some((id) => id !== viewerId && blockedEitherWay(db, viewerId, id));
+}
+
 /** Called by the realtime client when a message reaches this tab (delivery ack). */
 export function acknowledgeDelivery(
   viewerId: string,
@@ -80,7 +91,8 @@ export function acknowledgeDelivery(
       !message ||
       message.conversationId !== conversationId ||
       message.senderId === viewerId ||
-      !conversation.memberIds.includes(viewerId)
+      !conversation.memberIds.includes(viewerId) ||
+      receiptsHidden(db, conversationId, viewerId)
     )
       return false;
     if (message.receipts) {
@@ -268,9 +280,18 @@ export const mockChatService: ChatService = {
         const current = conversation.lastReadMessageId[viewerId];
         const currentAt = current ? db.messages[current]?.createdAt : undefined;
         if (currentAt && currentAt >= message.createdAt) return false;
+        const hidden = receiptsHidden(db, conversationId, viewerId);
+        const receipts = (conversation.readReceiptMessageId ??= {});
+        // Hidden: the others keep seeing the last mark from before the block.
+        if (hidden)
+          receipts[viewerId] =
+            receipts[viewerId] !== undefined ? receipts[viewerId] : (current ?? null);
+        else {
+          receipts[viewerId] = messageId;
+          conversation.lastDeliveredMessageId[viewerId] = messageId;
+        }
         conversation.lastReadMessageId[viewerId] = messageId;
-        conversation.lastDeliveredMessageId[viewerId] = messageId;
-        return true;
+        return !hidden;
       }),
     );
     publish({ kind: "notifications.read", recipientId: viewerId });
@@ -291,6 +312,8 @@ export const mockChatService: ChatService = {
         const message = db.messages[messageId];
         if (!message) throw new AppError("not_found", "Message not found.");
         memberConversation(db, message.conversationId, viewerId);
+        if (receiptsHidden(db, message.conversationId, viewerId))
+          throw new AppError("forbidden", "You can't react in this conversation.");
         const index = message.reactions.findIndex(
           (r) => r.userId === viewerId && r.emoji === emoji,
         );
