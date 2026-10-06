@@ -33,6 +33,10 @@ As configurações do mock (latência curta, sem falhas aleatórias) ficam em `s
 
 `privacy.spec.ts` repete os caminhos de privacidade que falharam em produção em 05/10 (bloquear, desbloquear e "People I follow"; remetente privado e pedido de seguir pendente) e confere o badge de Chats do outro lado (PLAN.md §31.1).
 
+`groups.spec.ts` cria um grupo com três contas novas: o "Who can message me" de cada membro vale para entrar no grupo, cada pessoa cria um só grupo e as mensagens chegam ao vivo. `followRequests.spec.ts` aprova um pedido de seguir pelas notificações e recusa outro em Settings, com o badge subindo ao vivo dos dois lados. `accountSwitch.spec.ts` sai da conta com uma mensagem ainda na outbox: outra conta entra no mesmo navegador sem ver nem enviar a pendência, que sai uma única vez quando a conta de origem volta a entrar (PLANO_UX §3.1, item 8).
+
+O banco da pilha sobrevive entre execuções. Por isso, os testes criam contas novas a cada vez e localizam o que criaram pelo `@username`, nunca só pelo nome exibido.
+
 `outbox.spec.ts` também pode rodar contra frontend, API e PostgreSQL locais. Ele bloqueia temporariamente os POSTs de mensagem e mídia, recarrega a página e confirma que texto e anexo são enviados uma única vez quando a rede volta. O teste requer `STACK_URL` apontando para o frontend HTTP conectado à API real.
 
 ```sh

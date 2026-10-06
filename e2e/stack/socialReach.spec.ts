@@ -1,14 +1,11 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { publishPost, signUpAndOnboard } from "./support";
+import { expect, test } from "@playwright/test";
+import { publishPost, railLink, signUpAndOnboard } from "./support";
 
 /**
  * The path reported broken in production on 2026-10-04: open a profile from Discover and from a
  * chat, and see the Chats and Notifications badges rise when a message arrives. Discover shows posts
  * since PLAN.md §37, so Bo posts first: a brand-new post reaches someone who knows nothing about Bo.
  */
-function railLink(page: Page, name: string): Locator {
-  return page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name });
-}
 
 test("profiles open from Discover and chats, and an arriving message raises both badges", async ({
   browser,
@@ -20,7 +17,9 @@ test("profiles open from Discover and chats, and an arriving message raises both
   await publishPost(bo.page, "Xin chào #travel");
 
   await ana.page.goto("/discover");
-  const post = ana.page.getByRole("article", { name: "Post by Bo" });
+  // The database outlives runs, and earlier runs' Bo posted the same caption: pick this Bo's post.
+  const boLink = ana.page.getByRole("link", { name: new RegExp(`@${bo.username}`) });
+  const post = ana.page.getByRole("article", { name: "Post by Bo" }).filter({ has: boLink });
   await expect(post.getByText("Xin chào #travel")).toBeVisible();
   await post.getByRole("link", { name: new RegExp(`@${bo.username}`) }).click();
   const boProfile = ana.page.getByRole("dialog");

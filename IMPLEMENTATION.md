@@ -640,7 +640,7 @@ Estratégia em [PLAN.md §23.1](PLAN.md#231-testes-por-combinação-2026-10-05).
 - [x] Bloco 3 — Realtime → cache por tipo de evento (`fakeRealtime`: ponte do chat e de notificações, evento a evento; `wsRealtimeClient` com visibilidade e unsubscribe; presença do mock)
 - [x] Bloco 7 — Reação a story como no Instagram (vira mensagem `story_reaction` na DM, confirmação dentro do viewer; verificado com duas contas no app rodando)
 - [x] Bloco 4 — Matrizes de componentes e telas: ações do perfil (bloqueio × follow × privado × pedido), aviso de restrição, `lang`/`dir` por superfície, ações no celular (toque longo), push em todos os estados, Conta × provedores, privacidade vista do outro lado, silenciar, mensagens antigas, guards, engajamento do Discover, admin, criar story, comentários (recusa e link direto), login social, pausa do story
-- [ ] Bloco 6 — E2E mock (settings, grupos, ações do chat, stories, notificações, conta, admin, RTL, a11y) e stack local
+- [x] Bloco 6 — E2E mock (settings, grupos, ações do chat, stories, notificações, conta, admin, RTL, a11y): 31 → 60 testes (+6 pulados). Stack local (`deploy/docker-compose`, fora do CI): grupos (o "Who can message me" de cada membro, um grupo por pessoa, mensagens ao vivo), pedidos de seguir (aprovar e recusar, badge ao vivo dos dois lados), troca de conta com envio pendente na outbox, e `socialReach` rodado pela primeira vez contra a pilha: 5 → 8 testes, verdes também sobre um banco já usado por execuções anteriores
 
 ### Bugs encontrados
 

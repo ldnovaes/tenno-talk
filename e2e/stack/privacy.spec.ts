@@ -1,27 +1,11 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { signUpAndOnboard } from "./support";
+import { expect, test } from "@playwright/test";
+import { follow, railLink, setPrivacy, signUpAndOnboard } from "./support";
 
 /**
  * The privacy paths reported broken in production on 2026-10-05 (PLAN.md §31.1), replayed on the real stack:
  * a block, an unblock and "People I follow"; a private sender writing to "People I follow". Each ends with the
  * other person's Chats badge rising, which is how the missing counters showed up.
  */
-function railLink(page: Page, name: string): Locator {
-  return page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name });
-}
-
-async function setPrivacy(page: Page, setting: string, value: string) {
-  await page.goto("/settings/privacy");
-  await page.getByRole("combobox", { name: setting }).click();
-  await page.getByRole("option", { name: value }).click();
-  await expect(page.getByRole("combobox", { name: setting })).toHaveText(value);
-}
-
-async function follow(page: Page, username: string, expected: "Following" | "Requested") {
-  await page.goto(`/u/${username}`);
-  await page.getByRole("button", { name: "Follow", exact: true }).click();
-  await expect(page.getByRole("button", { name: expected })).toBeVisible();
-}
 
 test("a block and an unblock say why a chat can't send, and a follow back reopens it", async ({
   browser,
