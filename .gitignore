@@ -35,6 +35,7 @@ dist-ssr
 # Playwright
 playwright-report
 test-results
+coverage
 
 # Secrets (deploy/.env holds the database password and OAuth secrets)
 .env
