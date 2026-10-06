@@ -113,6 +113,16 @@ public class ChatService {
     /** Also used for story replies (PLAN.md §9.9). Idempotent by clientId (PLAN.md §13). */
     @Transactional
     public MessageDto send(UUID viewer, UUID conversationId, SendMessage input, UUID storyId) {
+        return send(viewer, conversationId, input, storyId, false);
+    }
+
+    /** A story reaction: the emoji as a direct message about the story, never translated (PLAN.md §9.9). */
+    @Transactional
+    public MessageDto sendStoryReaction(UUID viewer, UUID conversationId, String clientId, UUID storyId, String emoji) {
+        return send(viewer, conversationId, new SendMessage(clientId, emoji, List.of(), null), storyId, true);
+    }
+
+    private MessageDto send(UUID viewer, UUID conversationId, SendMessage input, UUID storyId, boolean reaction) {
         ConversationRow conversation = requireMember(conversationId, viewer);
         Optional<MessageRow> existing = chat.findByClientId(viewer, input.clientId());
         if (existing.isPresent()) {
@@ -123,7 +133,7 @@ public class ChatService {
         String text = input.text() == null || input.text().isBlank() ? null : input.text().strip();
         List<UUID> mediaIds = input.mediaIds() == null ? List.of() : List.copyOf(new LinkedHashSet<>(input.mediaIds()));
         List<MediaRow> attachments = orderedOwnedMedia(viewer, mediaIds);
-        String type = storyId != null ? "story_reply" : typeOf(attachments);
+        String type = reaction ? "story_reaction" : storyId != null ? "story_reply" : typeOf(attachments);
         if (text == null && attachments.isEmpty()) throw ApiException.validation("A message can't be empty.");
         if (storyId != null && text == null) throw ApiException.validation("A reply can't be empty.");
         if (input.replyToId() != null) {
@@ -160,7 +170,7 @@ public class ChatService {
         }
         chat.touch(message.conversationId(), message.createdAt());
         chat.advanceCursor(message.conversationId(), message.senderId(), message.id(), true);
-        if (message.originalText() != null) {
+        if (message.originalText() != null && !"story_reaction".equals(message.type())) {
             // Same rule as the projection: the language each member has at the moment of sending.
             List<MemberRow> members = chat.members(message.conversationId());
             ReceivingLanguages history = chat.receivingLanguages(userIds(members));
@@ -249,7 +259,7 @@ public class ChatService {
         requireMember(source.conversationId(), viewer);
         List<UUID> mediaIds = media.forMessages(List.of(source.id())).getOrDefault(source.id(), List.of()).stream()
                 .map(MediaRow::id).toList();
-        String type = "story_reply".equals(source.type()) ? "text" : source.type();
+        String type = "story_reply".equals(source.type()) || "story_reaction".equals(source.type()) ? "text" : source.type();
         for (UUID target : new LinkedHashSet<>(conversationIds)) {
             requireMember(target, viewer);
             MessageRow copy = chat.insertMessage(Ids.newId(), target, viewer, "fwd-" + Ids.newId(), type,

@@ -26,8 +26,6 @@ import com.tennotalk.common.Languages;
 import com.tennotalk.feed.Visibility;
 import com.tennotalk.media.MediaRepository;
 import com.tennotalk.media.MediaRow;
-import com.tennotalk.notifications.NotificationService;
-import com.tennotalk.notifications.NotificationService.Target;
 import com.tennotalk.stories.StoryDtos.ReplyResult;
 import com.tennotalk.stories.StoryDtos.StoryDto;
 import com.tennotalk.stories.StoryDtos.StoryTrayItemDto;
@@ -52,18 +50,16 @@ public class StoryService {
     private final UserRepository users;
     private final PreferencesRepository preferences;
     private final ContentTranslationRepository translations;
-    private final NotificationService notifications;
     private final ChatService chat;
     private final Clock clock;
 
     public StoryService(JdbcClient jdbc, MediaRepository media, UserRepository users, PreferencesRepository preferences,
-            ContentTranslationRepository translations, NotificationService notifications, ChatService chat, Clock clock) {
+            ContentTranslationRepository translations, ChatService chat, Clock clock) {
         this.jdbc = jdbc;
         this.media = media;
         this.users = users;
         this.preferences = preferences;
         this.translations = translations;
-        this.notifications = notifications;
         this.chat = chat;
         this.clock = clock;
     }
@@ -151,14 +147,22 @@ public class StoryService {
                 .param("s", storyId).param("u", viewer).update();
     }
 
+    /**
+     * A reaction is a direct message to the author (PLAN.md §9.9, like Instagram): messaging privacy applies, each
+     * tap is a new message, and the author hears of it like any message. The clientId makes a retried tap idempotent.
+     */
     @Transactional
-    public void react(UUID viewer, UUID storyId, String emoji) {
+    public ReplyResult react(UUID viewer, UUID storyId, String emoji, String clientId) {
         StoryRow story = require(viewer, storyId);
+        if (story.authorId().equals(viewer)) throw ApiException.validation("You can't react to your own story.");
         String value = emoji == null ? "" : emoji.strip();
         if (value.isEmpty() || value.length() > 16) throw ApiException.validation("Pick an emoji.");
+        UUID conversationId = chat.direct(viewer, story.authorId()).id();
+        String key = clientId == null || clientId.isBlank() ? Ids.newId().toString() : clientId;
+        var message = chat.sendStoryReaction(viewer, conversationId, key, storyId, value);
         jdbc.sql("INSERT INTO story_reactions (story_id, user_id, emoji) VALUES (:s, :u, :e)")
                 .param("s", storyId).param("u", viewer).param("e", value).update();
-        notifications.notify(story.authorId(), viewer, "story_reaction", Target.story(storyId, value));
+        return new ReplyResult(conversationId, message);
     }
 
     /** A reply is a direct message referencing the story (PLAN.md §9.9); messaging privacy applies. */

@@ -22,7 +22,7 @@ class RateLimitRulesTest {
             "DELETE, /api/profiles/abc/block, social",
             "PUT,  /api/posts/abc/like, social",
             "POST, /api/posts/abc/comments, social",
-            "POST, /api/stories/abc/reactions, social",
+            "POST, /api/stories/abc/reactions, send",
             "POST, /api/posts, create",
             "POST, /api/stories, create",
             "POST, /api/conversations/direct, create",

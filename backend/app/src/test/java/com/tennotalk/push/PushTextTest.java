@@ -30,12 +30,18 @@ class PushTextTest {
             "follow_request  | Requested to follow you.      | /notifications",
             "follow_accepted | Accepted your follow request. | /u/ana",
             "story_reaction  | Reacted 🔥 to your story.     | /stories/00000000-0000-0000-0000-00000000000a?storyId=00000000-0000-0000-0000-00000000000c",
-            "new_message     | Sent you a message.           | /chats/00000000-0000-0000-0000-00000000000d?messageId=00000000-0000-0000-0000-00000000000f",
+            "new_message     | Reacted 🔥 to your story.     | /chats/00000000-0000-0000-0000-00000000000d?messageId=00000000-0000-0000-0000-00000000000f",
     })
     void eachTypeSaysWhatHappenedAndOpensItsPlace(String type, String body, String url) {
         var target = new PushDelivery.Target(USER, type, POST, STORY, CONVERSATION, "ana", COMMENT, MESSAGE, "Ana", "🔥");
         assertThat(PushDelivery.body(type, "🔥")).isEqualTo(body);
         assertThat(PushDelivery.url(target)).isEqualTo(url);
+    }
+
+    @Test
+    void aMessageThatIsAStoryReactionSaysSo() {
+        assertThat(PushDelivery.body("new_message", null)).isEqualTo("Sent you a message.");
+        assertThat(PushDelivery.body("new_message", "❤️")).isEqualTo("Reacted ❤️ to your story.");
     }
 
     @Test

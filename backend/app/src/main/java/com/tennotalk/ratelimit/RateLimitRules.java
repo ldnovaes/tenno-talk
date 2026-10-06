@@ -20,11 +20,11 @@ public final class RateLimitRules {
 
     static final List<Rule> RULES = List.of(
             new Rule("auth", "POST", Pattern.compile("/api/auth/(signin|signup|password)"), 10, Duration.ofMinutes(1)),
-            new Rule("send", "POST", Pattern.compile("/api/conversations/[^/]+/messages|/api/stories/[^/]+/replies|/api/messages/[^/]+/forward"), 60, Duration.ofMinutes(1)),
+            new Rule("send", "POST", Pattern.compile("/api/conversations/[^/]+/messages|/api/stories/[^/]+/(replies|reactions)|/api/messages/[^/]+/forward"), 60, Duration.ofMinutes(1)),
             new Rule("upload", "POST", Pattern.compile("/api/media"), 30, Duration.ofMinutes(1)),
             new Rule("translate", null, Pattern.compile("/api/messages/[^/]+/(translation/retry|insight)|/api/translations/.*"), 60, Duration.ofMinutes(1)),
             new Rule("discover", null, Pattern.compile("/api/discover/(events|hidden/.*)"), 120, Duration.ofMinutes(1)),
-            new Rule("social", null, Pattern.compile("/api/profiles/[^/]+/(follow|block)|/api/posts/[^/]+/like|/api/(stories|messages)/[^/]+/reactions"), 120, Duration.ofMinutes(1)),
+            new Rule("social", null, Pattern.compile("/api/profiles/[^/]+/(follow|block)|/api/posts/[^/]+/like|/api/messages/[^/]+/reactions"), 120, Duration.ofMinutes(1)),
             new Rule("social", "POST", Pattern.compile("/api/posts/[^/]+/comments"), 120, Duration.ofMinutes(1)),
             new Rule("create", "POST", Pattern.compile("/api/posts|/api/stories|/api/conversations/(direct|groups)"), 30, Duration.ofMinutes(1)),
             new Rule("report", "POST", Pattern.compile("/api/reports"), 20, Duration.ofHours(1)),

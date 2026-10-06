@@ -20,6 +20,7 @@ import com.tennotalk.chat.ChatDtos.MessageDto;
 import com.tennotalk.chat.ChatDtos.MessageReferenceDto;
 import com.tennotalk.chat.ChatDtos.OriginalTextDto;
 import com.tennotalk.chat.ChatDtos.ReactionSummaryDto;
+import com.tennotalk.chat.ChatDtos.StoryReactionContent;
 import com.tennotalk.chat.ChatDtos.StoryReplyContent;
 import com.tennotalk.chat.ChatDtos.TextContent;
 import com.tennotalk.chat.ChatDtos.VideoContent;
@@ -118,7 +119,7 @@ public class ChatProjector {
 
     static ContentTranslationDto translation(MessageRow message, String target,
             Map<String, MessageTranslationRepository.Row> translated) {
-        if (message.originalText() == null || target == null) return null;
+        if (message.originalText() == null || target == null || "story_reaction".equals(message.type())) return null;
         if (Languages.same(message.originalLanguage(), target)) {
             return new ContentTranslationDto(target, null, "not_needed", 0, message.createdAt());
         }
@@ -144,6 +145,7 @@ public class ChatProjector {
             case "file" -> new FileContent(attachments.isEmpty() ? null : attachments.getFirst().toDto(),
                     attachments.isEmpty() ? "" : attachments.getFirst().originalName());
             case "story_reply" -> new StoryReplyContent(message.storyId(), text);
+            case "story_reaction" -> new StoryReactionContent(message.storyId(), message.originalText());
             default -> new TextContent(text);
         };
     }

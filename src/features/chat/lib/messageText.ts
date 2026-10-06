@@ -12,6 +12,7 @@ export function originalOf(message: Pick<Message, "content">): OriginalText | nu
       return content.caption;
     case "audio":
     case "file":
+    case "story_reaction":
       return null;
   }
 }

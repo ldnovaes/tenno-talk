@@ -1,6 +1,7 @@
 import { AppError } from "@/lib/errors";
 import type { ChatService, MediaInput, SendMessageInput } from "@/services/chatService";
 import type { MediaAttachment } from "@/types/media";
+import type { Message, OriginalText } from "@/types/message";
 
 import { maybeAutoRespond } from "../autoResponder";
 import { mockDb } from "../db";
@@ -64,6 +65,21 @@ function buildContent(input: SendMessageInput, language: string): MessageContent
   if (file) return { type: "file", media: toAttachment(file), fileName: file.fileName };
   if (!body) throw new AppError("validation", "A message can't be empty.");
   return { type: "text", body };
+}
+
+/** Like ChatService.forward: a story reply or reaction loses its story and arrives as plain text. */
+function forwardedContent(
+  db: MockDatabase,
+  source: MessageRecord,
+  viewerId: string,
+): MessageContentRecord {
+  const content = source.content;
+  if (content.type === "story_reply") return { type: "text", body: content.body };
+  if (content.type === "story_reaction") {
+    const language = db.users[viewerId]?.nativeLanguage ?? "en-US";
+    return { type: "text", body: { text: content.emoji, language } };
+  }
+  return structuredClone(content);
 }
 
 /** In a direct conversation with a block either way, receipts don't pass (PLAN.md §31.1, ChatService). */
@@ -181,6 +197,51 @@ function afterCreate(message: MessageRecord) {
   maybeAutoRespond(message);
 }
 
+/**
+ * Creates a message (idempotent by clientId) in ONE write, then announces it. A story reply or reaction passes its
+ * final content here: writing a text first and converting it in a second write raced with the other tab's delivery
+ * ack (localStorage has no compare-and-swap), and the conversion could be lost (PLAN.md §16.2).
+ */
+export async function sendAs(
+  viewerId: string,
+  input: SendMessageInput,
+  content?: (body: OriginalText) => MessageContentRecord,
+): Promise<Message> {
+  const message = await mockRequest(() =>
+    mockDb.update((db) => {
+      const conversation = memberConversation(db, input.conversationId, viewerId);
+      const existing = Object.values(db.messages).find(
+        (m) => m.senderId === viewerId && m.clientId === input.clientId,
+      );
+      if (existing) return { record: existing, created: false };
+      requireDirectSend(db, conversation, viewerId);
+      const sender = db.users[viewerId];
+      if (!sender) throw new AppError("unauthenticated", "Your session has expired.");
+      if (
+        input.replyToId &&
+        db.messages[input.replyToId]?.conversationId !== input.conversationId
+      ) {
+        throw new AppError("validation", "You can only reply to a message of this conversation.");
+      }
+      const built = buildContent(input, sender.nativeLanguage);
+      const record = createMessage(db, {
+        clientId: input.clientId,
+        conversationId: input.conversationId,
+        senderId: viewerId,
+        content: content && built.type === "text" ? content(built.body) : built,
+        translations: {},
+        literals: {},
+        replyToId: input.replyToId,
+        reactions: [],
+        statusOverride: null,
+      });
+      return { record, created: true };
+    }),
+  );
+  if (message.created) afterCreate(message.record);
+  return projectMessage(mockDb.read(), message.record, viewerId);
+}
+
 export const mockChatService: ChatService = {
   async acknowledge(conversationId, ids) {
     const viewer = requireViewerId();
@@ -223,39 +284,7 @@ export const mockChatService: ChatService = {
   },
 
   async sendMessage(input) {
-    const viewerId = requireViewerId();
-    const message = await mockRequest(() =>
-      mockDb.update((db) => {
-        const conversation = memberConversation(db, input.conversationId, viewerId);
-        const existing = Object.values(db.messages).find(
-          (m) => m.senderId === viewerId && m.clientId === input.clientId,
-        );
-        if (existing) return { record: existing, created: false };
-        requireDirectSend(db, conversation, viewerId);
-        const sender = db.users[viewerId];
-        if (!sender) throw new AppError("unauthenticated", "Your session has expired.");
-        if (
-          input.replyToId &&
-          db.messages[input.replyToId]?.conversationId !== input.conversationId
-        ) {
-          throw new AppError("validation", "You can only reply to a message of this conversation.");
-        }
-        const record = createMessage(db, {
-          clientId: input.clientId,
-          conversationId: input.conversationId,
-          senderId: viewerId,
-          content: buildContent(input, sender.nativeLanguage),
-          translations: {},
-          literals: {},
-          replyToId: input.replyToId,
-          reactions: [],
-          statusOverride: null,
-        });
-        return { record, created: true };
-      }),
-    );
-    if (message.created) afterCreate(message.record);
-    return projectMessage(mockDb.read(), message.record, viewerId);
+    return sendAs(requireViewerId(), input);
   },
 
   async markAsRead(conversationId, messageId) {
@@ -352,7 +381,7 @@ export const mockChatService: ChatService = {
             clientId: null,
             conversationId,
             senderId: viewerId,
-            content: structuredClone(source.content),
+            content: forwardedContent(db, source, viewerId),
             translations: {},
             literals: {},
             replyToId: null,

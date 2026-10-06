@@ -49,6 +49,10 @@ function ConversationListItemComponent({ conversation, viewerId }: ConversationL
             audio: t("chat.preview.audio"),
             file: t("chat.preview.file"),
           },
+          storyReaction: {
+            received: (emoji) => t("chat.preview.storyReactionReceived", { emoji }),
+            sent: (emoji) => t("chat.preview.storyReactionSent", { emoji }),
+          },
         },
         displayMode,
       )

@@ -14,7 +14,10 @@ export const httpStoryService: StoryService = {
 
   markViewed: (id) => http<void>("PUT", `${story(id)}/view`),
 
-  react: (id, emoji) => http<void>("POST", `${story(id)}/reactions`, { body: { emoji } }),
+  react: (id, emoji, clientId = crypto.randomUUID()) =>
+    http<{ conversationId: string; message: Message }>("POST", `${story(id)}/reactions`, {
+      body: { emoji, clientId },
+    }),
 
   reply: (id, text, clientId = crypto.randomUUID()) =>
     http<{ conversationId: string; message: Message }>("POST", `${story(id)}/replies`, {

@@ -63,12 +63,35 @@ describe("stories", () => {
     );
   });
 
-  it("reacts to a story", async () => {
+  it("a reaction is confirmed inside the viewer, never over its header (PLAN.md §9.9)", async () => {
     const user = userEvent.setup();
     renderApp("/stories/usr_sofia");
     const viewer = await screen.findByRole("dialog", { name: "Stories of Sofía Martínez" });
     await user.click(within(viewer).getByRole("button", { name: "React 😂" }));
-    expect(await screen.findByText("Reaction sent")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(viewer).getByRole("status")).toHaveTextContent("Reaction sent"),
+    );
+    expect(screen.getAllByText("Reaction sent")).toHaveLength(1);
+    expect(within(viewer).getByRole("button", { name: "Close stories" })).toBeVisible();
+  });
+
+  it("the author finds the reaction in the conversation, like Instagram", async () => {
+    const user = userEvent.setup();
+    const first = renderApp("/stories/usr_sofia");
+    const viewer = await screen.findByRole("dialog", { name: "Stories of Sofía Martínez" });
+    await user.click(within(viewer).getByRole("button", { name: "React 😂" }));
+    await waitFor(() =>
+      expect(within(viewer).getByRole("status")).toHaveTextContent("Reaction sent"),
+    );
+    first.unmount();
+
+    signInAs("usr_sofia");
+    setViewportWidth(1280);
+    renderApp("/chats/conv_rafael_sofia");
+    expect(await screen.findAllByText("Reacted 😂 to your story")).not.toHaveLength(0);
+    const log = await screen.findByRole("log", { name: "Messages" });
+    expect(within(log).getByText("Reacted to your story")).toBeInTheDocument();
+    expect(within(log).getByText("😂")).toBeInTheDocument();
   });
 
   it("does not offer replies on your own story", async () => {

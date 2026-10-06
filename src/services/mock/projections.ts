@@ -27,6 +27,7 @@ export function originalOf(content: MessageContentRecord): OriginalText | null {
     case "video":
       return content.caption;
     case "file":
+    case "story_reaction":
       return null;
   }
 }
@@ -145,6 +146,7 @@ function previewText(db: MockDatabase, message: MessageRecord, viewerId: string)
     return translation.text;
   }
   if (original) return original.text;
+  if (message.content.type === "story_reaction") return message.content.emoji;
   return message.content.type === "file" ? message.content.fileName : "📷";
 }
 

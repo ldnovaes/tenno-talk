@@ -53,13 +53,23 @@ public record Actions(Api api, ChatSteps steps, TestData data, JdbcClient jdbc) 
                 api.put(recipient, "/api/profiles/" + actor + "/follow").andExpect(status().is2xxSuccessful());
                 api.post(actor, "/api/me/follow-requests/" + recipient + "/approve", null).andExpect(status().is2xxSuccessful());
             }
-            case "story_reaction" -> api.post(actor, "/api/stories/" + story(recipient) + "/reactions", Map.of("emoji", "🔥"))
-                    .andExpect(status().is2xxSuccessful());
+            // Reactions are messages now (PLAN.md §9.9): story_reaction notifications exist only from before.
+            case "story_reaction" -> legacyStoryReaction(actor, recipient);
             case "new_message" -> steps.send(actor, steps.direct(actor, recipient), "Oi!");
             default -> throw new IllegalArgumentException(type);
         }
         return jdbc.sql("SELECT id FROM notifications WHERE recipient_id = :u AND type = :t ORDER BY created_at DESC LIMIT 1")
                 .param("u", recipient).param("t", type).query(UUID.class).optional();
+    }
+
+    private void legacyStoryReaction(UUID actor, UUID recipient) throws Exception {
+        String story = story(recipient);
+        jdbc.sql("""
+                INSERT INTO notifications (id, recipient_id, actor_id, type, story_id, emoji)
+                SELECT :id, :r, :a, 'story_reaction', CAST(:s AS uuid), '🔥'
+                WHERE (SELECT notify_likes FROM user_preferences WHERE user_id = :r)
+                  AND NOT EXISTS (SELECT 1 FROM blocks WHERE (blocker_id = :r AND blocked_id = :a) OR (blocker_id = :a AND blocked_id = :r))
+                """).param("id", UUID.randomUUID()).param("r", recipient).param("a", actor).param("s", story).update();
     }
 
     /** The preference column that turns a notification type off (NotificationService.PREFERENCE). */

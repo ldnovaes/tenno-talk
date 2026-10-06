@@ -333,11 +333,11 @@ const ROWS: Row[] = [
   },
   {
     name: "react to story",
-    call: () => storyService.react(ID, "🔥"),
+    call: () => storyService.react(ID, "🔥", "k3"),
     method: "POST",
     url: `/api/stories/${ENC}/reactions`,
-    body: { emoji: "🔥" },
-    status: 204,
+    body: { emoji: "🔥", clientId: "k3" },
+    response: { conversationId: "c1", message: { id: "m3" } },
   },
   {
     name: "reply to story",

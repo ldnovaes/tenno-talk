@@ -3,15 +3,12 @@ import type { StoryService } from "@/services/storyService";
 import type { Story, StoryTrayItem } from "@/types/story";
 
 import { mockDb } from "../db";
-import { projectMessage } from "../projections";
-import { publish } from "../events";
 import { mockRequest } from "../latency";
-import { addNotification } from "../notificationRecords";
 import { toUser } from "../mappers";
 import { canSeePosts, contentTranslationFor } from "../postProjections";
 import type { MockDatabase, StoryRecord } from "../schema";
 import { requireViewerId } from "../session";
-import { mockChatService } from "./mockChatService";
+import { mockChatService, sendAs } from "./mockChatService";
 
 function active(story: StoryRecord, now = Date.now()) {
   return new Date(story.expiresAt).getTime() > now;
@@ -115,54 +112,36 @@ export const mockStoryService: StoryService = {
     );
   },
 
-  async react(storyId, emoji) {
+  /** A reaction is a direct message about the story, like Instagram (PLAN.md §9.9, StoryService.react). */
+  async react(storyId, emoji, clientId = crypto.randomUUID()) {
     const viewerId = requireViewerId();
-    const result = await mockRequest(() =>
-      mockDb.update((db) => {
-        const story = visibleStory(db, storyId, viewerId);
-        story.reactions.push({ userId: viewerId, emoji });
-        const id = addNotification(db, story.authorId, viewerId, "story_reaction", {
-          storyId,
-          emoji,
-        });
-        return id ? { id, recipientId: story.authorId } : null;
-      }),
+    const story = visibleStory(mockDb.read(), storyId, viewerId);
+    if (story.authorId === viewerId)
+      throw new AppError("validation", "You can't react to your own story.");
+    const value = emoji.trim();
+    if (!value) throw new AppError("validation", "Pick an emoji.");
+    const conversation = await mockChatService.getOrCreateDirectConversation(story.authorId);
+    const message = await sendAs(
+      viewerId,
+      { conversationId: conversation.id, clientId, text: value, media: [], replyToId: null },
+      () => ({ type: "story_reaction", storyId, emoji: value }),
     );
-    if (result)
-      publish({
-        kind: "notification.created",
-        notificationId: result.id,
-        recipientId: result.recipientId,
-      });
+    return { conversationId: conversation.id, message };
   },
 
+  /** A reply is a direct message that references the story (PLAN.md §9.9). */
   async reply(storyId, text, clientId = crypto.randomUUID()) {
     const viewerId = requireViewerId();
-    const db = mockDb.read();
-    const story = visibleStory(db, storyId, viewerId);
+    const story = visibleStory(mockDb.read(), storyId, viewerId);
     if (story.authorId === viewerId)
       throw new AppError("validation", "You can't reply to your own story.");
     const conversation = await mockChatService.getOrCreateDirectConversation(story.authorId);
-    const message = await mockChatService.sendMessage({
-      conversationId: conversation.id,
-      clientId,
-      text,
-      media: [],
-      replyToId: null,
-    });
-    // Turn the text message into a story reply (keeps the story reference).
-    mockDb.update((state) => {
-      const record = state.messages[message.id];
-      if (record && record.content.type === "text") {
-        record.content = { type: "story_reply", storyId, body: record.content.body };
-      }
-    });
-    publish({ kind: "message.updated", conversationId: conversation.id, messageId: message.id });
-    const record = mockDb.read().messages[message.id];
-    return {
-      conversationId: conversation.id,
-      message: record ? projectMessage(mockDb.read(), record, viewerId) : message,
-    };
+    const message = await sendAs(
+      viewerId,
+      { conversationId: conversation.id, clientId, text, media: [], replyToId: null },
+      (body) => ({ type: "story_reply", storyId, body }),
+    );
+    return { conversationId: conversation.id, message };
   },
 
   createStory({ media, text }) {

@@ -36,6 +36,11 @@ public class PushDelivery {
     record Target(UUID user, String type, UUID post, UUID story, UUID conversation, String username, UUID comment, UUID message,
         String displayName, String emoji) {}
 
+    /** A story reaction arrives as a message; its push says what it is, like the conversation list does. */
+    private static String storyReactionEmoji(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return "story_reaction".equals(rs.getString("message_type")) ? rs.getString("message_text") : rs.getString("emoji");
+    }
+
     /** Same wording as the in-app list (src/app/locales/en.ts, notifications.*): actor as title, action as body. */
     static String body(String type, String emoji) {
         return switch (type) {
@@ -45,7 +50,7 @@ public class PushDelivery {
             case "follow_request" -> "Requested to follow you.";
             case "follow_accepted" -> "Accepted your follow request.";
             case "story_reaction" -> "Reacted " + (emoji == null ? "" : emoji + " ") + "to your story.";
-            case "new_message" -> "Sent you a message.";
+            case "new_message" -> emoji == null ? "Sent you a message." : "Reacted " + emoji + " to your story.";
             default -> "You have new activity.";
         };
     }
@@ -69,7 +74,9 @@ public class PushDelivery {
         UUID id = job.get();
         try {
             var target = jdbc.sql("""
-                SELECT n.*, u.username, u.display_name FROM notifications n JOIN users u ON u.id = n.actor_id
+                SELECT n.*, u.username, u.display_name, m.type AS message_type, m.original_text AS message_text
+                FROM notifications n JOIN users u ON u.id = n.actor_id
+                LEFT JOIN messages m ON m.id = n.message_id
                 JOIN user_preferences p ON p.user_id = n.recipient_id
                 WHERE n.id = :id AND n.read_at IS NULL AND n.created_at > now() - interval '24 hours'
                 AND CASE n.type WHEN 'new_message' THEN p.notify_messages WHEN 'comment' THEN p.notify_comments
@@ -79,7 +86,7 @@ public class PushDelivery {
                 AND NOT EXISTS (SELECT 1 FROM conversation_members cm WHERE cm.conversation_id=n.conversation_id AND cm.user_id=n.recipient_id AND cm.muted_until>now())
                 """).param("id", id).query((rs, i) -> new Target(rs.getObject("recipient_id", UUID.class), rs.getString("type"),
                     rs.getObject("post_id", UUID.class), rs.getObject("story_id", UUID.class), rs.getObject("conversation_id", UUID.class), rs.getString("username"), rs.getObject("comment_id", UUID.class), rs.getObject("message_id", UUID.class),
-                    rs.getString("display_name"), rs.getString("emoji"))).optional();
+                    rs.getString("display_name"), storyReactionEmoji(rs))).optional();
             if (target.isPresent()) deliver(id, target.get());
             jdbc.sql("DELETE FROM push_jobs WHERE notification_id = :id").param("id", id).update();
         } catch (Exception error) {

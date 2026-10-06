@@ -26,7 +26,9 @@ export type MessageContent =
   | { type: "video"; media: MediaAttachment; caption: OriginalText | null }
   | { type: "audio"; media: MediaAttachment }
   | { type: "file"; media: MediaAttachment; fileName: string }
-  | { type: "story_reply"; storyId: string; body: OriginalText };
+  | { type: "story_reply"; storyId: string; body: OriginalText }
+  /** A quick reaction to a story, sent as a direct message (PLAN.md §9.9). Never translated. */
+  | { type: "story_reaction"; storyId: string; emoji: string };
 
 export interface MessageReference {
   messageId: string;

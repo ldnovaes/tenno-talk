@@ -160,17 +160,6 @@ class StoriesIT extends IntegrationTest {
     // ---- reactions and replies --------------------------------------------
 
     @Test
-    void reactingNotifiesTheAuthorWithTheEmoji() throws Exception {
-        String id = story(linh, "Chào");
-        api.post(rafael, "/api/stories/" + id + "/reactions", Map.of("emoji", "🔥")).andExpect(status().isNoContent());
-        JsonNode notifications = api.getOk(linh, "/api/notifications");
-        assertThat(notifications.at("/0/type").asString()).isEqualTo("story_reaction");
-        assertThat(notifications.at("/0/storyId").asString()).isEqualTo(id);
-        assertThat(notifications.at("/0/emoji").asString()).isEqualTo("🔥");
-        assertThat(notifications.at("/0/actor/username").asString()).isEqualTo("rafael");
-    }
-
-    @Test
     void reactionsNeedAnEmoji() throws Exception {
         String id = story(linh, "Chào");
         api.post(rafael, "/api/stories/" + id + "/reactions", Map.of("emoji", " ")).andExpect(status().isBadRequest());

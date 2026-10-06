@@ -21,6 +21,7 @@ import { FileCard, ImageGrid, VideoPlayer } from "./content/MediaContent";
 import { MessageText } from "./MessageText";
 import { ReactionChips } from "./ReactionChips";
 import { ReplyQuote } from "./ReplyQuote";
+import { StoryReactionContent } from "./StoryReactionContent";
 import { StoryReplyLabel } from "./StoryReplyLabel";
 
 interface MessageBubbleProps {
@@ -74,6 +75,8 @@ function MessageContentView({
       );
     case "file":
       return <FileCard media={content.media} fileName={content.fileName} />;
+    case "story_reaction":
+      return <StoryReactionContent emoji={content.emoji} own={own} />;
     case "audio":
       return null;
   }

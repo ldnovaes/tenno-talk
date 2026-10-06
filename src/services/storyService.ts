@@ -12,7 +12,12 @@ export interface StoryService {
   getTray(): Promise<StoryTrayItem[]>;
   markViewed(storyId: string): Promise<void>;
   /** Quick reaction: notifies the author. */
-  react(storyId: string, emoji: string): Promise<void>;
+  /** Sends the emoji to the author as a direct message (PLAN.md §9.9); the clientId makes a retry idempotent. */
+  react(
+    storyId: string,
+    emoji: string,
+    clientId?: string,
+  ): Promise<{ conversationId: string; message: Message }>;
   /** Sends a direct message that references the story; returns the conversation id. */
   /** The reply is a direct message: its conversation and the message as the sender sees it. */
   reply(

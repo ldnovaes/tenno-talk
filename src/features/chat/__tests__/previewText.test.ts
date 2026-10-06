@@ -11,6 +11,10 @@ import { makeMedia, makeMessage } from "@/test/factories";
 const labels = {
   you: (text: string) => `You: ${text}`,
   media: { photo: "📷 Photo", video: "🎬 Video", audio: "🎤 Voice", file: "📎 File" },
+  storyReaction: {
+    received: (emoji: string) => `Reacted ${emoji} to your story`,
+    sent: (emoji: string) => `You reacted ${emoji} to their story`,
+  },
 };
 
 const media = makeMedia();
@@ -78,6 +82,26 @@ describe("previewText (every content kind × mode × own × translation ready)",
 
     expect(displayTextFor(message, "me", row.mode)).toBe(text);
     expect(previewText(message, "me", labels, row.mode)).toBe(row.own ? `You: ${body}` : body);
+  });
+});
+
+describe("story reactions (PLAN.md §9.9)", () => {
+  it.each(MODES)("say who reacted, whatever the mode (%s), and are never translated", (mode) => {
+    const reaction = { type: "story_reaction" as const, storyId: "s1", emoji: "🔥" };
+    const translated = {
+      targetLanguage: "pt-BR",
+      text: "x",
+      status: "translated" as const,
+      version: 1,
+      updatedAt: "",
+    };
+    const received = makeMessage({ senderId: "linh", content: reaction, translation: translated });
+    const sent = makeMessage({ senderId: "me", content: reaction });
+    expect(previewText(received, "me", labels, mode)).toBe("Reacted 🔥 to your story");
+    expect(previewText(sent, "me", labels, mode)).toBe("You reacted 🔥 to their story");
+    expect(displayTextFor(received, "me", mode)).toBe("🔥");
+    expect(originalOf(received)).toBeNull();
+    expect(mediaLabelOf(received)).toBeNull();
   });
 });
 

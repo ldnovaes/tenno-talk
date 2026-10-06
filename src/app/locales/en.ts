@@ -363,6 +363,8 @@ export const en = {
       done: "Story shared",
     },
     repliedLabel: "Replied to a story",
+    reactedLabel: "Reacted to your story",
+    youReactedLabel: "You reacted to their story",
   },
   notifications: {
     pushDenied:
@@ -557,6 +559,8 @@ export const en = {
       file: "📎 File",
       typing: "typing…",
       noMessages: "No messages yet",
+      storyReactionReceived: "Reacted {{emoji}} to your story",
+      storyReactionSent: "You reacted {{emoji}} to their story",
     },
     header: {
       online: "online",

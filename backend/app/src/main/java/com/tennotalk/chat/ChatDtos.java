@@ -29,7 +29,7 @@ public final class ChatDtos {
 
     /** Serialized with the runtime type: each variant carries its {@code type}. */
     public sealed interface MessageContentDto
-            permits TextContent, ImageContent, VideoContent, FileContent, StoryReplyContent {
+            permits TextContent, ImageContent, VideoContent, FileContent, StoryReplyContent, StoryReactionContent {
         String type();
     }
 
@@ -60,6 +60,13 @@ public final class ChatDtos {
     public record StoryReplyContent(String type, UUID storyId, OriginalTextDto body) implements MessageContentDto {
         public StoryReplyContent(UUID storyId, OriginalTextDto body) {
             this("story_reply", storyId, body);
+        }
+    }
+
+    /** A quick reaction to a story, sent as a direct message (PLAN.md §9.9). Never translated. */
+    public record StoryReactionContent(String type, UUID storyId, String emoji) implements MessageContentDto {
+        public StoryReactionContent(UUID storyId, String emoji) {
+            this("story_reaction", storyId, emoji);
         }
     }
 

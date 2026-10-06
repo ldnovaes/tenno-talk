@@ -72,7 +72,8 @@ export type MessageContentRecord =
   | { type: "image"; media: MediaAttachment[]; caption: OriginalText | null }
   | { type: "video"; media: MediaAttachment; caption: OriginalText | null }
   | { type: "file"; media: MediaAttachment; fileName: string }
-  | { type: "story_reply"; storyId: string; body: OriginalText };
+  | { type: "story_reply"; storyId: string; body: OriginalText }
+  | { type: "story_reaction"; storyId: string; emoji: string };
 
 export interface MessageRecord {
   receipts?: Record<string, boolean>;

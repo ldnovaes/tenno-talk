@@ -59,13 +59,43 @@ describe("mockStoryService", () => {
     });
   });
 
-  it("reacts and notifies the author", async () => {
-    await mockStoryService.react("story_linh_1", "❤️");
-    const notification = Object.values(mockDb.read().notifications).find(
-      (n) =>
-        n.recipientId === "usr_linh" && n.type === "story_reaction" && n.storyId === "story_linh_1",
+  // Same cases as StoryReactionIT (PLAN.md §9.9).
+  it("a reaction is a direct message to the author, not an extra notification", async () => {
+    const { conversationId, message } = await mockStoryService.react("story_linh_1", "❤️");
+    expect(conversationId).toBe("conv_rafael_linh");
+    expect(message.content).toEqual({
+      type: "story_reaction",
+      storyId: "story_linh_1",
+      emoji: "❤️",
+    });
+    expect(message.translation).toBeNull();
+    const types = Object.values(mockDb.read().notifications)
+      .filter((n) => n.recipientId === "usr_linh" && n.actorId === "usr_rafael")
+      .map((n) => n.type);
+    expect(types).not.toContain("story_reaction");
+  });
+
+  it("every tap is a new message, a retried tap is not", async () => {
+    await mockStoryService.react("story_linh_1", "🔥", "tap-1");
+    await mockStoryService.react("story_linh_1", "🔥", "tap-1");
+    await mockStoryService.react("story_linh_1", "😂", "tap-2");
+    const reactions = Object.values(mockDb.read().messages).filter(
+      (m) => m.content.type === "story_reaction",
     );
-    expect(notification).toMatchObject({ actorId: "usr_rafael", emoji: "❤️" });
+    expect(reactions).toHaveLength(2);
+  });
+
+  it("you can't react to your own story, nor across messaging privacy", async () => {
+    await expect(mockStoryService.react("story_rafael_1", "❤️")).rejects.toMatchObject({
+      code: "validation",
+    });
+    mockDb.update((db) => {
+      const linh = db.users["usr_linh"];
+      if (linh) linh.preferences.privacy.whoCanMessage = "nobody";
+    });
+    await expect(mockStoryService.react("story_linh_1", "❤️")).rejects.toMatchObject({
+      code: "forbidden",
+    });
   });
 
   it("replies with a direct message that references the story", async () => {

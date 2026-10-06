@@ -7,6 +7,8 @@ import type { MediaInput } from "@/services/chatService";
 import { storyService } from "@/services/storyService";
 import type { StoryTrayItem } from "@/types/story";
 
+import { upsertMessage } from "@/features/chat/lib/messageCache";
+
 import { storyKeys } from "../lib/queryKeys";
 
 export function useStoryTray() {
@@ -47,10 +49,15 @@ export function useMarkStoryViewed() {
   });
 }
 
+/** The reaction is a direct message (PLAN.md §9.9): it shows up in the conversation with the author. */
 export function useReactToStory() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ storyId, emoji }: { storyId: string; emoji: string }) =>
       storyService.react(storyId, emoji),
+    onSuccess: ({ message }) => upsertMessage(queryClient, message),
+    // The viewer shows the error inline: a toast would cover its header and close button.
+    meta: { silent: true },
   });
 }
 
@@ -90,6 +97,7 @@ export function useReplyToStory() {
       return { conversationId, queued: true };
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] }),
+    meta: { silent: true },
   });
 }
 

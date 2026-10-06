@@ -31,7 +31,7 @@ public class StoryController {
 
     public record CreateStory(@NotNull UUID mediaId, @Size(max = 250) String text) {}
 
-    public record React(@NotBlank @Size(max = 16) String emoji) {}
+    public record React(@NotBlank @Size(max = 16) String emoji, @Size(max = 100) String clientId) {}
 
     public record Reply(@Size(max = 100) String clientId, @NotBlank @Size(max = 4000) String text) {}
 
@@ -68,9 +68,8 @@ public class StoryController {
     }
 
     @PostMapping("/{id}/reactions")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void react(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id, @Valid @RequestBody React body) {
-        stories.react(me.userId(), Ids.parse(id), body.emoji());
+    public ReplyResult react(@AuthenticationPrincipal AppPrincipal me, @PathVariable String id, @Valid @RequestBody React body) {
+        return stories.react(me.userId(), Ids.parse(id), body.emoji(), body.clientId());
     }
 
     @PostMapping("/{id}/replies")

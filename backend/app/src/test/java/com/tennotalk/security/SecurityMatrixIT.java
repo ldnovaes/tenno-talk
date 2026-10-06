@@ -93,7 +93,7 @@ class SecurityMatrixIT extends IntegrationTest {
             Map.entry("PUT /api/posts/{id}/like", "social"),
             Map.entry("DELETE /api/posts/{id}/like", "social"),
             Map.entry("POST /api/posts/{id}/comments", "social"),
-            Map.entry("POST /api/stories/{id}/reactions", "social"),
+            Map.entry("POST /api/stories/{id}/reactions", "send"),
             Map.entry("POST /api/messages/{id}/reactions", "social"),
             Map.entry("POST /api/posts", "create"),
             Map.entry("POST /api/stories", "create"),

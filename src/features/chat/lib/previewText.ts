@@ -7,6 +7,8 @@ import { mediaLabelOf, originalOf } from "./messageText";
 export interface PreviewLabels {
   you: (text: string) => string;
   media: Record<"photo" | "video" | "audio" | "file", string>;
+  /** "Reacted ❤️ to your story" / "You reacted ❤️ to their story" (PLAN.md §9.9). */
+  storyReaction: { received: (emoji: string) => string; sent: (emoji: string) => string };
 }
 
 /** Text a message shows by default for this viewer and display mode (no per-message override). */
@@ -15,6 +17,7 @@ export function displayTextFor(
   viewerId: string,
   mode: TranslationDisplayMode = "translation",
 ): string | null {
+  if (message.content.type === "story_reaction") return message.content.emoji;
   const original = originalOf(message);
   if (!original) return null;
   return resolveMessageDisplay({
@@ -33,6 +36,12 @@ export function previewText(
   labels: PreviewLabels,
   mode: TranslationDisplayMode = "translation",
 ): string {
+  if (message.content.type === "story_reaction") {
+    const { emoji } = message.content;
+    return message.senderId === viewerId
+      ? labels.storyReaction.sent(emoji)
+      : labels.storyReaction.received(emoji);
+  }
   const text = displayTextFor(message, viewerId, mode);
   const media = mediaLabelOf(message);
   const body =

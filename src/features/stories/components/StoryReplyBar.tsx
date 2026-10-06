@@ -1,7 +1,6 @@
 import { useContentDraft } from "@/features/feed/hooks/useContentDraft";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import type { Story } from "@/types/story";
@@ -22,6 +21,15 @@ export function StoryReplyBar({
   const [focused, setFocused] = useState(false);
   const reply = useReplyToStory();
   const react = useReactToStory();
+  // Confirmation inside the viewer: a toast at the top covered the header and its close button.
+  const [sent, setSent] = useState<string | null>(null);
+  const clearSent = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(clearSent.current), []);
+  function confirm(text: string) {
+    setSent(text);
+    clearTimeout(clearSent.current);
+    clearSent.current = setTimeout(() => setSent(null), 2500);
+  }
 
   useEffect(() => {
     onFocusChange(focused || reply.isPending || react.isPending || text.length > 0);
@@ -36,7 +44,7 @@ export function StoryReplyBar({
         onSuccess: (result) => {
           setText((current) => (current === text ? "" : current));
           setFocused(false);
-          toast.success(t(result.queued ? "stories.queuedReply" : "stories.replied"));
+          confirm(t(result.queued ? "stories.queuedReply" : "stories.replied"));
         },
       },
     );
@@ -53,7 +61,7 @@ export function StoryReplyBar({
             onClick={() =>
               react.mutate(
                 { storyId: story.id, emoji },
-                { onSuccess: () => toast.success(t("stories.reacted")) },
+                { onSuccess: () => confirm(t("stories.reacted")) },
               )
             }
             className="grid size-10 place-items-center rounded-full bg-white/10 text-xl transition-transform hover:scale-110 active:scale-95"
@@ -62,7 +70,14 @@ export function StoryReplyBar({
           </button>
         ))}
       </div>
-      <p className="text-center text-xs text-white/80">{t("stories.privateReply")}</p>
+      <p role="status" className="text-center text-xs text-white/80">
+        {sent ?? t("stories.privateReply")}
+      </p>
+      {react.isError && (
+        <p role="alert" className="text-center text-sm text-white">
+          {react.error.message}
+        </p>
+      )}
       {reply.isError && (
         <p role="alert" className="text-sm text-white">
           {t("errors.generic")}
