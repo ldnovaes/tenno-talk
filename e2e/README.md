@@ -4,14 +4,26 @@
 
 Roda contra o **mock**, usando o **build de produção** (`vite build` + `vite preview` em `:4173`, nunca o servidor de desenvolvimento, que recarrega a página ao otimizar dependências no meio do teste), em dois perfis: desktop (1280×860) e celular (Pixel 7).
 
-| Arquivo                    | O que cobre                                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `onboarding.spec.ts`       | cadastro por e-mail, aceite obrigatório dos termos, onboarding completo, sessão após reload                  |
-| `chat.spec.ts`             | duas pessoas (duas abas) conversando ao vivo, cada uma no próprio idioma; recibo de leitura; "ver original"  |
-| `translationModes.spec.ts` | os modos de exibição mudam todas as mensagens                                                                |
-| `feed.spec.ts`             | curtir, comentar, abrir e navegar stories pelo teclado                                                       |
-| `responsive.spec.ts`       | celular: uma tela por vez com barra inferior, sem rolagem horizontal; desktop: duas colunas e painel lateral |
-| `a11y.spec.ts`             | axe (WCAG 2.1 AA) sem violações sérias ou críticas em 8 telas, nos temas claro e escuro                      |
+| Arquivo                    | O que cobre                                                                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `onboarding.spec.ts`       | cadastro por e-mail, aceite obrigatório dos termos, onboarding completo, sessão após reload                                                                                                |
+| `chat.spec.ts`             | duas pessoas (duas abas) conversando ao vivo, cada uma no próprio idioma; recibo de leitura; "ver original"                                                                                |
+| `translationModes.spec.ts` | os modos de exibição mudam todas as mensagens                                                                                                                                              |
+| `feed.spec.ts`             | curtir, comentar, abrir e navegar stories pelo teclado                                                                                                                                     |
+| `responsive.spec.ts`       | celular: uma tela por vez com barra inferior, sem rolagem horizontal; desktop: duas colunas e painel lateral                                                                               |
+| `a11y.spec.ts`             | axe (WCAG 2.1 AA) sem violações sérias ou críticas em 20 telas (todas as seções de Settings, conversa e post em árabe, viewer de story, edição de perfil, admin), nos temas claro e escuro |
+| `discover.spec.ts`         | um post por tela, teclado e rolagem; "Not interested" e desfazer                                                                                                                           |
+| `followRequests.spec.ts`   | perfil privado, pedido de seguir confirmado pelas notificações                                                                                                                             |
+| `socialUx.spec.ts`         | deixar de seguir tira os posts do feed sem esconder os stories de um perfil público; story que não carrega ainda fecha                                                                     |
+| `cursor.spec.ts`           | cursores de ponteiro e "não permitido" nos recursos em breve                                                                                                                               |
+| `chatActions.spec.ts`      | responder e reagir pelo menu (desktop) e pelo toque longo (celular)                                                                                                                        |
+| `groups.spec.ts`           | grupo criado pela interface, cada membro lendo no próprio idioma; limite de um grupo por pessoa                                                                                            |
+| `stories.spec.ts`          | reação vira mensagem na DM do autor, confirmação dentro do viewer; resposta privada; espaço pausa sem fechar; criar story                                                                  |
+| `settings.spec.ts`         | tema sem piscar no reload; "Who can message me" fecha a conversa do outro lado; novo idioma de recebimento vale para as próximas mensagens                                                 |
+| `notifications.spec.ts`    | follow chega ao vivo; "marcar tudo como lido" numa aba atualiza a outra                                                                                                                    |
+| `account.spec.ts`          | editar perfil, baixar os dados (JSON), excluir a conta                                                                                                                                     |
+| `admin.spec.ts`            | admin chega às páginas pelo Settings; quem não é admin é barrado                                                                                                                           |
+| `rtl.spec.ts`              | original em árabe com `lang="ar"` e direção RTL dentro da interface LTR                                                                                                                    |
 
 As configurações do mock (latência curta, sem falhas aleatórias) ficam em `support.ts`.
 
