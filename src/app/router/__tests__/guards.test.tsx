@@ -54,4 +54,31 @@ describe("route guards", () => {
     expect(await screen.findByRole("heading", { name: /talk to anyone/i })).toBeInTheDocument();
     expect(localStorage.getItem("tenno.mock-session")).toBeNull();
   });
+
+  it("an unknown onboarding step goes back to the first one", async () => {
+    await mockAuthService.signUp({ email: "new@example.com", password: "secret123" });
+    renderApp("/onboarding/not-a-step");
+    expect(
+      await screen.findByRole("heading", { name: "Welcome to TENNO TALK" }),
+    ).toBeInTheDocument();
+  });
+
+  it("someone already onboarded who opens an onboarding step lands in the app", async () => {
+    signInAs("usr_linh");
+    renderApp("/onboarding/native-language");
+    expect(await screen.findByRole("heading", { name: "Chats" })).toBeInTheDocument();
+  });
+
+  it("a push link opened while signed into another account goes to that account's notifications", async () => {
+    signInAs("usr_linh");
+    renderApp("/chats/conv_rafael_linh?pushUser=usr_rafael");
+    expect(await screen.findByRole("heading", { name: "Notifications" })).toBeInTheDocument();
+  });
+
+  it("a push link opened by its recipient opens its destination", async () => {
+    setViewportWidth(1280);
+    signInAs("usr_rafael");
+    renderApp("/chats/conv_rafael_linh?pushUser=usr_rafael");
+    expect(await screen.findByRole("log", { name: "Messages" })).toBeInTheDocument();
+  });
 });
