@@ -642,6 +642,26 @@ Estratégia em [PLAN.md §23.1](PLAN.md#231-testes-por-combinação-2026-10-05).
 - [x] Bloco 4 — Matrizes de componentes e telas: ações do perfil (bloqueio × follow × privado × pedido), aviso de restrição, `lang`/`dir` por superfície, ações no celular (toque longo), push em todos os estados, Conta × provedores, privacidade vista do outro lado, silenciar, mensagens antigas, guards, engajamento do Discover, admin, criar story, comentários (recusa e link direto), login social, pausa do story
 - [x] Bloco 6 — E2E mock (settings, grupos, ações do chat, stories, notificações, conta, admin, RTL, a11y): 31 → 60 testes (+6 pulados). Stack local (`deploy/docker-compose`, fora do CI): grupos (o "Who can message me" de cada membro, um grupo por pessoa, mensagens ao vivo), pedidos de seguir (aprovar e recusar, badge ao vivo dos dois lados), troca de conta com envio pendente na outbox, e `socialReach` rodado pela primeira vez contra a pilha: 5 → 8 testes, verdes também sobre um banco já usado por execuções anteriores
 
+**Resultado (2026-10-06).**
+
+| Suíte | Antes (`main`) | Depois |
+|---|---|---|
+| Frontend (Vitest) | 816 testes, 57 arquivos | 1.794 testes, 91 arquivos (115 no projeto `http`); verde em 3 execuções seguidas |
+| Backend app | 909 | 1.383 |
+| Recommender | 246 | 246 |
+| E2E mock | 31 (+5 pulados) | 60 (+6 pulados) |
+| E2E stack (local) | 5 | 8 |
+
+Cobertura (só relatório, `bun run test:coverage` e `./mvnw verify -Pcoverage`; a linha de base foi medida num worktree do `main`):
+
+| | Linhas | Branches | Funções |
+|---|---|---|---|
+| Frontend | 84,9% → 91,5% | 74,1% → 80,8% | 78,3% → 87,8% |
+| Backend app | 95,3% → 97,3% | 79,3% → 85,9% | — |
+| Recommender | 99,4% (igual) | 97,0% (igual) | — |
+
+Na medição da linha de base, a suíte do `main` falhou uma vez com o deadlock do `TRUNCATE` contra o worker de realtime; neste branch o `TestData.reset()` repete a limpeza.
+
 ### Bugs encontrados
 
 | # | Bug | Teste | Correção |
