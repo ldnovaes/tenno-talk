@@ -21,11 +21,13 @@ public class AuthService {
 
     private final UserRepository users;
     private final PasswordEncoder encoder;
+    private final LoginThrottle throttle;
     private final String dummyHash;
 
-    public AuthService(UserRepository users, PasswordEncoder encoder) {
+    public AuthService(UserRepository users, PasswordEncoder encoder, LoginThrottle throttle) {
         this.users = users;
         this.encoder = encoder;
+        this.throttle = throttle;
         this.dummyHash = encoder.encode(DUMMY_HASH_SEED);
     }
 
@@ -47,10 +49,13 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public UserRow signIn(String email, String password) {
-        var user = users.findByEmail(normalizeEmail(email));
+        String normalized = normalizeEmail(email);
+        throttle.requireAllowed(normalized);
+        var user = users.findByEmail(normalized);
         String hash = user.map(UserRow::passwordHash).orElse(null);
         boolean matches = encoder.matches(password, hash == null ? dummyHash : hash);
         if (user.isEmpty() || hash == null || !matches) {
+            throttle.failed(normalized);
             throw new ApiException(ErrorCode.UNAUTHENTICATED, "Invalid email or password.");
         }
         return user.get();

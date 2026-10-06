@@ -41,7 +41,8 @@ class RateLimitIT extends IntegrationTest {
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(jsonPath("$.code").value("rate_limited"));
 
-        mvc.perform(withJson(post("/api/auth/signin"), Map.of("email", "x@example.com", "password", "wrong-password"))
+        // Another address is not limited (another email: that one is also locked per account, LoginThrottle).
+        mvc.perform(withJson(post("/api/auth/signin"), Map.of("email", "y@example.com", "password", "wrong-password"))
                         .with(request -> {
                             request.setRemoteAddr("10.0.0.2");
                             return request;

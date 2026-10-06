@@ -116,4 +116,28 @@ class AuthEdgesIT extends IntegrationTest {
         mvc.perform(get("/api/auth/session").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$.userId").isEmpty());
         mvc.perform(get("/api/me").cookie(session)).andExpect(status().isUnauthorized());
     }
+
+    // ---- Brute force across addresses (PLAN.md §38) ----
+
+    @Test
+    void tenMissesForOneAccountLockItForAWhileWhateverTheAddress() throws Exception {
+        UUID rafael = data.user("rafael", "pt-BR");
+        data.password(rafael, passwords.encode("secret123"));
+        UUID linh = data.user("linh", "vi-VN");
+        data.password(linh, passwords.encode("secret123"));
+        for (int i = 0; i < LoginThrottle.FAILURES; i++) {
+            int address = i;
+            mvc.perform(withJson(post("/api/auth/signin"), Map.of("email", "rafael@example.com", "password", "guess-" + i))
+                            .with(request -> {
+                                request.setRemoteAddr("10.0.0." + address);
+                                return request;
+                            }))
+                    .andExpect(status().isUnauthorized());
+        }
+        // Even the right password waits now, and the answer is the same for unknown accounts' worth of guessing.
+        mvc.perform(withJson(post("/api/auth/signin"), Map.of("email", "RAFAEL@example.com", "password", "secret123")))
+                .andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("rate_limited"));
+        // Other accounts are not affected.
+        org.assertj.core.api.Assertions.assertThat(signIn("linh@example.com", "secret123").getResponse().getStatus()).isEqualTo(200);
+    }
 }

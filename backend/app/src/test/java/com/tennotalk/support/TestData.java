@@ -22,9 +22,11 @@ public class TestData {
     public static final String TERMS = "2026-10-04";
 
     private final JdbcClient jdbc;
+    private final com.tennotalk.auth.LoginThrottle loginThrottle;
 
-    public TestData(JdbcClient jdbc) {
+    public TestData(JdbcClient jdbc, com.tennotalk.auth.LoginThrottle loginThrottle) {
         this.jdbc = jdbc;
+        this.loginThrottle = loginThrottle;
     }
 
     /**
@@ -32,6 +34,7 @@ public class TestData {
      * lock the TRUNCATE needs and wait for one it holds: PostgreSQL then cancels one side, and trying again wins.
      */
     public void reset() {
+        loginThrottle.reset();
         for (int attempt = 1; ; attempt++) {
             try {
                 truncate();
