@@ -713,5 +713,7 @@ Revisão de segurança de https://tenno.eldialabs.com (DoS, vazamento de dados, 
 - [x] Fase 3 — Sessões encerradas na troca de senha; sockets fechados no logout, troca de senha e exclusão
 - [x] Fase 3 — Força bruta por e-mail; login social sem vínculo automático a conta com senha
 - [x] Fase 3 — `/api/openapi` desligado em produção; workflow antigo de deploy removido
-- [ ] Fase 4 — VPS: jails do fail2ban da TENNO, swap, `X11Forwarding no`, atualizações + reboot
-- [ ] Deploy e verificação (TENNO e sites da Eldia)
+- [x] Fase 4 — VPS: jails do fail2ban da TENNO, swap, `X11Forwarding no`, atualizações + reboot
+- [x] Deploy e verificação (TENNO e sites da Eldia)
+
+> Notas (2026-10-06): deploy `b7094db`, migration V12 aplicada, e o serviço subiu com o sandbox e os limites. Verificado de fora: `Server: nginx` sem versão, `/.env` e `/api/openapi` respondem 404, corpo de 2 MB no login dá 413, e uma rajada de 14 logins dá 11 requisições passando e 3 com 429. Os jails da TENNO contam falhas. Depois do reboot (libc6 + 5 pacotes de segurança), os 7 sites da Eldia responderam exatamente como antes. `eldialabs-backend`, PostgreSQL, nginx, o container do WhatsApp, Tailscale e ufw voltaram sozinhos, e a porta 8080 continua bloqueada de fora. Achado no caminho: o `[DEFAULT]` do `jail.conf` do servidor usa `backend = systemd` e `banaction = firewallcmd-rich-rules` (firewalld não roda), então os jails nginx/apache da Eldia não monitoram nenhum arquivo. Os jails da TENNO declaram `backend = auto` e `banaction = iptables-multiport`. Os da Eldia não foram alterados. Na suíte e2e mock com o paralelismo padrão, um ou outro teste diferente falha a cada execução por carga; com `--workers=2` passam todos os 63.

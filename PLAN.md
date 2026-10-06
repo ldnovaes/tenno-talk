@@ -1782,6 +1782,8 @@ TLS 1.2/1.3, HSTS, CSP estrita; ufw, SSH só por chave, fail2ban do sshd, atuali
 
 ### 38.3 Pendente
 
+- **Eldia (fora do escopo da TENNO):** os jails nginx/apache do fail2ban do servidor não monitoram nada (`[DEFAULT] backend = systemd`, `banaction` do firewalld, que não roda). Docker, Tailscale e Infisical têm atualizações não críticas pendentes, que não foram aplicadas porque reiniciariam o WhatsApp ou o acesso Tailscale.
+
 - Cópia dos backups para fora da VPS (§31 promete; hoje ficam só em `/var/backups/tenno-talk`).
 - Verificação de e-mail (depende de SMTP): permitirá esconder no cadastro se o e-mail existe e vincular o login social a contas com senha.
 - Papel de admin lido no login: rebaixar alguém vale a partir da próxima sessão.
