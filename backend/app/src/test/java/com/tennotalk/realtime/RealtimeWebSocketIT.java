@@ -58,6 +58,12 @@ class RealtimeWebSocketIT extends IntegrationTest {
     final class Client extends TextWebSocketHandler {
         final BlockingQueue<JsonNode> frames = new LinkedBlockingQueue<>();
         WebSocketSession session;
+        volatile CloseStatus closed;
+
+        @Override
+        public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+            closed = status;
+        }
 
         @Override
         protected void handleTextMessage(WebSocketSession session, TextMessage message) {
@@ -125,6 +131,79 @@ class RealtimeWebSocketIT extends IntegrationTest {
 
     private Client connect(String username) throws Exception {
         return connect(sessionOf(username), ORIGIN);
+    }
+
+    // ---- limits and session endings (PLAN.md §38) ---------------------------------------
+
+    private void signOut(String session) throws Exception {
+        mvc.perform(post("/api/auth/signout").cookie(new jakarta.servlet.http.Cookie("SESSION", session))
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void aSocketFloodingFramesIsClosed() throws Exception {
+        Client device = connect("rafael");
+        for (int i = 0; i < RealtimeWebSocketHandler.FRAMES_PER_WINDOW + 5 && device.session.isOpen(); i++) {
+            device.sendRaw("{\"type\":\"ping\",\"payload\":{}}");
+        }
+        await().atMost(Duration.ofSeconds(5)).until(() -> device.closed != null);
+        assertThat(device.closed.getCode()).isEqualTo(CloseStatus.POLICY_VIOLATION.getCode());
+    }
+
+    @Test
+    void aNormalClientIsNeverClosed() throws Exception {
+        Client device = connect("rafael");
+        for (int i = 0; i < 10; i++) device.sendRaw("{\"type\":\"ping\",\"payload\":{}}");
+        for (int i = 0; i < 10; i++) device.next("pong");
+        assertThat(device.session.isOpen()).isTrue();
+    }
+
+    @Test
+    void theEleventhSocketOfAPersonClosesTheOldest() throws Exception {
+        String session = sessionOf("rafael");
+        List<Client> devices = new java.util.ArrayList<>();
+        for (int i = 0; i < RealtimeHub.MAX_SOCKETS_PER_USER + 1; i++) devices.add(connect(session, ORIGIN));
+        await().atMost(Duration.ofSeconds(5)).until(() -> devices.getFirst().closed != null);
+        assertThat(devices.subList(1, devices.size())).allSatisfy(device -> assertThat(device.session.isOpen()).isTrue());
+    }
+
+    @Test
+    void signingOutClosesOnlyThatBrowsersSockets() throws Exception {
+        String laptop = sessionOf("rafael");
+        String phone = sessionOf("rafael");
+        Client laptopSocket = connect(laptop, ORIGIN);
+        Client phoneSocket = connect(phone, ORIGIN);
+
+        signOut(laptop);
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> laptopSocket.closed != null);
+        assertThat(phoneSocket.session.isOpen()).isTrue();
+    }
+
+    @Test
+    void changingThePasswordEndsEveryOtherSessionAndItsSockets() throws Exception {
+        String laptop = sessionOf("rafael");
+        String stolen = sessionOf("rafael");
+        Client laptopSocket = connect(laptop, ORIGIN);
+        Client stolenSocket = connect(stolen, ORIGIN);
+
+        mvc.perform(withJson(post("/api/auth/password"), Map.of("current", "secret123", "next", "newsecret1"))
+                        .cookie(new jakarta.servlet.http.Cookie("SESSION", laptop))
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isNoContent());
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> stolenSocket.closed != null);
+        assertThat(laptopSocket.session.isOpen()).isTrue();
+        assertThat(sessionUser(stolen)).as("the other session is gone").isNull();
+        assertThat(sessionUser(laptop)).isEqualTo(rafael.toString());
+        assertThatThrownBy(() -> connect(stolen, ORIGIN)).hasStackTraceContaining("401");
+    }
+
+    private String sessionUser(String session) throws Exception {
+        JsonNode body = json.readTree(mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/auth/session")
+                .cookie(new jakarta.servlet.http.Cookie("SESSION", session))).andReturn().getResponse().getContentAsString());
+        return body.get("userId").isNull() ? null : body.get("userId").asString();
     }
 
     @Test

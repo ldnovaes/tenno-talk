@@ -1,6 +1,7 @@
 package com.tennotalk.realtime;
 
 import java.security.Principal;
+import java.time.Duration;
 import java.util.UUID;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -13,6 +14,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.tennotalk.auth.AppPrincipal;
 
+import io.github.bucket4j.Bucket;
+
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -22,6 +25,10 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler {
 
     private static final String USER_ATTRIBUTE = "tenno.userId";
     private static final String DECORATED_ATTRIBUTE = "tenno.session";
+    private static final String FRAMES_ATTRIBUTE = "tenno.frames";
+    /** The client sends a ping every 25 s and a typing renewal every 3 s: anything far above is abuse (PLAN.md §38). */
+    static final int FRAMES_PER_WINDOW = 20;
+    static final Duration FRAME_WINDOW = Duration.ofSeconds(10);
     private static final TextMessage PONG = new TextMessage("{\"type\":\"pong\",\"payload\":{}}");
 
     private final RealtimeHub hub;
@@ -49,13 +56,19 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         session.getAttributes().put(USER_ATTRIBUTE, userId);
+        session.getAttributes().put(FRAMES_ATTRIBUTE, Bucket.builder()
+                .addLimit(limit -> limit.capacity(FRAMES_PER_WINDOW).refillGreedy(FRAMES_PER_WINDOW, FRAME_WINDOW)).build());
         session.getAttributes().put(DECORATED_ATTRIBUTE, hub.register(userId, session));
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         UUID userId = (UUID) session.getAttributes().get(USER_ATTRIBUTE);
         if (userId == null) return;
+        if (session.getAttributes().get(FRAMES_ATTRIBUTE) instanceof Bucket frames && !frames.tryConsume(1)) {
+            session.close(CloseStatus.POLICY_VIOLATION.withReason("Too many messages"));
+            return;
+        }
         ClientMessage parsed;
         try {
             parsed = json.readValue(message.getPayload(), ClientMessage.class);

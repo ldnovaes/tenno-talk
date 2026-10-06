@@ -55,9 +55,9 @@ class TypingSessionsTest {
         typing.update("tab-a", user, conversation, true);
         typing.update("tab-b", user, conversation, true);
         typing.update("tab-a", user, conversation, false);
-        assertThat(events).containsExactly(true, true);
+        assertThat(events).as("the second tab joins an indicator already announced").containsExactly(true);
         typing.update("tab-b", user, conversation, false);
-        assertThat(events).containsExactly(true, true, false);
+        assertThat(events).containsExactly(true, false);
     }
 
     @Test
@@ -113,5 +113,46 @@ class TypingSessionsTest {
         assertThat(events).containsExactly(true, true, false);
         advance(TypingSessions.LEASE_MS);
         assertThat(events).containsExactly(true, true, false, false);
+    }
+
+    @Test
+    void aFloodOfTypingFramesIsAnnouncedAtMostEveryTwoAndAHalfSeconds() {
+        for (int i = 0; i < 1000; i++) typing.update("tab-a", user, conversation, true);
+        assertThat(events).containsExactly(true);
+        now = now.plusMillis(TypingSessions.ANNOUNCE_EVERY_MS);
+        for (int i = 0; i < 1000; i++) typing.update("tab-a", user, conversation, true);
+        assertThat(events).containsExactly(true, true);
+    }
+
+    @Test
+    void startingAgainAfterAStopIsAnnouncedAtOnce() {
+        typing.update("tab-a", user, conversation, true);
+        typing.update("tab-a", user, conversation, false);
+        typing.update("tab-a", user, conversation, true);
+        assertThat(events).containsExactly(true, false, true);
+    }
+
+    @Test
+    void theFanOutRunsOutsideTheLock() throws Exception {
+        var inside = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var slow = new TypingSessions(event -> {
+            inside.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }, chat, clock);
+        Thread sender = new Thread(() -> slow.update("tab-a", user, conversation, true));
+        sender.start();
+        assertThat(inside.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        // While the fan-out is busy, another socket closing is not blocked.
+        Thread closer = new Thread(() -> slow.close("tab-z"));
+        closer.start();
+        closer.join(2000);
+        assertThat(closer.isAlive()).isFalse();
+        release.countDown();
+        sender.join(2000);
     }
 }

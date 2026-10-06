@@ -123,6 +123,17 @@ class AuthIT extends IntegrationTest {
     }
 
     @Test
+    void deletingTheAccountEndsEverySessionOfIt() throws Exception {
+        Cookie first = signUp("gone@example.com", "secret123");
+        mvc.perform(withJson(post("/api/auth/signin"), Map.of("email", "gone@example.com", "password", "secret123"))).andExpect(status().isOk());
+        String userId = jdbc.sql("SELECT id::text FROM users WHERE email = 'gone@example.com'").query(String.class).single();
+        assertThat(jdbc.sql("SELECT count(*) FROM spring_session WHERE principal_name = :u").param("u", userId).query(Long.class).single()).isEqualTo(2);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/me").cookie(first).with(csrf()))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.sql("SELECT count(*) FROM spring_session WHERE principal_name = :u").param("u", userId).query(Long.class).single()).isZero();
+    }
+
+    @Test
     void healthIsPublic() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
     }

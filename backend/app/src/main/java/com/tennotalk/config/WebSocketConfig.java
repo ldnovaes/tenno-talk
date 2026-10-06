@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import org.springframework.web.socket.server.support.HttpSessionHandshakeInterceptor;
 
 import com.tennotalk.realtime.RealtimeWebSocketHandler;
 
@@ -22,6 +23,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         // Cookie-authenticated socket: only our own origin may open it (cross-site WebSocket hijacking).
-        registry.addHandler(handler, "/ws").setAllowedOrigins(properties.publicUrl());
+        // Each socket remembers its HTTP session (only the id), so signing out closes exactly its sockets.
+        HttpSessionHandshakeInterceptor sessionId = new HttpSessionHandshakeInterceptor();
+        sessionId.setCopyAllAttributes(false);
+        sessionId.setCopyHttpSessionId(true);
+        registry.addHandler(handler, "/ws").addInterceptors(sessionId).setAllowedOrigins(properties.publicUrl());
     }
 }

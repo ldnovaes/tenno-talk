@@ -86,7 +86,7 @@ public class ProfileController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAccount(@AuthenticationPrincipal AppPrincipal me, HttpServletRequest request) {
         profiles.deleteAccount(me.userId());
-        sessionLogin.logout(request);
+        sessionLogin.endAllSessions(me.userId(), request);
     }
 
     @GetMapping("/usernames/{username}/availability")

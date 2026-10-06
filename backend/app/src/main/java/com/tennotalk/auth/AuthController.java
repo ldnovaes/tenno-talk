@@ -84,7 +84,9 @@ public class AuthController {
 
     @PostMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void changePassword(@AuthenticationPrincipal AppPrincipal principal, @Valid @RequestBody ChangePassword body) {
+    public void changePassword(@AuthenticationPrincipal AppPrincipal principal, @Valid @RequestBody ChangePassword body,
+            HttpServletRequest request) {
         auth.changePassword(principal.userId(), body.current(), body.next());
+        sessionLogin.endOtherSessions(principal.userId(), request);
     }
 }
