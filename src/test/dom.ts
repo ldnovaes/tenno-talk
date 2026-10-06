@@ -69,3 +69,19 @@ class IntersectionObserverStub {
 }
 globalThis.IntersectionObserver ??=
   IntersectionObserverStub as unknown as typeof IntersectionObserver;
+
+/** vaul (drawers) reads the computed transform, which jsdom's getComputedStyle leaves undefined. */
+const computedStyle = window.getComputedStyle.bind(window);
+window.getComputedStyle = (element: Element, pseudo?: string | null) => {
+  const style = computedStyle(element, pseudo);
+  if (style.transform) return style;
+  return new Proxy(style, {
+    get: (target, key) => {
+      if (key === "transform") return "none";
+      const value: unknown = Reflect.get(target, key);
+      return typeof value === "function"
+        ? (value as (...args: unknown[]) => unknown).bind(target)
+        : value;
+    },
+  });
+};
