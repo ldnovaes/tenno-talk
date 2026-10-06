@@ -69,8 +69,9 @@ class SecurityMatrixIT extends IntegrationTest {
     }
 
     /**
-     * Rate limit of every endpoint (PLAN.md §31). Reads are free; the exceptions cost AI (insight)
-     * or a database dump (export). A new endpoint fails here until it is classified.
+     * Rate limit of every endpoint (PLAN.md §31, §38). Reads not listed here share the generous "read" bucket;
+     * the exceptions cost AI (insight), a database dump (export) or a search. A new endpoint fails here until it
+     * is classified.
      */
     private static final Map<String, String> RATE_LIMITS = Map.ofEntries(
             Map.entry("POST /api/auth/signin", "auth"),
@@ -78,7 +79,7 @@ class SecurityMatrixIT extends IntegrationTest {
             Map.entry("POST /api/auth/password", "auth"),
             Map.entry("POST /api/conversations/{id}/messages", "send"),
             Map.entry("POST /api/stories/{id}/replies", "send"),
-            Map.entry("POST /api/messages/{id}/forward", "send"),
+            Map.entry("POST /api/messages/{id}/forward", "forward"),
             Map.entry("POST /api/media", "upload"),
             Map.entry("POST /api/messages/{id}/translation/retry", "translate"),
             Map.entry("GET /api/messages/{id}/insight", "translate"),
@@ -101,15 +102,21 @@ class SecurityMatrixIT extends IntegrationTest {
             Map.entry("POST /api/conversations/groups", "create"),
             Map.entry("POST /api/reports", "report"),
             Map.entry("GET /api/me/export", "export"),
-            Map.entry("POST /api/admin/ai/{provider}/check", "admin"));
+            Map.entry("POST /api/admin/ai/{provider}/check", "admin"),
+            Map.entry("PATCH /api/me/preferences", "settings"),
+            Map.entry("PUT /api/me/profile", "settings"),
+            Map.entry("POST /api/push/subscriptions", "settings"),
+            Map.entry("DELETE /api/push/subscriptions", "settings"),
+            Map.entry("POST /api/conversations/{id}/delivered", "receipts"),
+            Map.entry("POST /api/conversations/{id}/read", "receipts"),
+            Map.entry("GET /api/people/search", "search"),
+            Map.entry("GET /api/people/suggestions", "search"));
 
     /** Writes with no limit: bounded by what the person owns, or needed to keep the app in sync. */
     private static final Set<String> UNLIMITED_WRITES = Set.of(
-            "POST /api/auth/signout", "DELETE /api/me", "POST /api/me/onboarding", "PATCH /api/me/preferences",
-            "PUT /api/me/profile", "POST /api/me/terms", "DELETE /api/me/follow-requests/{userId}",
-            "POST /api/me/follow-requests/{userId}/approve", "POST /api/conversations/{id}/delivered",
-            "POST /api/conversations/{id}/read", "PUT /api/conversations/{id}/mute", "POST /api/notifications/read",
-            "POST /api/notifications/read-all", "POST /api/push/subscriptions", "DELETE /api/push/subscriptions",
+            "POST /api/auth/signout", "DELETE /api/me", "POST /api/me/onboarding", "POST /api/me/terms",
+            "DELETE /api/me/follow-requests/{userId}", "POST /api/me/follow-requests/{userId}/approve",
+            "PUT /api/conversations/{id}/mute", "POST /api/notifications/read", "POST /api/notifications/read-all",
             "PUT /api/stories/{id}/view", "PATCH /api/admin/reports/{id}");
 
     @TestFactory
@@ -118,7 +125,7 @@ class SecurityMatrixIT extends IntegrationTest {
             String key = endpoint.toString();
             if (endpoint.mutating() && !RATE_LIMITS.containsKey(key))
                 assertThat(UNLIMITED_WRITES).as("unclassified write: add it to RATE_LIMITS or UNLIMITED_WRITES").contains(key);
-            String expected = RATE_LIMITS.getOrDefault(key, "none");
+            String expected = RATE_LIMITS.getOrDefault(key, endpoint.mutating() ? "none" : "read");
             String actual = RateLimitRules.match(endpoint.method().name(), endpoint.path()).map(RateLimitRules.Rule::name).orElse("none");
             assertThat(actual).isEqualTo(expected);
         }));

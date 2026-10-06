@@ -65,6 +65,19 @@ class RealtimeWorkerIT extends IntegrationTest {
     }
 
     @Test
+    void aJobThatKeepsFailingIsDroppedAfterItsLastAttempt() {
+        synchronized (worker) {
+            job("SomethingUnknown", "{}");
+            jdbc.sql("UPDATE realtime_jobs SET attempts = :a").param("a", RealtimeWorker.MAX_ATTEMPTS - 2).update();
+            worker.run();
+            assertThat(jobs()).as("one attempt left").isOne();
+            jdbc.sql("UPDATE realtime_jobs SET available_at = now() - interval '1 second'").update();
+            worker.run();
+            assertThat(jobs()).isZero();
+        }
+    }
+
+    @Test
     void aJobClaimedByACrashedRunWaitsForItsLeaseThenRunsAgain() {
         synchronized (worker) {
             job("Read", readJob());

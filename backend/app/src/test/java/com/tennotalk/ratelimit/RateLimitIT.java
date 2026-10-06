@@ -11,6 +11,7 @@ import org.springframework.test.context.TestPropertySource;
 import com.tennotalk.support.IntegrationTest;
 
 import static com.tennotalk.support.TestData.as;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -60,11 +61,36 @@ class RateLimitIT extends IntegrationTest {
     }
 
     @Test
-    void readsAreNotLimited() throws Exception {
+    void readsShareOneGenerousBucket() throws Exception {
         UUID rafael = data.user("rafael", "pt-BR");
         for (int i = 0; i < 150; i++) {
             mvc.perform(get("/api/conversations").with(as(rafael))).andExpect(status().isOk());
         }
+        // The bucket refills 20 per second while this loop runs: the 429 comes a little after the 1,200th read.
+        int limitedAt = -1;
+        for (int i = 150; i < 1600 && limitedAt < 0; i++) {
+            int status = mvc.perform(get("/api/notifications/unread-count").with(as(rafael))).andReturn().getResponse().getStatus();
+            if (status == 429) limitedAt = i;
+        }
+        assertThat(limitedAt).isBetween(1200, 1600);
+    }
+
+    @Test
+    void searchHasItsOwnSmallerBucket() throws Exception {
+        UUID rafael = data.user("rafael", "pt-BR");
+        for (int i = 0; i < 60; i++) {
+            mvc.perform(get("/api/people/search").param("q", "a").with(as(rafael))).andExpect(status().isOk());
+        }
+        mvc.perform(get("/api/people/search").param("q", "a").with(as(rafael))).andExpect(status().isTooManyRequests());
+        mvc.perform(get("/api/conversations").with(as(rafael))).andExpect(status().isOk());
+    }
+
+    @Test
+    void idleBucketsAreForgottenOnlyOnceTheyAreFullAgain() throws Exception {
+        UUID rafael = data.user("rafael", "pt-BR");
+        api.post(rafael, "/api/posts", Map.of());
+        limiter.evictIdle();
+        assertThat(limiter.size()).as("used a moment ago").isOne();
     }
 
     @Test

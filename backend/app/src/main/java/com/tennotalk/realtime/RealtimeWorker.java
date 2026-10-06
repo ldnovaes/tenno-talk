@@ -19,15 +19,17 @@ public class RealtimeWorker {
     public RealtimeWorker(JdbcClient jdbc, JsonMapper json, ChatRealtime chat, NotificationService notifications, com.tennotalk.push.PushDelivery push) {
         this.jdbc = jdbc; this.json = json; this.chat = chat; this.notifications = notifications; this.push = push;
     }
-    record Job(long id, String kind, String payload) {}
+    /** A job that keeps failing (e.g. a payload no release understands) is dropped instead of retried forever. */
+    static final int MAX_ATTEMPTS = 10;
+    record Job(long id, String kind, String payload, int attempts) {}
     @Scheduled(fixedDelay = 150)
     public synchronized void run() {
         for (int i = 0; i < 50; i++) {
             var next = jdbc.sql("""
                 UPDATE realtime_jobs SET available_at = now() + interval '2 minutes', attempts = attempts + 1
                 WHERE id = (SELECT id FROM realtime_jobs WHERE available_at <= now() ORDER BY id FOR UPDATE SKIP LOCKED LIMIT 1)
-                RETURNING id, kind, payload
-                """).query((rs, row) -> new Job(rs.getLong("id"), rs.getString("kind"), rs.getString("payload"))).optional();
+                RETURNING id, kind, payload, attempts
+                """).query((rs, row) -> new Job(rs.getLong("id"), rs.getString("kind"), rs.getString("payload"), rs.getInt("attempts"))).optional();
             if (next.isEmpty()) return;
             Job job = next.get();
             try {
@@ -47,6 +49,11 @@ public class RealtimeWorker {
                 jdbc.sql("DELETE FROM realtime_jobs WHERE id = :id").param("id", job.id()).update();
             } catch (Exception error) {
                 org.slf4j.LoggerFactory.getLogger(getClass()).warn("Dispatch failed for job {} ({})", job.id(), job.kind());
+                if (job.attempts() >= MAX_ATTEMPTS) {
+                    org.slf4j.LoggerFactory.getLogger(getClass()).error("Giving up job {} ({}) after {} attempts", job.id(), job.kind(), job.attempts());
+                    jdbc.sql("DELETE FROM realtime_jobs WHERE id = :id").param("id", job.id()).update();
+                    continue;
+                }
                 jdbc.sql("UPDATE realtime_jobs SET available_at = now() + make_interval(secs => LEAST(300, attempts * 5)) WHERE id = :id")
                     .param("id", job.id()).update();
             }

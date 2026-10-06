@@ -2,6 +2,7 @@ package com.tennotalk.ratelimit;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -30,7 +31,10 @@ import io.github.bucket4j.ConsumptionProbe;
 @ConditionalOnProperty(prefix = "tenno.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
+    /** A bucket and when it was last used (to forget it once it is full again). */
+    private record Entry(RateLimitRules.Rule rule, Bucket bucket, AtomicLong lastUsed) {}
+
+    private final Map<String, Entry> buckets = new ConcurrentHashMap<>();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -46,10 +50,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
         RateLimitRules.Rule limit = rule.get();
-        Bucket bucket = buckets.computeIfAbsent(limit.name() + ":" + who(request), key -> Bucket.builder()
-                .addLimit(l -> l.capacity(limit.capacity()).refillGreedy(limit.capacity(), limit.period()))
-                .build());
-        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+        Entry entry = buckets.computeIfAbsent(limit.name() + ":" + who(request), key -> new Entry(limit, build(limit), new AtomicLong()));
+        entry.lastUsed().set(System.nanoTime());
+        ConsumptionProbe probe = entry.bucket().tryConsumeAndReturnRemaining(1);
         if (probe.isConsumed()) {
             chain.doFilter(request, response);
             return;
@@ -65,18 +68,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return "ip:" + request.getRemoteAddr();
     }
 
-    /** Full buckets carry no information; dropping them keeps memory bounded. */
-    @Scheduled(fixedDelayString = "PT10M")
-    void evictIdle() {
-        buckets.entrySet().removeIf(entry -> {
-            Bucket bucket = entry.getValue();
-            return bucket.getAvailableTokens() >= capacityOf(entry.getKey());
-        });
+    private static Bucket build(RateLimitRules.Rule rule) {
+        var builder = Bucket.builder();
+        for (RateLimitRules.Limit limit : rule.limits()) {
+            builder.addLimit(l -> l.capacity(limit.capacity()).refillGreedy(limit.capacity(), limit.period()));
+        }
+        return builder.build();
     }
 
-    private static long capacityOf(String key) {
-        String name = key.substring(0, key.indexOf(':'));
-        return RateLimitRules.RULES.stream().filter(r -> r.name().equals(name)).findFirst().map(RateLimitRules.Rule::capacity).orElse(0L);
+    /** A bucket unused for its longest period is full again and carries no information; dropping it bounds memory. */
+    @Scheduled(fixedDelayString = "PT10M")
+    void evictIdle() {
+        long now = System.nanoTime();
+        buckets.values().removeIf(entry -> now - entry.lastUsed().get() > entry.rule().refillTime().toNanos());
+    }
+
+    int size() {
+        return buckets.size();
     }
 
     /** Test hook: start from full buckets. */

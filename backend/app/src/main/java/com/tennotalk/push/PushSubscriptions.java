@@ -32,6 +32,8 @@ public class PushSubscriptions {
                 || Base64.getUrlDecoder().decode(key).length != 65 || Base64.getUrlDecoder().decode(auth).length != 16) throw new IllegalArgumentException();
         } catch (RuntimeException invalid) { throw ApiException.validation("Invalid push subscription."); }
     }
+    static final int MAX_DEVICES = 10;
+
     @Transactional
     public void subscribe(UUID user, String endpoint, String key, String auth) {
         if (!enabled()) throw ApiException.validation("Push notifications are not configured.");
@@ -39,8 +41,13 @@ public class PushSubscriptions {
         // Rebind a browser subscription to its current signed-in account.
         jdbc.sql("""
             INSERT INTO push_subscriptions(id, user_id, endpoint, p256dh, auth) VALUES (:id, :u, :e, :k, :a)
-            ON CONFLICT(endpoint) DO UPDATE SET user_id = :u, p256dh = :k, auth = :a
+            ON CONFLICT(endpoint) DO UPDATE SET user_id = :u, p256dh = :k, auth = :a, created_at = now()
             """).param("id", UUID.randomUUID()).param("u", user).param("e", endpoint).param("k", key).param("a", auth).update();
+        // Every push is sent to each device in turn: the oldest beyond MAX_DEVICES are dropped (PLAN.md §38).
+        jdbc.sql("""
+            DELETE FROM push_subscriptions WHERE user_id = :u AND id NOT IN (
+                SELECT id FROM push_subscriptions WHERE user_id = :u ORDER BY created_at DESC, id LIMIT :max)
+            """).param("u", user).param("max", MAX_DEVICES).update();
     }
     @Transactional public void remove(UUID user, String endpoint) {
         jdbc.sql("DELETE FROM push_subscriptions WHERE user_id = :u AND endpoint = :e").param("u", user).param("e", endpoint).update();

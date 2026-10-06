@@ -307,4 +307,20 @@ class PushDeliveryIT extends IntegrationTest {
         assertThat(subscriptions.forUser(owner)).isEmpty();
         assertThat(subscriptions.forUser(actor)).hasSize(1);
     }
+
+    @Test
+    void anAccountKeepsItsTenNewestDevices() throws Exception {
+        KeyPair vapid = p256();
+        var subscriptions = new PushSubscriptions(jdbc, uncompressed(vapid),
+                B64.encodeToString(unsigned32(((ECPrivateKey) vapid.getPrivate()).getS())));
+        byte[] auth = new byte[16];
+        new SecureRandom().nextBytes(auth);
+        for (int i = 0; i < PushSubscriptions.MAX_DEVICES + 2; i++) {
+            subscriptions.subscribe(owner, "https://fcm.googleapis.com/fcm/send/device-" + i, uncompressed(p256()), B64.encodeToString(auth));
+        }
+        assertThat(subscriptions.forUser(owner)).hasSize(PushSubscriptions.MAX_DEVICES)
+                .extracting(PushSubscriptions.Subscription::endpoint)
+                .doesNotContain("https://fcm.googleapis.com/fcm/send/device-0", "https://fcm.googleapis.com/fcm/send/device-1")
+                .contains("https://fcm.googleapis.com/fcm/send/device-11");
+    }
 }
