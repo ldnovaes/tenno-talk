@@ -135,6 +135,22 @@ cat > /etc/cron.d/tenno-talk-backup <<CRON
 CRON
 chmod 644 /etc/cron.d/tenno-talk-backup
 
+# ---------------------------------------------------------------- fail2ban (own jails, own logs)
+# PLAN.md §38: bans addresses that keep failing sign-in or hitting the nginx limits of this site.
+# Only new files are added; if the configuration test fails they are removed and nothing reloads.
+if command -v fail2ban-client >/dev/null 2>&1; then
+  install -o root -g root -m 644 "$HERE/fail2ban-tenno-auth.filter.conf" /etc/fail2ban/filter.d/tenno-auth.conf
+  install -o root -g root -m 644 "$HERE/fail2ban-tenno.jail.conf" /etc/fail2ban/jail.d/tenno-talk.conf
+  touch /var/log/nginx/tenno-talk.access.log /var/log/nginx/tenno-talk.error.log
+  if fail2ban-client -t >/dev/null 2>&1; then
+    fail2ban-client reload >/dev/null
+    log "fail2ban: jails tenno-auth and tenno-limit-req active"
+  else
+    log "ERROR: fail2ban rejected the TENNO jails; removing them"
+    rm -f /etc/fail2ban/filter.d/tenno-auth.conf /etc/fail2ban/jail.d/tenno-talk.conf
+  fi
+fi
+
 # ---------------------------------------------------------------- certificate (never touches nginx config)
 live="/etc/letsencrypt/live/$DOMAIN"
 if [ ! -s "$live/fullchain.pem" ]; then

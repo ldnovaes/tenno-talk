@@ -49,6 +49,8 @@ Limpeza da instalação antiga das CLIs, depois do primeiro deploy saudável: `r
 - nginx: **um arquivo novo** (`sites-available/tenno-talk.conf` + snippet de headers). Antes de aplicar: `nginx -t`; se falhar, desfaz e o nginx em execução nem fica sabendo. Aplica com `reload` (nunca `restart`). Mede as respostas HTTP e HTTPS dos sites vizinhos (`TENNO_NEIGHBOR_HOSTS`) antes e depois; qualquer diferença desfaz a mudança.
 - O bloco usa `server_name` exato e `listen 443 ssl;` sem `http2`/`default_server` (essas opções valem para todos os sites da porta).
 - Backup diário às 03:30 (`/etc/cron.d/tenno-talk-backup`): só o banco `tenno` e a mídia, 14 dias em `/var/backups/tenno-talk`. Copie para fora da VPS.
+- fail2ban (se instalado): **arquivos novos** `filter.d/tenno-auth.conf` e `jail.d/tenno-talk.conf`, com os jails `tenno-auth` (20 falhas de login em 10 min) e `tenno-limit-req` (30 bloqueios do `limit_req` em 10 min), que leem só `tenno-talk.*.log` e banem por 1 h. Antes do reload roda `fail2ban-client -t`; se falhar, os arquivos saem e nada é recarregado.
+- systemd e nginx com os limites do PLAN.md §38: memória (`MemoryMax=1G`), CPU (`CPUQuota=150%`), sandbox, corpo de 1 MB (100 MB só no upload), `limit_req`/`limit_conn` por IP.
 
 ## Deploy
 
@@ -67,3 +69,12 @@ Ajustes feitos no servidor compartilhado, cada um com desfazer automático em 5 
 
 - **Firewall (`ufw`)**: as regras do provisionamento da Eldia já existiam (22022, 80, 443, 8443, 41641/udp), mas o serviço que as carrega no boot estava desabilitado; depois de um reboot, o servidor ficou sem firewall e o backend da Eldia (8080) acessível direto da internet. Ativado e habilitado no boot. Verificado: SSH, sites, documentação via Tailscale, WhatsApp (Baileys → Java por loopback), exit node; 8080 bloqueada de fora.
 - **SSH só com chave** (root inclusive): `/etc/ssh/sshd_config.d/01-key-only.conf`, lido antes do `50-cloud-init.conf` da imagem. Para aceitar senha de novo: `rm /etc/ssh/sshd_config.d/01-key-only.conf && systemctl reload ssh`. Sem nenhuma chave: console web no painel da HostGator (não é afetado).
+
+## Hardening (2026-10-06, PLAN.md §38)
+
+Além dos limites que o provision aplica, o servidor compartilhado recebeu (com autorização, afetando também a Eldia):
+
+- **Swap de 2 GB** (`/swapfile`, `vm.swappiness=10` em `/etc/sysctl.d/90-tenno-swap.conf`): antes não havia swap, e um pico de memória acionava o OOM killer, que podia matar o PostgreSQL de todos. Para desfazer: `swapoff /swapfile && rm /swapfile` e tirar a linha do `/etc/fstab`.
+- **`X11Forwarding no`** em `/etc/ssh/sshd_config.d/02-hardening.conf` (validado com `sshd -t` antes do reload).
+- **Atualizações de segurança** aplicadas e reboot do kernel; depois do boot, conferidos ufw, nginx, PostgreSQL, `tenno-talk`, o backend da Eldia e os sites vizinhos.
+
