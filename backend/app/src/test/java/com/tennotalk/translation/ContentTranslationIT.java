@@ -118,15 +118,20 @@ class ContentTranslationIT extends IntegrationTest {
         try {
             List<java.util.concurrent.Future<String>> answers = new java.util.ArrayList<>();
             for (String id : posts) answers.add(pool.submit(() -> translate("post", id, "en-US").get("status").asString()));
-            // More requests than database connections (10) are waiting on the AI, and the app still answers.
+            // While the provider hangs, three calls wait for it and the other nine are queued at once.
+            org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
+                    .until(() -> answers.stream().filter(java.util.concurrent.Future::isDone).count() == 9);
+            assertThat(ai.translationCalls("openai") + ai.translationCalls("anthropic")).isEqualTo(3);
+            for (var answer : answers) if (answer.isDone()) assertThat(answer.get()).isEqualTo("pending");
+            // More requests than database connections could be stuck on the AI, and the app still answers.
             long started = System.nanoTime();
             api.getOk(reader, "/api/me");
             assertThat(java.time.Duration.ofNanos(System.nanoTime() - started)).isLessThan(java.time.Duration.ofSeconds(3));
             release.countDown();
             List<String> statuses = new java.util.ArrayList<>();
             for (var answer : answers) statuses.add(answer.get(15, java.util.concurrent.TimeUnit.SECONDS));
-            assertThat(statuses).filteredOn("translated"::equals).hasSizeLessThanOrEqualTo(3);
-            assertThat(statuses).filteredOn("pending"::equals).hasSizeGreaterThanOrEqualTo(9);
+            assertThat(statuses).filteredOn("translated"::equals).hasSize(3);
+            assertThat(statuses).filteredOn("pending"::equals).hasSize(9);
         } finally {
             release.countDown();
             pool.shutdownNow();
