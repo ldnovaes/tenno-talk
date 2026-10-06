@@ -1433,7 +1433,7 @@ Enquanto a OpenAI está indisponível, os jobs novos vão direto para a Anthropi
 - Imagem que não pode ser decodificada é recusada (400): sem ler os pixels também não dá para tirar o EXIF, então ela nunca é guardada como veio.
 - **Quem pode baixar:** o dono; membros da conversa onde o arquivo foi enviado; quem pode ver o post; quem pode ver o story enquanto ele está ativo; qualquer pessoa autenticada, se for avatar. Por isso o avatar só pode ser uma imagem **do próprio usuário** enviada por `POST /api/media` (`/api/media/{id}`). Uma URL externa ou o arquivo de outra pessoa é recusado; senão um arquivo privado poderia virar público.
 - Leitura por `GET /api/media/{id}`, com checagem de permissão (membro da conversa, visibilidade do post) e suporte a `Range` (vídeo).
-- **Sem limite de mídia no produto** (decisão). Ainda assim, um **teto técnico** configurável e alto (ex.: 500 MB por arquivo; o padrão do Spring é 1 MB) protege a VPS. Uso de disco monitorado (R15).
+- **Limites (revistos em 2026-10-06, §38):** 100 MB por arquivo (`MAX_UPLOAD_SIZE`), 25 MB e 40 megapixels para imagens (as dimensões são lidas do cabeçalho **antes** de decodificar: um PNG pequeno não vira uma imagem de vários GB na memória), e cota por conta de 2 GB por dia e 10 GB no total (`quota_exceeded`). Arquivo que ninguém usa sai do disco depois de 24 h, e a mídia de stories expirados, depois de 48 h. Uso de disco monitorado (R15).
 
 ## 30. Autenticação
 
@@ -1456,7 +1456,7 @@ Tudo no **próprio backend Java** (Spring Security). Nenhum serviço externo de 
 - **O frontend nunca é fonte de autorização.** Os guards de rota são só UX.
 - **Autorização no backend:** Spring Security + checagem de membership em todo acesso a conversa, mensagem e mídia (`ConversationAccessPolicy`). Sem RLS, então **todo endpoint tem teste de autorização**.
 - **Validação:** Bean Validation nos DTOs; tamanho máximo do texto da mensagem (ex.: 4.000 caracteres).
-- **Rate limit:** Bucket4j em memória (uma instância), por usuário autenticado ou por IP. Respostas 429 com `Retry-After` e `code: rate_limited`. Regras em `RateLimitRules` (por minuto): auth 10 · envio de mensagem, encaminhamento, resposta e reação a story 60 · upload 30 · tradução 60 · discover 120 · social (follow, block, like, comentário, reação a mensagem) 120 · criação (post, story, conversa) 30 · admin 10; por hora: denúncia 20 · export 5. Leituras não têm limite, exceto as que custam IA (insight) ou um dump do banco (export). A tabela completa, endpoint por endpoint, está em `SecurityMatrixIT.RATE_LIMITS`: um endpoint novo falha o teste até ser classificado. Bloqueio progressivo após falhas de login: depois.
+- **Rate limit:** Bucket4j em memória (uma instância), por usuário autenticado ou por IP. Respostas 429 com `Retry-After` e `code: rate_limited`. Regras em `RateLimitRules` (por minuto): auth 10 · envio de mensagem, encaminhamento, resposta e reação a story 60 · upload 30 · tradução 60 · discover 120 · social (follow, block, like, comentário, reação a mensagem) 120 · criação (post, story, conversa) 30 · admin 10; por hora: denúncia 20 · export 5. Leituras: busca 60 · qualquer outro `GET` 1.200 (por minuto); export 5 por hora. Desde 2026-10-06 também: encaminhar 10 · configurações (perfil, preferências, push) 30 · recibos (`/delivered`, `/read`) 600 por minuto, e tradução sob demanda 500 por dia (§38). A tabela completa, endpoint por endpoint, está em `SecurityMatrixIT.RATE_LIMITS`: um endpoint novo falha o teste até ser classificado. Falhas de login também contam por e-mail: 10 a cada 15 minutos, depois 429 com o mesmo texto genérico (§38).
 - **"Quem pode me mandar mensagem / comentar / ver quando estou online":** `everyone`, `followers` ou `nobody`. `followers` significa **pessoas que eu sigo** (rótulo "People I follow"). "Pessoas que me seguem" não protegeria nada, porque qualquer um pode seguir. Todas as combinações estão na matriz do §31.1.
 - **Visibilidade:** perfil privado mostra posts e stories só a quem segue; bloqueio esconde conteúdo nos dois sentidos. A regra fica numa única função SQL (`Visibility.authorVisible`).
 - **Grupos:** no máximo 1 criado por pessoa (índice único parcial + checagem no serviço).
@@ -1564,8 +1564,8 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | R11 | Flags estritas do TS × código gerado pelo shadcn | Erros de tipo em `components/ui` | Ajustes pontuais e documentados; não afrouxar o tsconfig |
 | R12 | Tradução "melhorada" troca um texto que o usuário está lendo | Estranhamento | Crossfade suave; aplicar só se `version` maior |
 | R13 | Conectar desconhecidos de vários países (quando abrir para mais gente) | Spam, assédio | Block/report, privacidade restritiva por padrão, message requests |
-| R14 | Custo por token das APIs de IA | Conta alta se o uso crescer ou houver abuso | Modelos pequenos; cache por (mensagem, idioma); tradução de feed/stories sob demanda; `max-output-tokens`; rate limit de tradução; limite de gasto nos consoles; uso de tokens no log |
-| R15 | Mídia sem limite de produto numa VPS | Disco cheio derruba banco e app | Teto técnico alto configurável; alerta de uso de disco; mover mídia para object storage se crescer |
+| R14 | Custo por token das APIs de IA | Conta alta se o uso crescer ou houver abuso | Modelos pequenos; cache por (mensagem, idioma); tradução de feed/stories sob demanda e com no máximo 3 chamadas síncronas ao mesmo tempo; retry só do que falhou; 500 traduções sob demanda por dia por pessoa; encaminhar com limite próprio; `max-output-tokens`; limite de gasto nos consoles; uso de tokens no log (§38) |
+| R15 | Mídia numa VPS | Disco cheio derruba banco e app | 100 MB por arquivo, cota diária e total por conta, limpeza de órfãos e de stories expirados (§38); alerta de uso de disco; mover mídia para object storage se crescer |
 | R16 | Facebook Login (App Review, e-mail ausente) | Login social atrasado ou contas sem e-mail | Começar com Google + email/senha; contas sem e-mail suportadas no modelo |
 | R17 | Idioma de origem declarado (sem detecção) | Mensagem escrita em outra língua pode não ser traduzida quando os idiomas declarados coincidem | O prompt trata o idioma como "provável"; idioma editável em Settings; detecção pode entrar depois |
 
@@ -1582,7 +1582,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 | 5 | Editar / excluir mensagens | **Fora do escopo** por enquanto |
 | 6 | Grupos | Cada pessoa **cria no máximo 1 grupo**. Uso inicial: **conversas entre duas pessoas**; grupos ficam para depois do MVP |
 | 7 | Login | **OAuth2 no próprio backend**: Google + Facebook + conta própria (email/senha) |
-| 8 | Mídia | **Sem limite de produto** por enquanto (só teto técnico de proteção) |
+| 8 | Mídia | Revisto em 2026-10-06 (§38): 100 MB por arquivo, cota de 2 GB por dia e 10 GB por conta; órfãos e mídia de stories expirados são apagados |
 | 9 | Infra | **Uma VPS** com backend + frontend (Docker Compose + Caddy) |
 | 10 | Criptografia ponta a ponta | Não se aplica: a tradução acontece no servidor (consequência das decisões 2 e 3; informada nos termos) |
 | 11 | Acesso a dados | `JdbcClient` + SQL explícito, sem JPA (Phase 8) |
@@ -1605,7 +1605,7 @@ A pilha com Caddy e containers (acima) continua valendo para uma VPS só da TENN
 4. Provedor de e-mail transacional (SMTP) para verificação de e-mail e redefinição de senha.
 5. Regras de username (tamanho, caracteres, troca).
 6. Idiomas da interface no lançamento.
-7. Política de mídia antiga (stories expirados mantêm o arquivo por enquanto).
+7. ~~Política de mídia antiga.~~ Resolvido em 2026-10-06 (§38): a mídia de stories expirados sai do disco depois de 48 h.
 8. Segurança social para quando o app abrir para mais pessoas: message requests, idade mínima, moderação.
 
 ## 35. Regras de desenvolvimento
@@ -1752,4 +1752,37 @@ O módulo tem a suíte mais pesada: propriedades com jqwik (nunca lança, sem du
 - **IA:** porta `TopicClassifier`, implementada pelos dois adaptadores existentes (mesmo cliente e regras de erro). O laço de fallback do `FallbackTranslator` virou genérico (`ProviderOutcome<T>`), servindo tradução e tópicos com as mesmas regras de chave/cota (§28.3). A taxonomia vem do módulo como parâmetro (o pacote `translation` não importa o recommender).
 - **Não feito no v1:** `?explain=true` para admin (as contribuições existem em `Ranked.contributions`, só não há endpoint).
 - **Frontend:** `MediaCarousel` ganhou `fill` (tela cheia, tarja preta) e `playing` (autoplay mudo do slide ativo). "Not interested" remove do cache na hora e o toast oferece desfazer.
+
+## 38. Hardening de produção (2026-10-06)
+
+Revisão das camadas de https://tenno.eldialabs.com (borda, VPS, systemd, backend, banco) contra DoS, vazamento de dados e consumo da máquina. A VPS é compartilhada com a Eldia (2 vCPU, 4 GB): a TENNO nunca pode derrubar os vizinhos.
+
+### 38.1 O que mudou
+
+| Camada | Regra |
+|---|---|
+| **nginx** | `server_tokens off`; corpo de 1 MB em tudo, 100 MB só em `POST /api/media`; por IP: 20 req/s em `/api/` (rajada de 60), 1 req/s em login, cadastro, senha e `/oauth2/` (rajada de 10), 30 conexões simultâneas e 10 WebSockets; excesso = 429. Dotfiles (`/.env`, `/.git`) respondem 404 em vez do `index.html` |
+| **systemd** | `MemoryHigh=700M`, `MemoryMax=900M`, `CPUQuota=150%`, `TasksMax=512`, direct memory de 64 MB; sistema de arquivos só leitura menos `/var/lib/tenno-talk`, sem `/home`, sem dispositivos, sem capabilities. Um pico da TENNO é contido no próprio serviço, e o OOM killer não escolhe o Postgres compartilhado |
+| **Imagens** | Largura e altura lidas do cabeçalho antes de decodificar: no máximo 40 MP e 12.000 px por lado, imagens de até 25 MB, uma decodificação por upload. Antes, um PNG de poucos KB declarando 30000×30000 fazia a JVM sair por falta de memória |
+| **Mídia** | 100 MB por arquivo; cota por conta: 2 GB por dia e 10 GB no total (`quota_exceeded`); órfãos (sem mensagem, post, story ou avatar) apagados depois de 24 h; mídia de story expirado, depois de 48 h. Os arquivos saem do disco só depois do commit |
+| **Tradução sob demanda** | A chamada à IA não segura transação nem conexão do banco; no máximo 3 chamadas síncronas ao mesmo tempo (o resto vai para a fila e responde `pending`); `pending` não chama a IA de novo; 500 por dia por pessoa. "Retry" só reenfileira o que falhou |
+| **WebSocket** | Até 20 frames a cada 10 s por socket (acima disso fecha com 1008); "digitando" só é repassado quando muda ou depois de 3 s, fora do lock; no máximo 10 sockets por pessoa (o mais antigo é fechado). Logout, troca de senha e exclusão da conta fecham os sockets da pessoa |
+| **Rate limit** | Novas regras no §31; push: no máximo 10 aparelhos por pessoa; o histórico de idioma de recebimento só grava quando o idioma muda |
+| **Banco** | Índices para a checagem de acesso à mídia (`message_media`, `post_media`, `stories`, `users.avatar_url`) e trigram para a busca (`pg_trgm`); busca com 1 a 50 caracteres, `%` e `_` literais; retenção diária: jobs de tradução e classificação concluídos há mais de 7 dias, notificações lidas há mais de 90; curtir/descurtir de novo em 24 h não gera outra notificação |
+| **Sessões** | Trocar ou definir a senha encerra as outras sessões da conta |
+| **Login** | Além do limite por IP, 10 falhas por e-mail a cada 15 minutos. O cadastro ainda diz que o e-mail já existe (409): sem SMTP não há como confirmar o e-mail sem quebrar a experiência (§34.2 #4) |
+| **Login social** | Só vincula sozinho a uma conta **sem senha**. Se a conta com aquele e-mail tem senha (e o e-mail nunca foi confirmado), o login social volta para `/welcome?error=oauth_link`: a pessoa entra com a senha e vincula em Settings. Isso fecha o sequestro prévio de conta (alguém cria a conta com o e-mail da vítima antes dela) |
+| **Privacidade** | Numa conversa direta com bloqueio, o `lastReadMessageId` do outro não aparece (antes aparecia no refetch, contra o §31.1) |
+| **Superfície** | `/api/openapi` desligado em produção (`API_DOCS_ENABLED`); o workflow antigo de deploy por Docker saiu (o CD é `./tenno run deploy:prod`) |
+| **VPS** | fail2ban com jails próprios lendo só os logs da TENNO (`tenno-limit-req`, `tenno-auth`); swap de 2 GB; `X11Forwarding no`; atualizações de segurança aplicadas |
+
+### 38.2 Já estava bom
+
+TLS 1.2/1.3, HSTS, CSP estrita; ufw, SSH só por chave, fail2ban do sshd, atualizações automáticas; Postgres e backend só em loopback; o nginx substitui o `X-Forwarded-For`; `/ws` recusa outra origem; autorização checada em todo endpoint (`SecurityMatrixIT`, `PrivacyMatrixIT`), sem SQL montado com entrada do usuário; MIME pelo conteúdo, SVG/HTML recusados, download com `nosniff`; push só para serviços conhecidos, sem redirect.
+
+### 38.3 Pendente
+
+- Cópia dos backups para fora da VPS (§31 promete; hoje ficam só em `/var/backups/tenno-talk`).
+- Verificação de e-mail (depende de SMTP): permitirá esconder no cadastro se o e-mail existe e vincular o login social a contas com senha.
+- Papel de admin lido no login: rebaixar alguém vale a partir da próxima sessão.
 

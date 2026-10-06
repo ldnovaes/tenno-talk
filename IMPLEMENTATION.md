@@ -695,3 +695,23 @@ Na medição da linha de base, a suíte do `main` falhou uma vez com o deadlock 
 | 27 | Acessibilidade: o ícone de mensagem traduzida se anunciava como "Show translation", uma ação que ele não executa (não é botão) | `rtl.spec.ts` (snapshot de acessibilidade) | Rótulo "Translated" (`translation.hasTranslation`) |
 | 28 | **Relatado (produção):** no desktop, o rail nunca mostrou os contadores nem marcou a seção atual (desde a fase 1). O `className` em função do `NavLink` passava pelo `Slot` do tooltip, que junta classes como texto: a função virava o atributo `class`, todas as classes do item sumiam e o badge, sem pai posicionado, era desenhado fora da tela. Os e2e não pegaram porque `toBeVisible()` aceita um elemento fora da tela | `navigationRail.test.tsx` (classes e seção atual), `e2e/navigation.spec.ts` (badge sobreposto ao ícone, seção atual destacada) e `expectBadge` nos e2e da pilha | Estado ativo pelo `aria-current` do `NavLink` (variante `aria-[current=page]:`), com `className` fixo |
 | 29 | **Relatado (produção):** uma notificação nova abria um toast preto sobre o cabeçalho da tela, fora do tema: o CSS do sonner (fora das camadas do Tailwind v4) vencia as classes do `Toaster` | `notificationsRealtime.test.tsx` (nenhum tipo abre toast) e `e2e/navigation.spec.ts` | Notificação sem toast, o contador do sino é o sinal (PLAN §36.2); o `Toaster` usa os tokens pelas variáveis do sonner (conferido no navegador nos dois temas) |
+
+## Hardening de produção (2026-10-06)
+
+Revisão de segurança de https://tenno.eldialabs.com (DoS, vazamento de dados, consumo da VPS compartilhada). Regras em [PLAN.md §38](PLAN.md#38-hardening-de-produção-2026-10-06). Branch `security/hardening`.
+
+- [ ] Fase 1 — Bomba de imagem (dimensões antes de decodificar, teto de 25 MB/40 MP)
+- [ ] Fase 1 — Tradução sob demanda fora da transação, com semáforo; `pending` não chama a IA; retry só do que falhou
+- [ ] Fase 1 — nginx: corpo, `limit_req`/`limit_conn`, `server_tokens`, dotfiles
+- [ ] Fase 1 — systemd: limites de memória/CPU/tarefas e sandbox
+- [ ] Fase 2 — Mídia: 100 MB, cota diária e total, limpeza de órfãos e de stories expirados
+- [ ] Fase 2 — IA: limite diário de tradução sob demanda, limite próprio de encaminhar
+- [ ] Fase 2 — WebSocket: frames por socket, "digitando" sem lock global, sockets por pessoa
+- [ ] Fase 2 — Privacidade: `lastReadMessageId` escondido com bloqueio
+- [ ] Fase 2 — Rate limits que faltavam, aparelhos de push por pessoa, histórico de idioma só na mudança
+- [ ] Fase 2 — Banco: índices de mídia e trigram, busca limitada, retenção, notificação de like sem repetição
+- [ ] Fase 3 — Sessões encerradas na troca de senha; sockets fechados no logout, troca de senha e exclusão
+- [ ] Fase 3 — Força bruta por e-mail; login social sem vínculo automático a conta com senha
+- [ ] Fase 3 — `/api/openapi` desligado em produção; workflow antigo de deploy removido
+- [ ] Fase 4 — VPS: jails do fail2ban da TENNO, swap, `X11Forwarding no`, atualizações + reboot
+- [ ] Deploy e verificação (TENNO e sites da Eldia)
