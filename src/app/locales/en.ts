@@ -215,6 +215,8 @@ export const en = {
     original: "Original",
     showOriginal: "Show original",
     showTranslation: "Show translation",
+    /** The bubble's indicator: says what it is, not an action (it isn't a button). */
+    hasTranslation: "Translated",
     translating: "Translating…",
     delayed: "Translation delayed",
     failed: "Couldn't translate.",

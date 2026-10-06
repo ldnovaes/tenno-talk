@@ -36,7 +36,7 @@ export function BubbleMeta({
       {translated && (
         <Languages
           role="img"
-          aria-label={t("translation.showTranslation")}
+          aria-label={t("translation.hasTranslation")}
           className={cn(
             "size-3 transition-opacity",
             !alwaysShowTranslatedIcon &&

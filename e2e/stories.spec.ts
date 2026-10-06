@@ -57,3 +57,36 @@ test("a reply is sent privately and shows as a story reply", async ({ browser },
     linh.getByRole("log", { name: "Messages" }).getByText("Replied to a story").last(),
   ).toBeVisible();
 });
+
+test("Space pauses with the focus on Close, and never closes the viewer", async ({
+  browser,
+}, info) => {
+  test.skip(info.project.name === "mobile", "keyboard on desktop");
+  const { rafael } = await twoPeople(browser, info.project.use);
+  await rafael.goto("/stories/usr_linh");
+  const viewer = rafael.getByRole("dialog", { name: /Stories of Linh Pham/ });
+  await expect(viewer.getByRole("button", { name: "Close stories" })).toBeFocused();
+  await rafael.keyboard.press("Space");
+  await expect(viewer.getByRole("button", { name: "Play" })).toBeVisible();
+  await expect(viewer).toBeVisible();
+});
+
+test("a new story with a photo is shared from the tray", async ({ browser }, info) => {
+  const { rafael } = await twoPeople(browser, info.project.use);
+  await rafael.goto("/chats");
+  await rafael.getByRole("button", { name: "Add to your story" }).click();
+  const dialog = rafael.getByRole("dialog", { name: "New story" });
+  await dialog.getByLabel("Choose a photo or video").setInputFiles({
+    name: "beach.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await expect(dialog.locator("img")).toBeVisible();
+  await dialog.getByLabel("Text (optional)").fill("Praia!");
+  await dialog.getByRole("button", { name: "Share to story" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(rafael.getByText("Story shared")).toBeVisible();
+});

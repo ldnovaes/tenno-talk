@@ -44,6 +44,7 @@ export function AvatarPicker({ userId, displayName, value, onChange }: AvatarPic
           type="file"
           accept="image/*"
           className="sr-only"
+          aria-label={value ? t("onboarding.profile.changeAvatar") : t("onboarding.profile.avatar")}
           onChange={(event) => {
             void handleFile(event.target.files?.[0]);
             event.target.value = "";
