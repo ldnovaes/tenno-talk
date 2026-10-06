@@ -263,4 +263,64 @@ describe("WsRealtimeClient", () => {
     expect(online).not.toHaveBeenCalled();
     client.disconnect();
   });
+
+  function visibility(state: "visible" | "hidden") {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }
+
+  it("coming back to the tab retries at once instead of waiting for the backoff", () => {
+    const { client } = makeClient();
+    client.connect();
+    latest().serverOpens();
+    latest().dropped();
+    expect(client.getStatus()).toBe("reconnecting");
+    expect(FakeSocket.instances).toHaveLength(1);
+
+    visibility("hidden");
+    expect(FakeSocket.instances).toHaveLength(1);
+    visibility("visible");
+    expect(FakeSocket.instances).toHaveLength(2);
+    client.disconnect();
+  });
+
+  it("a visible tab with a healthy connection opens nothing new", () => {
+    const { client } = makeClient();
+    client.connect();
+    latest().serverOpens();
+    visibility("visible");
+    expect(FakeSocket.instances).toHaveLength(1);
+    client.disconnect();
+    visibility("visible");
+    expect(FakeSocket.instances).toHaveLength(1);
+  });
+
+  it("an unsubscribed handler hears nothing more, the others still do", () => {
+    const { client } = makeClient();
+    client.connect();
+    latest().serverOpens();
+    const first = vi.fn();
+    const second = vi.fn();
+    const stop = client.subscribe("user.online", first);
+    client.subscribe("user.online", second);
+    stop();
+    latest().serverSends({ type: "user.online", payload: { userId: "u1" } });
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledWith({ userId: "u1" });
+    client.disconnect();
+  });
+
+  it("a status listener that unsubscribes stops hearing changes", () => {
+    const client = new WsRealtimeClient(
+      () => "ws://test/ws",
+      (url) => new FakeSocket(url) as unknown as WebSocket,
+    );
+    const statuses: string[] = [];
+    const stop = client.onStatusChange((status) => statuses.push(status));
+    client.connect();
+    stop();
+    latest().serverOpens();
+    expect(statuses).toEqual(["connecting"]);
+    client.disconnect();
+  });
 });

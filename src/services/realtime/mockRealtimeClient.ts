@@ -1,7 +1,7 @@
 import { onServerEvent, type ServerEvent } from "@/services/mock/events";
 import { acknowledgeDelivery } from "@/services/mock/implementations/mockChatService";
 import { mockDb } from "@/services/mock/db";
-import { blockedEitherWay } from "@/services/mock/privacy";
+import { blockedEitherWay, presenceVisible } from "@/services/mock/privacy";
 import { announcePresence } from "@/services/mock/presence";
 import { projectNotification } from "@/services/mock/notificationProjection";
 import { projectMessage } from "@/services/mock/projections";
@@ -100,6 +100,17 @@ class MockRealtimeClient implements RealtimeClient {
     return Boolean(this.viewerId && conversation?.memberIds.includes(this.viewerId));
   }
 
+  /** Like ChatRealtime.onPresence: contacts (a shared conversation) whom the owner lets see it (PLAN.md §31.1). */
+  private seesPresenceOf(userId: string): boolean {
+    const db = mockDb.read();
+    const viewerId = this.viewerId;
+    if (!viewerId || !presenceVisible(db, viewerId, userId)) return false;
+    return Object.values(db.conversations).some(
+      (conversation) =>
+        conversation.memberIds.includes(viewerId) && conversation.memberIds.includes(userId),
+    );
+  }
+
   private isDirect(conversationId: string): boolean {
     return mockDb.read().conversations[conversationId]?.kind === "direct";
   }
@@ -182,7 +193,7 @@ class MockRealtimeClient implements RealtimeClient {
         });
         return;
       case "presence":
-        if (event.userId === viewerId) return;
+        if (event.userId === viewerId || !this.seesPresenceOf(event.userId)) return;
         if (event.online) this.dispatch("user.online", { userId: event.userId });
         else this.dispatch("user.offline", { userId: event.userId, lastSeenAt: event.at });
         return;

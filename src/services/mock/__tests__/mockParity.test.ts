@@ -166,3 +166,60 @@ describe("reports (ReportsIT, ModerationEdgesIT)", () => {
     expect(open).toHaveLength(1);
   });
 });
+
+describe("presence events (RealtimeWebSocketIT: hiddenPresenceIsNeverPushed, contacts only)", () => {
+  function listen() {
+    mockRealtimeClient.connect({ userId: "usr_rafael" });
+    const online = vi.fn();
+    mockRealtimeClient.subscribe("user.online", online);
+    mockRealtimeClient.subscribe("user.offline", online);
+    return online;
+  }
+
+  it("a contact who lets everyone see it comes online", () => {
+    const online = listen();
+    publish({ kind: "presence", userId: "usr_linh", online: true, at: "2026-10-05T10:00:00.000Z" });
+    expect(online).toHaveBeenCalledWith({ userId: "usr_linh" });
+  });
+
+  it.each([
+    ["chose nobody", () => setPrivacy("usr_linh", "nobody")],
+    [
+      "chose people they follow, and don't follow me",
+      () => {
+        setPrivacy("usr_linh", "followers");
+        mockDb.update((db) => {
+          db.follows = db.follows.filter(
+            (f) => !(f.followerId === "usr_linh" && f.followeeId === "usr_rafael"),
+          );
+        });
+      },
+    ],
+    ["blocked me", () => block("usr_linh", "usr_rafael")],
+    ["is blocked by me", () => block("usr_rafael", "usr_linh")],
+  ])("never when the owner %s", (_name, arrange) => {
+    arrange();
+    const online = listen();
+    publish({ kind: "presence", userId: "usr_linh", online: true, at: "2026-10-05T10:00:00.000Z" });
+    publish({
+      kind: "presence",
+      userId: "usr_linh",
+      online: false,
+      at: "2026-10-05T10:05:00.000Z",
+    });
+    expect(online).not.toHaveBeenCalled();
+  });
+
+  it("never someone I share no conversation with", () => {
+    const online = listen();
+    publish({ kind: "presence", userId: "usr_mei", online: true, at: "2026-10-05T10:00:00.000Z" });
+    expect(online).not.toHaveBeenCalled();
+  });
+});
+
+function setPrivacy(userId: string, whoCanSeeOnline: "everyone" | "followers" | "nobody") {
+  mockDb.update((db) => {
+    const user = db.users[userId];
+    if (user) user.preferences.privacy.whoCanSeeOnline = whoCanSeeOnline;
+  });
+}
