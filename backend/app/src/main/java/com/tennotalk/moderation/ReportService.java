@@ -46,21 +46,23 @@ public class ReportService {
         UUID owner = ownerOfVisible(reporter, kind, targetId).orElseThrow(() -> ApiException.notFound("Not found."));
         if (owner.equals(reporter)) throw ApiException.validation("You can't report yourself.");
 
-        Optional<UUID> open = jdbc.sql("""
-                SELECT id FROM reports WHERE reporter_id = :r AND target_kind = :k AND target_id = :t AND status = 'open'
-                """).param("r", reporter).param("k", kind).param("t", targetId).query(UUID.class).optional();
-        UUID id = open.orElseGet(() -> {
-            UUID created = Ids.newId();
-            jdbc.sql("""
-                    INSERT INTO reports (id, reporter_id, target_kind, target_id, reason, created_at)
-                    VALUES (:id, :r, :k, :t, :reason, :at)
-                    """).param("id", created).param("r", reporter).param("k", kind).param("t", targetId)
-                    .param("reason", reason).param("at", Timestamp.from(clock.instant())).update();
+        // The partial unique index keeps one open report per person and target, even for simultaneous taps.
+        UUID created = Ids.newId();
+        int inserted = jdbc.sql("""
+                INSERT INTO reports (id, reporter_id, target_kind, target_id, reason, created_at)
+                VALUES (:id, :r, :k, :t, :reason, :at)
+                ON CONFLICT (reporter_id, target_kind, target_id) WHERE status = 'open' DO NOTHING
+                """).param("id", created).param("r", reporter).param("k", kind).param("t", targetId)
+                .param("reason", reason).param("at", Timestamp.from(clock.instant())).update();
+        if (inserted == 1) {
             // Reported content and people sink in the reporter's Discover (PLAN.md §37.5).
             if ("post".equals(kind)) events.publishEvent(new Interaction(reporter, targetId, owner, "report"));
             if ("user".equals(kind)) events.publishEvent(new Interaction(reporter, null, owner, "report"));
-            return created;
-        });
+            return find(created).orElseThrow();
+        }
+        UUID id = jdbc.sql("""
+                SELECT id FROM reports WHERE reporter_id = :r AND target_kind = :k AND target_id = :t AND status = 'open'
+                """).param("r", reporter).param("k", kind).param("t", targetId).query(UUID.class).single();
         return find(id).orElseThrow();
     }
 

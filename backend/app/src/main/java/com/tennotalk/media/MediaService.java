@@ -31,7 +31,8 @@ import com.tennotalk.common.Ids;
 public class MediaService {
 
     /** Raster images shown inline; SVG is excluded (it can carry scripts). */
-    static final Set<String> IMAGES = Set.of("image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "image/heif");
+    static final Set<String> IMAGES = Set.of("image/jpeg", "image/png", "image/gif", "image/webp");
+    static final Set<String> UNCLEANABLE = Set.of("image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence");
     static final Set<String> VIDEOS = Set.of("video/mp4", "video/webm", "video/quicktime", "video/x-matroska", "video/3gpp");
     static final Set<String> BLOCKED = Set.of("text/html", "application/xhtml+xml", "image/svg+xml", "application/javascript",
             "text/javascript", "application/x-msdownload", "application/x-sh", "application/x-executable");
@@ -59,6 +60,8 @@ public class MediaService {
             mime = tika.detect(in, name);
         }
         if (BLOCKED.contains(mime)) throw ApiException.validation("This type of file is not allowed.");
+        // HEIC/HEIF metadata can't be removed here (PLAN.md §29): never stored as it came.
+        if (UNCLEANABLE.contains(mime)) throw ApiException.validation("This photo format isn't supported. Use JPEG, PNG, WebP or GIF.");
         String kind = IMAGES.contains(mime) ? "image" : VIDEOS.contains(mime) ? "video" : mime.startsWith("audio/") ? "audio" : "file";
 
         UUID id = Ids.newId();
@@ -79,6 +82,15 @@ public class MediaService {
             if (image != null) {
                 width = image.getWidth();
                 height = image.getHeight();
+            }
+            storage.store(path, new ByteArrayInputStream(cleaned));
+            size = cleaned.length;
+        } else if (mime.equals("image/webp") || mime.equals("image/gif")) {
+            byte[] cleaned;
+            try {
+                cleaned = mime.equals("image/webp") ? ImageMetadata.stripWebp(file.getBytes()) : ImageMetadata.stripGif(file.getBytes());
+            } catch (IOException damaged) {
+                throw ApiException.validation("This image is damaged or not supported.");
             }
             storage.store(path, new ByteArrayInputStream(cleaned));
             size = cleaned.length;

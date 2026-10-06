@@ -13,21 +13,35 @@ class ApiErrorsTest {
 
     private final Instant now = Instant.parse("2026-10-04T12:00:00Z");
 
-    @ParameterizedTest
-    @CsvSource({
-            "401, invalid_api_key, AUTH",
-            "403, permission_error, AUTH",
-            "429, rate_limit_exceeded, QUOTA",
-            "429, insufficient_quota, QUOTA",
-            "402, billing_error, QUOTA",
-            "400, billing_error, QUOTA",
-            "500, api_error, TRANSIENT",
-            "529, overloaded_error, TRANSIENT",
-            "400, invalid_request_error, TRANSIENT",
-            "404, not_found_error, TRANSIENT",
-    })
-    void classifiesByStatusAndCode(int status, String code, TranslatorException.Kind kind) {
-        assertThat(ApiErrors.classify("openai", status, code, null, "boom", now).kind()).isEqualTo(kind);
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> everyStatusAndCode() {
+        var rows = new java.util.ArrayList<org.junit.jupiter.params.provider.Arguments>();
+        for (int status : new int[] {400, 401, 402, 403, 404, 408, 409, 413, 422, 429, 500, 502, 503, 504, 529})
+            for (String code : java.util.Arrays.asList(null, "invalid_api_key", "insufficient_quota", "billing_error",
+                    "rate_limit_exceeded", "overloaded_error", "invalid_request_error"))
+                rows.add(org.junit.jupiter.params.provider.Arguments.of(status, code));
+        return rows.stream();
+    }
+
+    /**
+     * PLAN.md §28.3, in order: a rejected key (401/403) is the admin's problem whatever else the error says;
+     * exhausted credits (insufficient_quota, billing_error, 402) cool down for the default period; a rate limit
+     * (429) comes back when the API says; anything else is transient and retried.
+     */
+    @ParameterizedTest(name = "{0} {1}")
+    @org.junit.jupiter.params.provider.MethodSource("everyStatusAndCode")
+    void classifiesEveryStatusAndCode(int status, String code) {
+        TranslatorException.Kind expected;
+        boolean timed = false;
+        if (status == 401 || status == 403) expected = TranslatorException.Kind.AUTH;
+        else if ("insufficient_quota".equals(code) || "billing_error".equals(code) || status == 402) expected = TranslatorException.Kind.QUOTA;
+        else if (status == 429) {
+            expected = TranslatorException.Kind.QUOTA;
+            timed = true;
+        } else expected = TranslatorException.Kind.TRANSIENT;
+
+        var exception = ApiErrors.classify("openai", status, code, "30", "boom", now);
+        assertThat(exception.kind()).isEqualTo(expected);
+        assertThat(exception.retryAt()).isEqualTo(timed ? now.plusSeconds(30) : null);
     }
 
     @Test

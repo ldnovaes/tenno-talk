@@ -13,6 +13,11 @@ public class TestcontainersConfig {
     static final PostgreSQLContainer POSTGRES =
             new PostgreSQLContainer("postgres:" + System.getProperty("tenno.postgres", "16") + "-alpine");
 
+    /** For tests that need a database of their own on the same server (migrations from an old version). */
+    public static PostgreSQLContainer container() {
+        return POSTGRES;
+    }
+
     @Bean
     @ServiceConnection
     PostgreSQLContainer postgres() {

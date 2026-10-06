@@ -36,4 +36,15 @@ class OAuthConfiguredIT extends IntegrationTest {
         int code = mvc.perform(get("/oauth2/authorization/facebook")).andReturn().getResponse().getStatus();
         org.assertj.core.api.Assertions.assertThat(code).isNotEqualTo(302);
     }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "/login/oauth2/code/google?error=access_denied&state=x",
+            "/login/oauth2/code/google?code=abc&state=forged",
+    })
+    void aFailedOrForgedCallbackSendsThePersonBackToTheWelcomePage(String callback) throws Exception {
+        mvc.perform(get(callback))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "http://localhost:5173/welcome?error=oauth"));
+    }
 }
