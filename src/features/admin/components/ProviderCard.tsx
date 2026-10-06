@@ -38,9 +38,11 @@ export function ProviderCard({ provider, primary, onCheck, busy }: ProviderCardP
           {t(`admin.ai.states.${provider.state}`)}
         </span>
       </header>
-      {provider.lastError && provider.state !== "ok" && (
-        <p className="break-words text-sm text-muted-foreground">{provider.lastError}</p>
-      )}
+      {/* The last error explains a rejected key or a limit; without a key it would be about an old one. */}
+      {provider.lastError &&
+        (provider.state === "invalid_key" || provider.state === "cooling_down") && (
+          <p className="break-words text-sm text-muted-foreground">{provider.lastError}</p>
+        )}
       {(provider.state === "invalid_key" || provider.state === "not_configured") && (
         <p className="text-sm text-muted-foreground">{t("admin.ai.keyHint")}</p>
       )}

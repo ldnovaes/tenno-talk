@@ -94,6 +94,26 @@ describe("stories", () => {
     expect(within(log).getByText("😂")).toBeInTheDocument();
   });
 
+  it("Space pauses and resumes, even with the focus on Close (it never closes the viewer)", async () => {
+    const user = userEvent.setup();
+    renderApp("/stories/usr_sofia");
+    const viewer = await screen.findByRole("dialog", { name: "Stories of Sofía Martínez" });
+    expect(within(viewer).getByRole("button", { name: "Close stories" })).toHaveFocus();
+    await user.keyboard(" ");
+    expect(within(viewer).getByRole("button", { name: "Play" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Stories of Sofía Martínez" })).toBeInTheDocument();
+    await user.keyboard(" ");
+    expect(within(viewer).getByRole("button", { name: "Pause" })).toBeInTheDocument();
+  });
+
+  it("the pause button does the same with a tap", async () => {
+    const user = userEvent.setup();
+    renderApp("/stories/usr_sofia");
+    const viewer = await screen.findByRole("dialog", { name: "Stories of Sofía Martínez" });
+    await user.click(within(viewer).getByRole("button", { name: "Pause" }));
+    expect(within(viewer).getByRole("button", { name: "Play" })).toBeInTheDocument();
+  });
+
   it("does not offer replies on your own story", async () => {
     renderApp("/stories/usr_rafael");
     const viewer = await screen.findByRole("dialog", { name: "Stories of Rafael Souza" });

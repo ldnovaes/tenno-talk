@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ErrorState } from "@/components/common/ErrorState";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Post } from "@/types/post";
+import { toAppError } from "@/lib/errors";
+
 import { useAddComment, useComments, useTargetComment } from "../hooks/useFeed";
 import { CommentItem } from "./CommentItem";
 export function CommentsBody({ post }: { post: Post }) {
@@ -63,7 +65,7 @@ export function CommentsBody({ post }: { post: Post }) {
       </ul>
       {add.isError && (
         <p role="alert" className="px-4 py-2 text-sm text-destructive">
-          {t("errors.generic")}
+          {toAppError(add.error).message}
         </p>
       )}
       <form onSubmit={submit} className="flex items-end gap-3 border-t p-4 pb-safe md:px-6">

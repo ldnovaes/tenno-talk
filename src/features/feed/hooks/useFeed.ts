@@ -105,6 +105,8 @@ export function useAddComment(postId: string) {
     onError: (_error, _text, context) => {
       if (context) patch(context.id);
     },
+    // The comments box shows why (e.g. "Comments are limited on this post."); a toast would say it twice.
+    meta: { silent: true },
     onSuccess: (comment, _text, context) => {
       if (context) patch(context.id, comment);
       pending.current = null;

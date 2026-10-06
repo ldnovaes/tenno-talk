@@ -1,7 +1,10 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { authService } from "@/services/authService";
+import { mockDb } from "@/services/mock/db";
+import { useSessionStore } from "@/stores/sessionStore";
 import { renderApp } from "@/test/utils";
 
 describe("social sign-in options", () => {
@@ -25,4 +28,22 @@ describe("social sign-in options", () => {
       screen.queryByRole("button", { name: /Continue with (Google|Facebook)/ }),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    ["Google", true],
+    ["Facebook", false],
+  ])(
+    "signing in with %s starts a new account at the first onboarding step (email: %s)",
+    async (name, email) => {
+      vi.spyOn(authService, "getOAuthProviders").mockResolvedValue(["google", "facebook"]);
+      renderApp("/welcome");
+      await userEvent.click(await screen.findByRole("button", { name: `Continue with ${name}` }));
+      expect(
+        await screen.findByRole("heading", { name: "Welcome to TENNO TALK" }),
+      ).toBeInTheDocument();
+      const id = useSessionStore.getState().userId ?? "";
+      const created = mockDb.read().users[id];
+      expect(created?.email !== null).toBe(email);
+    },
+  );
 });

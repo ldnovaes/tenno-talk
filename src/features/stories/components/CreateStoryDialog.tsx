@@ -71,6 +71,16 @@ export function CreateStoryDialog({
         >
           {media?.kind === "image" ? (
             <img src={media.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : media?.kind === "video" ? (
+            <video
+              src={media.url}
+              muted
+              loop
+              autoPlay
+              playsInline
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           ) : (
             <span className="flex flex-col items-center gap-2">
               <ImagePlus className="size-8" aria-hidden />

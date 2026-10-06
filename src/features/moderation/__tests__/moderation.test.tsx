@@ -84,6 +84,16 @@ describe("admin reports", () => {
     expect(await screen.findByRole("heading", { name: "Spam or scam" })).toBeInTheDocument();
   });
 
+  it("lists open reports and moves them out when dismissed", async () => {
+    signInAs("usr_rafael");
+    renderApp("/admin/reports");
+    expect(await screen.findByRole("heading", { name: "Spam or scam" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(await screen.findByText("No reports here.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: "Dismissed" }));
+    expect(await screen.findByRole("heading", { name: "Spam or scam" })).toBeInTheDocument();
+  });
+
   it("is closed to non-admins", async () => {
     signInAs("usr_linh");
     renderApp("/admin/reports");
