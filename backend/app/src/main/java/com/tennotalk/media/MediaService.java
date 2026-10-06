@@ -8,10 +8,12 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
@@ -47,6 +49,11 @@ public class MediaService {
     static final long MAX_IMAGE_BYTES = 25L * 1024 * 1024;
     static final long MAX_PIXELS = 24_000_000L;
     static final int MAX_SIDE = 12_000;
+    /** Per account (PLAN.md §38): a full disk would take the database and the neighbours down. */
+    static final long DAILY_QUOTA = 2L * 1024 * 1024 * 1024;
+    static final long TOTAL_QUOTA = 10L * 1024 * 1024 * 1024;
+    static final Duration ORPHAN_AFTER = Duration.ofDays(1);
+    static final Duration STORY_MEDIA_AFTER = Duration.ofDays(2);
     private static final DateTimeFormatter FOLDER = DateTimeFormatter.ofPattern("yyyy/MM").withZone(ZoneOffset.UTC);
 
     private final MediaRepository repository;
@@ -64,6 +71,7 @@ public class MediaService {
 
     public MediaRow upload(UUID owner, MultipartFile file) throws IOException {
         if (file.isEmpty()) throw ApiException.validation("The file is empty.");
+        requireQuota(owner, file.getSize());
         String name = sanitize(file.getOriginalFilename());
         String mime;
         try (InputStream in = file.getInputStream()) {
@@ -103,6 +111,23 @@ public class MediaService {
         MediaRow row = new MediaRow(id, owner, kind, mime, size, width, height, null, path, name, clock.instant());
         repository.insert(row);
         return row;
+    }
+
+    private void requireQuota(UUID owner, long incoming) {
+        MediaRepository.Usage usage = repository.usage(owner, clock.instant().minus(Duration.ofDays(1)));
+        if (usage.lastDay() + incoming > DAILY_QUOTA) {
+            throw ApiException.validation("You reached today's upload limit (2 GB). Try again tomorrow.");
+        }
+        if (usage.total() + incoming > TOTAL_QUOTA) {
+            throw ApiException.validation("Your account reached its storage limit (10 GB).");
+        }
+    }
+
+    /** Removes files nobody uses (PLAN.md §38); the rows are gone (committed) before the bytes. */
+    public int deleteUnused() {
+        List<String> paths = repository.deleteUnused(clock.instant().minus(ORPHAN_AFTER), clock.instant().minus(STORY_MEDIA_AFTER), 500);
+        paths.forEach(storage::delete);
+        return paths.size();
     }
 
     record CleanImage(byte[] bytes, Integer width, Integer height) {}

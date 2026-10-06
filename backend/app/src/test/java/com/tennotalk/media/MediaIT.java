@@ -291,6 +291,79 @@ class MediaIT extends IntegrationTest {
         assertThat(java.nio.file.Files.exists(storage.resolve(path))).isFalse();
     }
 
+    // ---- quotas and cleanup (PLAN.md §38) -----------------------------------
+
+    private void storedBytes(UUID owner, long bytes, Instant at) {
+        UUID id = data.media(owner, "file");
+        jdbc.sql("UPDATE media SET size_bytes = :b, created_at = :at WHERE id = :id")
+                .param("b", bytes).param("at", Timestamp.from(at)).param("id", id).update();
+    }
+
+    @Test
+    void theDailyQuotaRefusesUploadsUntilADayHasPassed() throws Exception {
+        storedBytes(rafael, MediaService.DAILY_QUOTA - 10, Instant.now().minusSeconds(3600));
+        upload(rafael, "a.png", "image/png", image("png", 8, 8))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(containsString("today's upload limit")));
+        jdbc.sql("UPDATE media SET created_at = now() - interval '25 hours'").update();
+        upload(rafael, "a.png", "image/png", image("png", 8, 8)).andExpect(status().isOk());
+        // Someone else's usage never counts.
+        upload(linh, "a.png", "image/png", image("png", 8, 8)).andExpect(status().isOk());
+    }
+
+    @Test
+    void theTotalQuotaRefusesUploadsOnceTheAccountIsFull() throws Exception {
+        storedBytes(rafael, MediaService.TOTAL_QUOTA - 10, Instant.now().minus(java.time.Duration.ofDays(30)));
+        upload(rafael, "a.png", "image/png", image("png", 8, 8))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(containsString("storage limit")));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    MediaService mediaService;
+
+    private String pathOf(String id) {
+        return jdbc.sql("SELECT storage_path FROM media WHERE id = :id").param("id", UUID.fromString(id)).query(String.class).single();
+    }
+
+    private void age(String id, java.time.Duration age) {
+        data.setCreatedAt("media", UUID.fromString(id), Instant.now().minus(age));
+    }
+
+    private boolean exists(String id) {
+        return jdbc.sql("SELECT count(*) FROM media WHERE id = :id").param("id", UUID.fromString(id)).query(Long.class).single() == 1;
+    }
+
+    @Test
+    void filesNobodyUsesAreDeletedAfterADayAndUsedOnesStay() throws Exception {
+        java.time.Duration old = java.time.Duration.ofDays(3);
+        String orphan = uploadOk(rafael, "orphan.png", image("png", 2, 2));
+        String fresh = uploadOk(rafael, "fresh.png", image("png", 2, 2));
+        String inPost = uploadOk(rafael, "post.png", image("png", 2, 2));
+        String inMessage = uploadOk(rafael, "chat.png", image("png", 2, 2));
+        String avatar = uploadOk(rafael, "me.png", image("png", 2, 2));
+        String liveStory = uploadOk(rafael, "live.png", image("png", 2, 2));
+        String endedStory = uploadOk(rafael, "ended.png", image("png", 2, 2));
+        api.postOk(rafael, "/api/posts", Map.of("mediaIds", List.of(inPost)));
+        UUID chat = data.directConversation(rafael, linh);
+        api.postOk(rafael, "/api/conversations/" + chat + "/messages", Map.of("clientId", "c1", "mediaIds", List.of(inMessage)));
+        jdbc.sql("UPDATE users SET avatar_url = :url WHERE id = :id").param("url", "/api/media/" + avatar).param("id", rafael).update();
+        api.postOk(rafael, "/api/stories", Map.of("mediaId", liveStory));
+        api.postOk(rafael, "/api/stories", Map.of("mediaId", endedStory));
+        jdbc.sql("UPDATE stories SET expires_at = now() - interval '3 days' WHERE media_id = :m").param("m", UUID.fromString(endedStory)).update();
+        for (String id : List.of(orphan, inPost, inMessage, avatar, liveStory, endedStory)) age(id, old);
+        String orphanPath = pathOf(orphan);
+        String endedPath = pathOf(endedStory);
+
+        assertThat(mediaService.deleteUnused()).isEqualTo(2);
+
+        assertThat(exists(orphan)).isFalse();
+        assertThat(exists(endedStory)).isFalse();
+        assertThat(java.nio.file.Files.exists(storage.resolve(orphanPath))).isFalse();
+        assertThat(java.nio.file.Files.exists(storage.resolve(endedPath))).isFalse();
+        assertThat(jdbc.sql("SELECT count(*) FROM stories").query(Long.class).single()).as("only the live story is left").isOne();
+        for (String kept : List.of(fresh, inPost, inMessage, avatar, liveStory)) assertThat(exists(kept)).as(kept).isTrue();
+        download(rafael, avatar).andExpect(status().isOk());
+    }
+
     @Test
     void uploadingNeedsASessionAndACsrfToken() throws Exception {
         byte[] png = image("png", 2, 2);

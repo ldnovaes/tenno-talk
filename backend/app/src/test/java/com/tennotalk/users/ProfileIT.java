@@ -237,6 +237,19 @@ class ProfileIT extends IntegrationTest {
     }
 
     @Test
+    void searchTreatsWildcardsLiterallyAndIgnoresAnythingPastFiftyCharacters() throws Exception {
+        UUID rafael = data.user("rafael", "pt-BR");
+        data.user("linh", "vi-VN");
+        data.user("li_na", "vi-VN");
+        mvc.perform(get("/api/people/search").param("q", "%").with(as(rafael)))
+                .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/people/search").param("q", "li_").with(as(rafael)))
+                .andExpect(jsonPath("$[*].username", contains("li_na")));
+        mvc.perform(get("/api/people/search").param("q", "li" + "x".repeat(5000)).with(as(rafael)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     void deletingTheAccountRemovesTheUserAndSignsOut() throws Exception {
         UUID rafael = data.user("rafael", "pt-BR");
         UUID linh = data.user("linh", "vi-VN");

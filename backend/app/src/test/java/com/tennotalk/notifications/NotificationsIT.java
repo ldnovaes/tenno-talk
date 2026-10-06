@@ -56,6 +56,26 @@ class NotificationsIT extends IntegrationTest {
     }
 
     @Test
+    void togglingALikeOrAFollowNotifiesOnceADay() throws Exception {
+        String post = post(rafael);
+        for (int i = 0; i < 3; i++) {
+            api.put(linh, "/api/posts/" + post + "/like").andExpect(status().isOk());
+            api.delete(linh, "/api/posts/" + post + "/like").andExpect(status().isOk());
+            api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().isOk());
+            api.delete(linh, "/api/profiles/" + rafael + "/follow");
+        }
+        JsonNode list = api.getOk(rafael, "/api/notifications");
+        assertThat(list.size()).as("one like and one follow, not six").isEqualTo(2);
+        assertThat(jdbc.sql("SELECT count(*) FROM push_jobs").query(Long.class).single()).isLessThanOrEqualTo(2);
+
+        // A day later the same action notifies again; a like on another post is a new notification.
+        jdbc.sql("UPDATE notifications SET created_at = now() - interval '25 hours'").update();
+        api.put(linh, "/api/posts/" + post + "/like").andExpect(status().isOk());
+        api.put(linh, "/api/posts/" + post(rafael) + "/like").andExpect(status().isOk());
+        assertThat(api.getOk(rafael, "/api/notifications").size()).isEqualTo(4);
+    }
+
+    @Test
     void notificationsAreNewestFirstWithTheirTargets() throws Exception {
         String post = post(rafael);
         api.put(linh, "/api/posts/" + post + "/like");

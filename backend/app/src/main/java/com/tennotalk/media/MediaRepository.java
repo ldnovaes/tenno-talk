@@ -2,6 +2,8 @@ package com.tennotalk.media;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -53,6 +55,46 @@ public class MediaRepository {
                 .param("path", media.storagePath())
                 .param("name", media.originalName())
                 .update();
+    }
+
+    /** Bytes an owner stores: in total and uploaded in the last 24 hours (quotas, PLAN.md §38). */
+    public record Usage(long total, long lastDay) {}
+
+    public Usage usage(UUID owner, Instant dayAgo) {
+        return jdbc.sql("""
+                SELECT coalesce(sum(size_bytes), 0) AS total,
+                       coalesce(sum(size_bytes) FILTER (WHERE created_at > :since), 0) AS last_day
+                FROM media WHERE owner_id = :owner
+                """)
+                .param("owner", owner)
+                .param("since", Timestamp.from(dayAgo))
+                .query((rs, row) -> new Usage(rs.getLong("total"), rs.getLong("last_day")))
+                .single();
+    }
+
+    /**
+     * Deletes up to {@code limit} files nobody uses: uploaded before {@code uploadedBefore} and not in a message,
+     * a post, an avatar or a story that ended after {@code storiesEndedBefore}. Returns their storage paths.
+     * Deleting the media also deletes the old stories that pointed to it (ON DELETE CASCADE).
+     */
+    public List<String> deleteUnused(Instant uploadedBefore, Instant storiesEndedBefore, int limit) {
+        return jdbc.sql("""
+                DELETE FROM media WHERE id IN (
+                    SELECT m.id FROM media m
+                    WHERE m.created_at < :uploaded
+                      AND NOT EXISTS (SELECT 1 FROM message_media mm WHERE mm.media_id = m.id)
+                      AND NOT EXISTS (SELECT 1 FROM post_media pm WHERE pm.media_id = m.id)
+                      AND NOT EXISTS (SELECT 1 FROM stories s WHERE s.media_id = m.id AND s.expires_at > :stories)
+                      AND NOT EXISTS (SELECT 1 FROM users u WHERE u.avatar_url = '/api/media/' || m.id)
+                      AND NOT EXISTS (SELECT 1 FROM conversations c WHERE c.avatar_url = '/api/media/' || m.id)
+                    LIMIT :limit)
+                RETURNING storage_path
+                """)
+                .param("uploaded", Timestamp.from(uploadedBefore))
+                .param("stories", Timestamp.from(storiesEndedBefore))
+                .param("limit", limit)
+                .query(String.class)
+                .list();
     }
 
     public Optional<MediaRow> find(UUID id) {

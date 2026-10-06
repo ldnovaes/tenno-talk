@@ -48,6 +48,9 @@ public class NotificationService {
             "follow_request", "notify_followers", "follow_accepted", "notify_followers",
             "story_reaction", "notify_likes", "new_message", "notify_messages");
 
+    /** Toggling a like or a follow never notifies (and pushes) again within a day (PLAN.md §38). */
+    private static final java.util.Set<String> ONCE_A_DAY = java.util.Set.of("like", "follow");
+
     private final JdbcClient jdbc;
     private final ApplicationEventPublisher events;
     private final RealtimeHub hub;
@@ -69,6 +72,13 @@ public class NotificationService {
         if (!wanted) return;
         if (jdbc.sql("SELECT EXISTS(SELECT 1 FROM blocks WHERE (blocker_id = :r AND blocked_id = :a) OR (blocker_id = :a AND blocked_id = :r))")
             .param("r", recipient).param("a", actor).query(Boolean.class).single()) return;
+        if (ONCE_A_DAY.contains(type) && jdbc.sql("""
+                SELECT EXISTS(SELECT 1 FROM notifications WHERE recipient_id = :r AND actor_id = :a AND type = :t
+                              AND post_id IS NOT DISTINCT FROM :post AND created_at > :since)
+                """)
+                .param("r", recipient).param("a", actor).param("t", type).param("post", target.postId())
+                .param("since", Timestamp.from(clock.instant().minus(java.time.Duration.ofDays(1))))
+                .query(Boolean.class).single()) return;
         UUID id = Ids.newId();
         jdbc.sql("""
                 INSERT INTO notifications (id, recipient_id, actor_id, type, post_id, comment_id, story_id, emoji, conversation_id, message_id, created_at)

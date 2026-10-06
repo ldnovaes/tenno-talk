@@ -84,4 +84,12 @@ class CommonRulesTest {
         assertThat(ErrorCode.RATE_LIMITED.wireName()).isEqualTo("rate_limited");
         assertThat(Problems.of(ErrorCode.CONFLICT, "x").getProperties()).containsEntry("code", "conflict");
     }
+
+    @Test
+    void likePatternsMatchTheTextLiterally() {
+        assertThat(LikePatterns.contains("ana")).isEqualTo("%ana%");
+        assertThat(LikePatterns.contains("50%_off")).isEqualTo("%50\\%\\_off%");
+        assertThat(LikePatterns.contains("a\\b")).isEqualTo("%a\\\\b%");
+        assertThat(LikePatterns.contains("")).isEqualTo("%%");
+    }
 }

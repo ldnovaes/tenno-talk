@@ -203,13 +203,17 @@ public class ProfileService {
                 Map.of("limit", clamp(limit, 1, 50)));
     }
 
+    /** Longer queries match nothing more useful and cost more (PLAN.md §38). */
+    static final int MAX_SEARCH = 50;
+
     @Transactional(readOnly = true)
     public List<UserProfileDto> search(UUID viewer, String query, int limit) {
         String needle = Usernames.normalize(query == null ? "" : query);
+        if (needle.length() > MAX_SEARCH) needle = needle.substring(0, MAX_SEARCH);
         return profiles.list(viewer, ProfileQueries.VISIBLE_TO_VIEWER + """
-                 AND (:q = '' OR u.display_name ILIKE '%' || :q || '%' OR u.username ILIKE '%' || :q || '%')
+                 AND (:q = '' OR u.display_name ILIKE :pattern OR u.username::text ILIKE :pattern)
                  ORDER BY u.display_name LIMIT :limit
-                """, Map.of("q", needle, "limit", clamp(limit, 1, 50)));
+                """, Map.of("q", needle, "pattern", com.tennotalk.common.LikePatterns.contains(needle), "limit", clamp(limit, 1, 50)));
     }
 
     @Transactional
