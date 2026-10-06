@@ -306,7 +306,9 @@ describe("mockChatService", () => {
     it("never shows a read position across a block, also on a refetch", async () => {
       mockDb.update((db) => {
         const conversation = db.conversations["conv_rafael_linh"];
-        const anyMessage = Object.values(db.messages).find((m) => m.conversationId === "conv_rafael_linh");
+        const anyMessage = Object.values(db.messages).find(
+          (m) => m.conversationId === "conv_rafael_linh",
+        );
         if (conversation && anyMessage) conversation.lastReadMessageId["usr_linh"] = anyMessage.id;
       });
       const linhRead = async () =>

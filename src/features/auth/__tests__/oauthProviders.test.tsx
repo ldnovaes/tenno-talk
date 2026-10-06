@@ -31,7 +31,10 @@ describe("social sign-in options", () => {
 
   it.each([
     ["oauth", "We couldn't sign you in with that account."],
-    ["oauth_link", "An account with this email already exists. Sign in with your email and password instead."],
+    [
+      "oauth_link",
+      "An account with this email already exists. Sign in with your email and password instead.",
+    ],
   ])("explains a social sign-in sent back with error=%s", async (error, text) => {
     vi.spyOn(authService, "getOAuthProviders").mockResolvedValue(["google"]);
     renderApp(`/welcome?error=${error}`);
