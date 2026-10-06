@@ -704,14 +704,14 @@ Revisão de segurança de https://tenno.eldialabs.com (DoS, vazamento de dados, 
 - [x] Fase 1 — Tradução sob demanda fora da transação, com semáforo; `pending` não chama a IA; retry só do que falhou
 - [x] Fase 1 — nginx: corpo, `limit_req`/`limit_conn`, `server_tokens`, dotfiles
 - [x] Fase 1 — systemd: limites de memória/CPU/tarefas e sandbox
-- [ ] Fase 2 — Mídia: 100 MB, cota diária e total, limpeza de órfãos e de stories expirados
-- [ ] Fase 2 — IA: limite diário de tradução sob demanda, limite próprio de encaminhar
-- [ ] Fase 2 — WebSocket: frames por socket, "digitando" sem lock global, sockets por pessoa
-- [ ] Fase 2 — Privacidade: `lastReadMessageId` escondido com bloqueio
-- [ ] Fase 2 — Rate limits que faltavam, aparelhos de push por pessoa, histórico de idioma só na mudança
-- [ ] Fase 2 — Banco: índices de mídia e trigram, busca limitada, retenção, notificação de like sem repetição
-- [ ] Fase 3 — Sessões encerradas na troca de senha; sockets fechados no logout, troca de senha e exclusão
-- [ ] Fase 3 — Força bruta por e-mail; login social sem vínculo automático a conta com senha
-- [ ] Fase 3 — `/api/openapi` desligado em produção; workflow antigo de deploy removido
+- [x] Fase 2 — Mídia: 100 MB, cota diária e total, limpeza de órfãos e de stories expirados
+- [x] Fase 2 — IA: limite diário de tradução sob demanda, limite próprio de encaminhar
+- [x] Fase 2 — WebSocket: frames por socket, "digitando" sem lock global, sockets por pessoa
+- [x] Fase 2 — Privacidade: `lastReadMessageId` escondido com bloqueio
+- [x] Fase 2 — Rate limits que faltavam, aparelhos de push por pessoa, jobs de realtime com limite de tentativas (o histórico de idioma já só gravava na mudança; agora com o limite de `settings`)
+- [x] Fase 2 — Banco: índices de mídia e trigram, busca limitada, retenção, notificação de like sem repetição
+- [x] Fase 3 — Sessões encerradas na troca de senha; sockets fechados no logout, troca de senha e exclusão
+- [x] Fase 3 — Força bruta por e-mail; login social sem vínculo automático a conta com senha
+- [x] Fase 3 — `/api/openapi` desligado em produção; workflow antigo de deploy removido
 - [ ] Fase 4 — VPS: jails do fail2ban da TENNO, swap, `X11Forwarding no`, atualizações + reboot
 - [ ] Deploy e verificação (TENNO e sites da Eldia)
