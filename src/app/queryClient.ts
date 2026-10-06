@@ -44,6 +44,9 @@ export function createQueryClient(): QueryClient {
       queries: {
         staleTime: 30_000,
         retry: (failureCount, error) => failureCount < 1 && toAppError(error).retryable,
+        // The server's Retry-After when it sent one (at most a minute), otherwise the usual backoff.
+        retryDelay: (attempt, error) =>
+          Math.min(60_000, toAppError(error).retryAfterMs ?? Math.min(1000 * 2 ** attempt, 30_000)),
         refetchOnWindowFocus: true,
       },
       mutations: { retry: 0 },

@@ -72,6 +72,20 @@ describe("upload (XHR, PLAN.md §29)", () => {
   });
 });
 
+describe("upload rate limit", () => {
+  it("keeps the server's Retry-After", async () => {
+    fakeServer.on("POST", "/api/media", {
+      status: 429,
+      body: { code: "rate_limited" },
+      headers: { "Retry-After": "12" },
+    });
+    await expect(upload("/api/media", new Blob(["x"]), "a.jpg")).rejects.toMatchObject({
+      code: "rate_limited",
+      retryAfterMs: 12_000,
+    });
+  });
+});
+
 describe("uploadMedia", () => {
   it("uploads in order and reports progress by bytes across files", async () => {
     serveUploads();

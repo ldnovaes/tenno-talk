@@ -120,6 +120,11 @@ class FakeXhr {
   onload: (() => void) | null = null;
   onerror: (() => void) | null = null;
   private headers: Record<string, string> = {};
+  private responseHeaders: Record<string, string> = {};
+
+  getResponseHeader(name: string): string | null {
+    return this.responseHeaders[name.toLowerCase()] ?? null;
+  }
 
   open(method: string, url: string) {
     this.method = method.toUpperCase();
@@ -151,6 +156,9 @@ class FakeXhr {
       }
       this.status = answer.status ?? 200;
       this.responseText = bodyText(answer.body);
+      this.responseHeaders = Object.fromEntries(
+        Object.entries(answer.headers ?? {}).map(([key, value]) => [key.toLowerCase(), value]),
+      );
       this.onload?.();
     });
   }

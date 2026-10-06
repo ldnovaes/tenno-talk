@@ -151,6 +151,19 @@ describe("dispatchPending", () => {
     },
   );
 
+  it("a rate-limited send waits at least what the server asked", async () => {
+    const entry = await queue();
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    fakeServer.on("POST", "/api/conversations/c%201/messages", {
+      status: 429,
+      body: { code: "rate_limited" },
+      headers: { "Retry-After": "120" },
+    });
+    const before = Date.now();
+    await expect(dispatchPending(entry)).rejects.toMatchObject({ code: "rate_limited" });
+    expect(((await stored(entry.key))?.nextAttempt ?? 0) - before).toBeGreaterThanOrEqual(120_000);
+  });
+
   it("does nothing before its next attempt is due", async () => {
     const entry = await queue();
     await updatePending(entry.key, (e) => (e ? { ...e, nextAttempt: Date.now() + 60_000 } : e));

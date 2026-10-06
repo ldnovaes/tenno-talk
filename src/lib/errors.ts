@@ -15,17 +15,24 @@ export class AppError extends Error {
   readonly code: AppErrorCode;
   readonly retryable: boolean;
   readonly fieldErrors: Readonly<Record<string, string>>;
+  /** How long the server asked to wait before trying again (Retry-After), when it said. */
+  readonly retryAfterMs: number | null;
 
   constructor(
     code: AppErrorCode,
     message: string,
-    options: { fieldErrors?: Record<string, string>; cause?: unknown } = {},
+    options: {
+      fieldErrors?: Record<string, string>;
+      cause?: unknown;
+      retryAfterMs?: number | null;
+    } = {},
   ) {
     super(message, { cause: options.cause });
     this.name = "AppError";
     this.code = code;
     this.retryable = RETRYABLE.has(code);
     this.fieldErrors = options.fieldErrors ?? {};
+    this.retryAfterMs = options.retryAfterMs ?? null;
   }
 }
 

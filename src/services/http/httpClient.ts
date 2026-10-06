@@ -73,7 +73,8 @@ export async function http<T>(
     throw new AppError("network", NETWORK_ERROR, { cause });
   }
   const body = await readBody(response);
-  if (!response.ok) throw problemToAppError(response.status, body);
+  if (!response.ok)
+    throw problemToAppError(response.status, body, response.headers.get("Retry-After"));
   return body as T;
 }
 
@@ -105,7 +106,8 @@ export function upload<T>(
         body = request.responseText;
       }
       if (request.status >= 200 && request.status < 300) resolve(body as T);
-      else reject(problemToAppError(request.status, body));
+      else
+        reject(problemToAppError(request.status, body, request.getResponseHeader("Retry-After")));
     };
     const form = new FormData();
     form.append("file", file, fileName);

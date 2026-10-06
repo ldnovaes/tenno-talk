@@ -87,9 +87,13 @@ export async function dispatchPending(entry: PendingSend): Promise<Message | nul
             attempts: e.attempts + 1,
             blocked: !failure.retryable,
             failureCode: failure.code,
+            // Exponential backoff with jitter, never sooner than the server asked (Retry-After).
             nextAttempt:
               Date.now() +
-              Math.min(60_000, 1000 * 2 ** Math.min(e.attempts, 6)) * (1 + Math.random()),
+              Math.max(
+                Math.min(60_000, 1000 * 2 ** Math.min(e.attempts, 6)) * (1 + Math.random()),
+                failure.retryAfterMs ?? 0,
+              ),
             message: { ...e.message, deliveryStatus: failure.retryable ? "sending" : "failed" },
           }
         : undefined,

@@ -33,8 +33,22 @@ function stringRecord(value: unknown): Record<string, string> {
   return result;
 }
 
+/** Retry-After in seconds or as an HTTP date (RFC 9110 §10.2.3), in milliseconds from now. */
+function retryAfterMs(header: string | null | undefined, now: number): number | null {
+  if (!header) return null;
+  const trimmed = header.trim();
+  if (/^\d+(\.\d+)?$/.test(trimmed)) return Math.ceil(Number(trimmed) * 1000);
+  const date = Date.parse(trimmed);
+  return Number.isNaN(date) || !/[a-z]/i.test(trimmed) ? null : Math.max(0, date - now);
+}
+
 /** Maps an RFC 9457 Problem Details body (with our `code`/`fieldErrors` extensions) to AppError. */
-export function problemToAppError(status: number, body: unknown): AppError {
+export function problemToAppError(
+  status: number,
+  body: unknown,
+  retryAfter: string | null = null,
+  now: number = Date.now(),
+): AppError {
   const problem = isRecord(body) ? body : {};
   const declared = typeof problem["code"] === "string" ? problem["code"] : null;
   const code =
@@ -42,5 +56,6 @@ export function problemToAppError(status: number, body: unknown): AppError {
   const detail = typeof problem["detail"] === "string" ? problem["detail"] : null;
   return new AppError(code, detail ?? "Something went wrong.", {
     fieldErrors: stringRecord(problem["fieldErrors"]),
+    retryAfterMs: retryAfterMs(retryAfter, now),
   });
 }

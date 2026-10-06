@@ -636,7 +636,7 @@ Estratégia em [PLAN.md §23.1](PLAN.md#231-testes-por-combinação-2026-10-05).
 - [x] Bloco 1 — Frontend, funções puras exaustivas (tradução, prévias, notificações, presença, erros, push, rotas, caches, política de erro do Query, stores): 816 → 1.531 testes
 - [x] Bloco 5 — Backend: matriz de validação, superfícies e transições de privacidade, matriz de notificações, push, rate limit, realtime, tradução, chat/feed, auth, mídia/moderação/discover, constraints e migrations: app 909 → 1.369 testes (pendente: atraso de 30 s na saída da JVM do Surefire na suíte completa, anterior a este trabalho; TTL/esgotamento da sessão do Discover)
 - [x] Bloco 2 — Serviços mock (lacunas e paridade), serviços HTTP (contrato de todos os métodos), `upload()`, outbox completa e hooks só HTTP (projeto Vitest `http`: 113 testes)
-- [ ] Bloco 8 — `Retry-After` respeitado no cliente (queries e outbox)
+- [x] Bloco 8 — `Retry-After` respeitado no cliente: `AppError.retryAfterMs` (segundos ou data HTTP, `fetch` e XHR), `retryDelay` das queries (teto de 1 min) e `nextAttempt` da outbox
 - [ ] Bloco 3 — Realtime → cache por tipo de evento
 - [ ] Bloco 7 — Reação a story como no Instagram (vira mensagem na DM)
 - [ ] Bloco 4 — Matrizes de componentes e telas (viewport, privacidade do outro lado, `lang`/`dir`)

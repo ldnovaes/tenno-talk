@@ -176,3 +176,37 @@ describe("resolveAvatarUrl", () => {
     await expect(resolveAvatarUrl("/api/media/abc")).resolves.toBe("/api/media/abc");
   });
 });
+
+describe("Retry-After (PLAN.md §31: the backend says when to come back)", () => {
+  const now = Date.parse("2026-10-05T12:00:00.000Z");
+
+  it.each([
+    ["seconds", "30", 30_000],
+    ["fraction of a second", "0.4", 400],
+    ["zero", "0", 0],
+    ["HTTP date in the future", "Mon, 05 Oct 2026 12:02:00 GMT", 120_000],
+    ["HTTP date in the past", "Mon, 05 Oct 2026 11:00:00 GMT", 0],
+    ["nonsense", "soon", null],
+    ["negative", "-5", null],
+    ["missing", null, null],
+  ])("%s: %s → %s ms", (_name, header, expected) => {
+    expect(problemToAppError(429, { code: "rate_limited" }, header, now).retryAfterMs).toBe(
+      expected,
+    );
+  });
+
+  it("http() reads it from the response", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ code: "rate_limited" }), {
+        status: 429,
+        headers: { "Retry-After": "7" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(http("POST", "/api/posts/1/comments", { body: {} })).rejects.toMatchObject({
+      code: "rate_limited",
+      retryAfterMs: 7000,
+    });
+    vi.unstubAllGlobals();
+  });
+});

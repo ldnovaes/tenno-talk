@@ -80,6 +80,16 @@ describe("query retry", () => {
     expect(retry(1, error)).toBe(false);
   });
 
+  it("waits what the server asked (Retry-After), at most a minute; otherwise backs off", () => {
+    const retryDelay = createQueryClient().getDefaultOptions().queries?.retryDelay;
+    if (typeof retryDelay !== "function") throw new Error("retryDelay must be a function");
+    const limited = (ms: number | null) => new AppError("rate_limited", "x", { retryAfterMs: ms });
+    expect(retryDelay(0, limited(5000))).toBe(5000);
+    expect(retryDelay(0, limited(600_000))).toBe(60_000);
+    expect(retryDelay(0, limited(null))).toBe(1000);
+    expect(retryDelay(1, new AppError("network", "x"))).toBe(2000);
+  });
+
   it("mutations are never retried automatically", () => {
     expect(createQueryClient().getDefaultOptions().mutations?.retry).toBe(0);
   });
