@@ -1,5 +1,7 @@
 import { expect, type Browser, type Locator, type Page } from "@playwright/test";
 
+export { expectBadge } from "../support";
+
 /** An 8×8 PNG: the smallest real photo the media pipeline accepts. */
 export const PNG_8x8 =
   "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGMwnvAGK2IYWhIA6+9rwT6p4IQAAAAASUVORK5CYII=";

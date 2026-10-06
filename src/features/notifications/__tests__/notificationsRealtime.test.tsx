@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, useLocation } from "react-router";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,7 +11,7 @@ import { notificationKeys } from "@/features/notifications/lib/queryKeys";
 import type { Notification, NotificationType } from "@/types/notification";
 import { fakeRealtime } from "@/test/fakeRealtime";
 
-/** Notifications pushed live (PLAN.md §36.2): list and badge, a toast that opens the right place, other tabs. */
+/** Notifications pushed live (PLAN.md §36.2): list and badge, never a toast, other tabs. */
 let realtime: ReturnType<typeof fakeRealtime>;
 let queryClient: QueryClient;
 
@@ -22,17 +21,9 @@ function mount() {
   queryClient.setQueryData(notificationKeys.all, "cached");
   queryClient.setQueryData(chatKeys.conversations(), []);
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/chats"]}>{children}</MemoryRouter>
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  return renderHook(
-    () => {
-      useNotificationsRealtime();
-      return useLocation();
-    },
-    { wrapper },
-  );
+  return renderHook(() => useNotificationsRealtime(), { wrapper });
 }
 
 const invalidated = (key: readonly unknown[]) =>
@@ -59,6 +50,18 @@ function notification(type: NotificationType): Notification {
   }
 }
 
+const NOTIFICATION_TYPES: readonly NotificationType[] = [
+  "like",
+  "comment",
+  "story_reaction",
+  "new_message",
+  "follow",
+  "follow_request",
+  "follow_accepted",
+];
+/** PLAN.md §31.1: only the follow relationship can lift a "People I follow" restriction. */
+const CHANGES_CHATS = new Set<NotificationType>(["follow", "follow_request", "follow_accepted"]);
+
 vi.mock("sonner", async (importOriginal) => {
   const actual = await importOriginal<typeof import("sonner")>();
   return { ...actual, toast: Object.assign(vi.fn(), actual.toast) };
@@ -71,15 +74,7 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("useNotificationsRealtime", () => {
-  it.each([
-    ["like", false],
-    ["comment", false],
-    ["story_reaction", false],
-    ["new_message", false],
-    ["follow", true],
-    ["follow_request", true],
-    ["follow_accepted", true],
-  ] as [NotificationType, boolean][])(
+  it.each(NOTIFICATION_TYPES.map((type) => [type, CHANGES_CHATS.has(type)] as const))(
     "%s refreshes the badge; may lift a chat restriction: %s",
     (type, chats) => {
       mount();
@@ -89,22 +84,12 @@ describe("useNotificationsRealtime", () => {
     },
   );
 
-  it.each([
-    ["new_message", "/chats/c1?messageId=m1"],
-    ["like", "/posts/p1"],
-    ["follow", "/u/ana"],
-  ] as [NotificationType, string][])(
-    "%s: the toast says who and what; View opens %s",
-    (type, destination) => {
-      const { result } = mount();
+  it("no notification shows a toast: the navigation badge is the signal", () => {
+    mount();
+    for (const type of NOTIFICATION_TYPES)
       act(() => realtime.emit("notification.created", { notification: notification(type) }));
-      const [title, options] = vi.mocked(toast).mock.calls.at(-1) ?? [];
-      expect(title).toBe("Ana");
-      expect(options?.description).toBeTruthy();
-      act(() => (options?.action as { onClick: () => void } | undefined)?.onClick());
-      expect(result.current.pathname + result.current.search).toBe(destination);
-    },
-  );
+    expect(vi.mocked(toast)).not.toHaveBeenCalled();
+  });
 
   it("reading on another device refreshes this one", () => {
     mount();

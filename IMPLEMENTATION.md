@@ -646,10 +646,10 @@ Estratégia em [PLAN.md §23.1](PLAN.md#231-testes-por-combinação-2026-10-05).
 
 | Suíte | Antes (`main`) | Depois |
 |---|---|---|
-| Frontend (Vitest) | 816 testes, 57 arquivos | 1.794 testes, 91 arquivos (115 no projeto `http`); verde em 3 execuções seguidas |
+| Frontend (Vitest) | 816 testes, 57 arquivos | 1.794 testes, 91 arquivos (115 no projeto `http`); verde em 3 execuções seguidas. Com as correções 28 e 29: 1.801 |
 | Backend app | 909 | 1.383 |
 | Recommender | 246 | 246 |
-| E2E mock | 31 (+5 pulados) | 60 (+6 pulados) |
+| E2E mock | 31 (+5 pulados) | 60 (+6 pulados); com `navigation.spec.ts`: 63 (+7) |
 | E2E stack (local) | 5 | 8 |
 
 Cobertura (só relatório, `bun run test:coverage` e `./mvnw verify -Pcoverage`; a linha de base foi medida num worktree do `main`):
@@ -693,3 +693,5 @@ Na medição da linha de base, a suíte do `main` falhou uma vez com o deadlock 
 | 25 | Comentário recusado (o autor limitou os comentários) mostrava "Something went wrong." na tela e, ao mesmo tempo, um toast com o motivo certo | `comments.test.tsx` | O motivo do servidor aparece uma vez, junto do campo, e o rascunho fica (mutation `silent`) |
 | 26 | Acessibilidade (axe, sério): o seletor de foto do perfil (onboarding e edição) tinha um `<input type="file">` sem rótulo | `a11y.spec.ts` (agora com 20 telas: todas as seções de Settings, conversa e post em árabe, viewer de story, edição de perfil, admin) | `aria-label` no campo, igual ao texto do botão |
 | 27 | Acessibilidade: o ícone de mensagem traduzida se anunciava como "Show translation", uma ação que ele não executa (não é botão) | `rtl.spec.ts` (snapshot de acessibilidade) | Rótulo "Translated" (`translation.hasTranslation`) |
+| 28 | **Relatado (produção):** no desktop, o rail nunca mostrou os contadores nem marcou a seção atual (desde a fase 1). O `className` em função do `NavLink` passava pelo `Slot` do tooltip, que junta classes como texto: a função virava o atributo `class`, todas as classes do item sumiam e o badge, sem pai posicionado, era desenhado fora da tela. Os e2e não pegaram porque `toBeVisible()` aceita um elemento fora da tela | `navigationRail.test.tsx` (classes e seção atual), `e2e/navigation.spec.ts` (badge sobreposto ao ícone, seção atual destacada) e `expectBadge` nos e2e da pilha | Estado ativo pelo `aria-current` do `NavLink` (variante `aria-[current=page]:`), com `className` fixo |
+| 29 | **Relatado (produção):** uma notificação nova abria um toast preto sobre o cabeçalho da tela, fora do tema: o CSS do sonner (fora das camadas do Tailwind v4) vencia as classes do `Toaster` | `notificationsRealtime.test.tsx` (nenhum tipo abre toast) e `e2e/navigation.spec.ts` | Notificação sem toast, o contador do sino é o sinal (PLAN §36.2); o `Toaster` usa os tokens pelas variáveis do sonner (conferido no navegador nos dois temas) |

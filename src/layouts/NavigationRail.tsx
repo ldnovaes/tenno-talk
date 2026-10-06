@@ -15,6 +15,15 @@ import { PRIMARY_NAV, type NavKey } from "./navItems";
 
 const itemClass =
   "relative grid size-11 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+/**
+ * Active state from NavLink's aria-current, not a className function: TooltipTrigger's Slot joins
+ * classNames as strings, so a function would become class text and drop every class (the badge then
+ * lost its anchor and was drawn off-screen).
+ */
+const primaryClass = cn(
+  itemClass,
+  "aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground aria-[current=page]:hover:bg-accent",
+);
 
 interface NavigationRailProps {
   me: User | null;
@@ -33,13 +42,7 @@ export function NavigationRail({ me, badges }: NavigationRailProps) {
       {PRIMARY_NAV.map(({ key, to, icon: Icon }) => (
         <Tooltip key={key}>
           <TooltipTrigger asChild>
-            <NavLink
-              to={to}
-              aria-label={t(`nav.${key}`)}
-              className={({ isActive }) =>
-                cn(itemClass, isActive && "bg-accent text-accent-foreground hover:bg-accent")
-              }
-            >
+            <NavLink to={to} aria-label={t(`nav.${key}`)} className={primaryClass}>
               <Icon className="size-[22px]" aria-hidden />
               <NavBadge count={badges[key] ?? 0} />
             </NavLink>

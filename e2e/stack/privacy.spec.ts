@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { follow, railLink, setPrivacy, signUpAndOnboard } from "./support";
+import { expectBadge, follow, railLink, setPrivacy, signUpAndOnboard } from "./support";
 
 /**
  * The privacy paths reported broken in production on 2026-10-05 (PLAN.md §31.1), replayed on the real stack:
@@ -21,7 +21,7 @@ test("a block and an unblock say why a chat can't send, and a follow back reopen
   await ana.page.getByRole("button", { name: "Message" }).click();
   await ana.page.getByRole("textbox", { name: /message/i }).fill("Oi Bo!");
   await ana.page.getByRole("button", { name: "Send" }).click();
-  await expect(railLink(bo.page, "Chats").getByText("1", { exact: true })).toBeVisible();
+  await expectBadge(railLink(bo.page, "Chats"), "1");
   const chat = ana.page.url();
 
   // Blocking keeps the profile, with a notice, instead of "User not found".
@@ -45,7 +45,7 @@ test("a block and an unblock say why a chat can't send, and a follow back reopen
   await expect(ana.page.getByRole("textbox", { name: /message/i })).toBeVisible();
   await ana.page.getByRole("textbox", { name: /message/i }).fill("Voltei");
   await ana.page.getByRole("button", { name: "Send" }).click();
-  await expect(railLink(bo.page, "Chats").getByText("2", { exact: true })).toBeVisible();
+  await expectBadge(railLink(bo.page, "Chats"), "2");
 
   expect(problems.filter((p) => !/403/.test(p))).toEqual([]);
 });
@@ -71,8 +71,8 @@ test("a private sender reaches a People-I-follow account as soon as it asks to f
   await ana.page.getByRole("button", { name: "Message" }).click();
   await ana.page.getByRole("textbox", { name: /message/i }).fill("Oi!");
   await ana.page.getByRole("button", { name: "Send" }).click();
-  await expect(railLink(bo.page, "Chats").getByText("1", { exact: true })).toBeVisible();
-  await expect(railLink(ana.page, "Notifications").getByText("1", { exact: true })).toBeVisible();
+  await expectBadge(railLink(bo.page, "Chats"), "1");
+  await expectBadge(railLink(ana.page, "Notifications"), "1");
 
   expect(problems.filter((p) => !/403/.test(p))).toEqual([]);
 });

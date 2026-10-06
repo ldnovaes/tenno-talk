@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { publishPost, railLink, signUpAndOnboard } from "./support";
+import { expectBadge, publishPost, railLink, signUpAndOnboard } from "./support";
 
 /**
  * The path reported broken in production on 2026-10-04: open a profile from Discover and from a
@@ -34,8 +34,8 @@ test("profiles open from Discover and chats, and an arriving message raises both
   await ana.page.getByRole("textbox", { name: /message/i }).fill("Oi Bo!");
   await ana.page.getByRole("button", { name: "Send" }).click();
 
-  await expect(railLink(bo.page, "Chats").getByText("1", { exact: true })).toBeVisible();
-  await expect(railLink(bo.page, "Notifications").getByText("1", { exact: true })).toBeVisible();
+  await expectBadge(railLink(bo.page, "Chats"), "1");
+  await expectBadge(railLink(bo.page, "Notifications"), "1");
 
   await railLink(bo.page, "Chats").click();
   await bo.page.getByRole("list", { name: "Chats" }).getByRole("link", { name: /Ana/ }).click();

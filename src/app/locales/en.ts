@@ -397,7 +397,6 @@ export const en = {
     followBack: "Follow back",
     confirmRequest: "Confirm",
     deleteRequest: "Delete",
-    view: "View",
     pushPromptTitle: "Turn on notifications",
     pushPromptBody: "Get messages, follow requests and activity even when TENNO TALK is closed.",
     pushPromptInstall:

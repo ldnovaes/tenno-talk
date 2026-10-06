@@ -67,3 +67,23 @@ export async function bubbleWith(log: Locator, text: string): Promise<Locator> {
   const id = await bubble.getAttribute("id");
   return log.locator(`[id="${id}"]`);
 }
+
+/**
+ * A navigation counter sits on its icon. toBeVisible() is not enough: a badge drawn off-screen (it
+ * once lost its positioned parent) still counts as visible, so the boxes must overlap.
+ */
+export async function expectBadge(link: Locator, count: string) {
+  const badge = link.getByText(count, { exact: true });
+  await expect(badge).toBeVisible();
+  await expect(badge).toBeInViewport({ ratio: 1 });
+  const [icon, mark] = await Promise.all([link.boundingBox(), badge.boundingBox()]);
+  expect(icon, "link box").not.toBeNull();
+  expect(mark, "badge box").not.toBeNull();
+  if (!icon || !mark) return;
+  const overlaps =
+    mark.x < icon.x + icon.width &&
+    mark.x + mark.width > icon.x &&
+    mark.y < icon.y + icon.height &&
+    mark.y + mark.height > icon.y;
+  expect(overlaps, "badge overlaps its icon").toBe(true);
+}

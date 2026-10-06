@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { publishPost, railLink, setPrivacy, signUpAndOnboard } from "./support";
+import { expectBadge, publishPost, railLink, setPrivacy, signUpAndOnboard } from "./support";
 
 /**
  * Follow requests on the real stack (PLAN.md §31.1): a private profile hides its posts until it
@@ -24,7 +24,7 @@ test("a private profile approves one request and declines another, live on both 
     await person.page.getByRole("button", { name: "Follow", exact: true }).click();
     await expect(person.page.getByRole("button", { name: "Requested" })).toBeVisible();
   }
-  await expect(railLink(bo.page, "Notifications").getByText("2", { exact: true })).toBeVisible();
+  await expectBadge(railLink(bo.page, "Notifications"), "2");
 
   await ana.page.goto("/discover");
   await railLink(bo.page, "Notifications").click();
@@ -33,7 +33,7 @@ test("a private profile approves one request and declines another, live on both 
   await anaRequest.getByRole("button", { name: "Confirm" }).click();
   await expect(anaRequest.getByText("Requested to follow you.")).toHaveCount(0);
 
-  await expect(railLink(ana.page, "Notifications").getByText("1", { exact: true })).toBeVisible();
+  await expectBadge(railLink(ana.page, "Notifications"), "1");
   await railLink(ana.page, "Notifications").click();
   await expect(ana.page.getByText("Accepted your follow request.")).toBeVisible();
   await ana.page.goto(`/u/${bo.username}`);

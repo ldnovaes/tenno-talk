@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { railLink, setPrivacy, signUpAndOnboard } from "./support";
+import { expectBadge, railLink, setPrivacy, signUpAndOnboard } from "./support";
 
 /**
  * Groups on the real stack (PLAN.md §9.4, §31.1): adding someone is messaging them, so their "Who can
@@ -51,7 +51,7 @@ test("a group respects who can message each member and reaches them live", async
   await ana.page.getByRole("button", { name: "Send" }).click();
 
   for (const member of [bo, cy]) {
-    await expect(railLink(member.page, "Chats").getByText("1", { exact: true })).toBeVisible();
+    await expectBadge(railLink(member.page, "Chats"), "1");
   }
   await railLink(bo.page, "Chats").click();
   await bo.page
