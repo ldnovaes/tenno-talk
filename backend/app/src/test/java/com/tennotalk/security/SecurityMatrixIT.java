@@ -132,6 +132,12 @@ class SecurityMatrixIT extends IntegrationTest {
     }
 
     @Test
+    void theApiMapIsNotPublishedUnlessEnabled() throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/openapi"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void discoversTheWholeApi() {
         List<String> names = endpoints().stream().map(Endpoint::toString).toList();
         assertThat(names).hasSizeGreaterThanOrEqualTo(50).contains(

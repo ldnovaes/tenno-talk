@@ -1301,7 +1301,7 @@ PostgreSQL (volume)                      /data/media (volume)
 | Admin | `GET /api/admin/ai` · `POST /api/admin/ai/{provider}/check` |
 | Realtime | `GET /ws` (WebSocket, mesma sessão) |
 
-IDs malformados respondem 404, como IDs inexistentes. O OpenAPI fica em `/api/openapi`.
+IDs malformados respondem 404, como IDs inexistentes. O OpenAPI fica em `/api/openapi`, só com `API_DOCS_ENABLED=true` (desligado em produção, §38).
 
 ## 26. Realtime
 
@@ -1524,7 +1524,7 @@ Arquivos: `deploy/docker-compose.yml`, `deploy/Caddyfile`, `deploy/Dockerfile.we
 - **Backend:** imagem multi-stage (build Maven → JRE 21). Migrations Flyway no startup.
 - **Configuração:** `.env` não versionado (banco, client ids/secrets OAuth, chaves das APIs de IA, URL pública, SMTP).
 - **CI (GitHub Actions):** lint, typecheck, test e build do frontend (mock e http); `./mvnw test` do backend, que roda unitários **e** integração (`*IT`, Testcontainers).
-- **CD:** workflow manual **Deploy** (`.github/workflows/deploy.yml`): SSH na VPS, `git checkout` da ref, `docker compose up -d --build` e espera o health. Passo a passo da VPS (hardening, login das IAs, admin, backups, monitoramento) em `deploy/VPS.md`.
+- **CD:** `./tenno run deploy:prod` (§32.1): testes, build local e envio por SSH, com health check e rollback. O antigo workflow **Deploy** do GitHub Actions (Docker na VPS) foi removido em 2026-10-06 (§38): não tinha segredos configurados e não servia à VPS compartilhada. Passo a passo de uma VPS só da TENNO em `deploy/VPS.md`.
 - **Backups:** `deploy/backup.sh` (pg_dump custom + mídia, 14 dias, confere o dump) e `deploy/restore.sh`. **Restauração testada** na pilha de produção local: dados e fotos apagados voltaram, e o usuário restaurado entrou e viu a conversa com a foto.
 - **PWA:** `manifest.webmanifest` com ícones (inclusive maskable) e `apple-touch-icon`: instalável na tela inicial. Sem service worker (offline não é objetivo).
 - **Ícones (2026-10-04):** fonte em `favicon.png` na raiz, preservada fora dos arquivos públicos. `python3 scripts/generate_icons.py` (Python + Pillow) gera favicon PNG de 32 px, ICO de 16/32/48 px e os tamanhos existentes de PWA/Apple em `public/`, com paleta otimizada e transparência quando aplicável. O maskable mantém o desenho na área segura; referências versionadas evitam reutilizar o ícone antigo. O original de alta resolução não é servido como favicon.

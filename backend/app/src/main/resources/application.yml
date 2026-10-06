@@ -48,6 +48,8 @@ management:
 springdoc:
   api-docs:
     path: /api/openapi
+    # Off in production (PLAN.md §38): it maps the whole API, admin included. API_DOCS_ENABLED=true locally.
+    enabled: ${API_DOCS_ENABLED:false}
   swagger-ui:
     enabled: false
 

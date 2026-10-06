@@ -53,7 +53,7 @@ Depois:
 cd /opt/tenno-talk && git pull && cd deploy && docker compose up -d --build
 ```
 
-Ou pelo GitHub Actions: workflow **Deploy** (manual), que faz o mesmo por SSH. Segredos do repositório: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (chave privada só para deploy) e `VPS_KNOWN_HOSTS` (saída de `ssh-keyscan <host>`).
+(O antigo workflow **Deploy** do GitHub Actions foi removido em 2026-10-06; a produção atual usa `./tenno run deploy:prod`, ver `deploy/shared-vps/README.md`.)
 
 As migrations (Flyway) rodam sozinhas na inicialização do backend.
 
