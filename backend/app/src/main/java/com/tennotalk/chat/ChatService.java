@@ -191,13 +191,25 @@ public class ChatService {
 
     // ---- receipts, reactions, forward, mute -------------------------------
 
+    /**
+     * In a direct conversation with a block either way, receipts don't pass (PLAN.md §31.1): reading or receiving
+     * still clears the reader's own unread count, but leaves no "delivered"/"read" mark on the other's messages.
+     */
+    private boolean receiptsHidden(ConversationRow conversation, UUID viewer) {
+        if (!"direct".equals(conversation.kind())) return false;
+        return chat.members(conversation.id()).stream().map(member -> member.user().id())
+                .anyMatch(other -> !other.equals(viewer) && graph.blockedEitherWay(viewer, other));
+    }
+
     @Transactional
     public void markRead(UUID viewer, UUID conversationId, UUID messageId) {
-        requireMember(conversationId, viewer);
+        ConversationRow conversation = requireMember(conversationId, viewer);
         chat.findMessage(messageId)
                 .filter(message -> message.conversationId().equals(conversationId))
                 .orElseThrow(() -> ApiException.notFound("Message not found."));
-        for (UUID id : receipts.read(viewer, conversationId, messageId)) events.publishEvent(new MessageUpdated(conversationId, id));
+        if (!receiptsHidden(conversation, viewer)) {
+            for (UUID id : receipts.read(viewer, conversationId, messageId)) events.publishEvent(new MessageUpdated(conversationId, id));
+        }
         notifications.readConversation(viewer, conversationId, messageId);
         if (chat.advanceCursor(conversationId, viewer, messageId, true)) {
             events.publishEvent(new ReceiptChanged(conversationId, viewer, "read", messageId));
@@ -206,11 +218,12 @@ public class ChatService {
 
     @Transactional
     public void acknowledge(UUID viewer, UUID conversationId, List<UUID> messageIds) {
-        requireMember(conversationId, viewer);
+        ConversationRow conversation = requireMember(conversationId, viewer);
+        boolean hidden = receiptsHidden(conversation, viewer);
         for (UUID id : messageIds) {
             MessageRow message = chat.findMessage(id).filter(m -> m.conversationId().equals(conversationId))
                 .orElseThrow(() -> ApiException.notFound("Message not found."));
-            if (!message.senderId().equals(viewer) && receipts.delivered(viewer, id)) {
+            if (!hidden && !message.senderId().equals(viewer) && receipts.delivered(viewer, id)) {
                 events.publishEvent(new MessageUpdated(conversationId, id));
             }
         }

@@ -41,10 +41,13 @@ public abstract class IntegrationTest {
 
     protected Api api;
 
+    protected Actions actions;
+
     @BeforeEach
     void resetState() {
         steps = new ChatSteps(mvc, json);
         api = new Api(mvc, json);
+        actions = new Actions(api, steps, data, jdbc);
         data.reset();
         ai.reset();
     }

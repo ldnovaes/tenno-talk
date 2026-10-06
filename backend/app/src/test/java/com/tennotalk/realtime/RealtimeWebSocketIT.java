@@ -79,6 +79,12 @@ class RealtimeWebSocketIT extends IntegrationTest {
             throw new AssertionError("No " + type + " frame arrived");
         }
 
+        /** Waits a little and fails if a frame of this type arrived (for "never sent" rules). */
+        void none(String type) throws InterruptedException {
+            Thread.sleep(700);
+            assertThat(frames.stream().map(f -> f.get("type").asString())).as("no " + type).doesNotContain(type);
+        }
+
         void sendRaw(String text) throws Exception {
             session.sendMessage(new TextMessage(text));
         }
@@ -316,5 +322,112 @@ class RealtimeWebSocketIT extends IntegrationTest {
         steps.send(rafael, conversation, "Oi");
         phone.next("message.created");
         laptop.next("message.created");
+    }
+
+    // ---- Blocks inside a shared group (PLAN.md §31.1 "Grupos") -----------------
+
+    private UUID groupWithAna(UUID ana) throws Exception {
+        return UUID.fromString(api.postOk(ana, "/api/conversations/groups",
+                Map.of("title", "Viagem", "memberIds", List.of(rafael, linh))).get("id").asString());
+    }
+
+    @Test
+    void inAGroupABlockedPairStillGetsMessagesButNoTypingReceiptsOrReactionsFromEachOther() throws Exception {
+        UUID ana = data.user("ana", "es-ES");
+        data.password(ana, passwords.encode("secret123"));
+        UUID group = groupWithAna(ana);
+        data.block(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        Client linhDevice = connect("linh");
+        Client anaDevice = connect("ana");
+
+        String fromLinh = steps.send(linh, group, "Xin chào").get("id").asString();
+        rafaelDevice.next("message.created");
+        anaDevice.next("message.created");
+
+        linhDevice.sendRaw(json.writeValueAsString(Map.of("type", "typing", "conversationId", group, "isTyping", true)));
+        anaDevice.next("typing.started");
+        rafaelDevice.none("typing.started");
+
+        api.post(ana, "/api/messages/" + fromLinh + "/reactions", Map.of("emoji", "❤️")).andExpect(status().is2xxSuccessful());
+        api.post(rafael, "/api/messages/" + fromLinh + "/reactions", Map.of("emoji", "👍")).andExpect(status().is2xxSuccessful());
+        linhDevice.next("reaction.created", p -> p.get("userId").asString().equals(ana.toString()));
+        anaDevice.next("reaction.created", p -> p.get("userId").asString().equals(rafael.toString()));
+        Thread.sleep(700);
+        assertThat(linhDevice.frames.stream().filter(f -> f.get("type").asString().equals("reaction.created"))
+                .map(f -> f.at("/payload/userId").asString())).doesNotContain(rafael.toString());
+
+        api.post(rafael, "/api/conversations/" + group + "/read", Map.of("messageId", fromLinh)).andExpect(status().isNoContent());
+        anaDevice.next("message.read", p -> p.get("readerId").asString().equals(rafael.toString()));
+        linhDevice.none("message.read");
+    }
+
+    @Test
+    void eachMemberGetsOnlyTheTranslationIntoTheirOwnLanguage() throws Exception {
+        UUID ana = data.user("ana", "es-ES");
+        data.password(ana, passwords.encode("secret123"));
+        UUID group = groupWithAna(ana);
+        Client rafaelDevice = connect("rafael");
+        Client anaDevice = connect("ana");
+        steps.send(linh, group, "Xin chào");
+        rafaelDevice.next("message.created");
+        anaDevice.next("message.created");
+
+        worker.runOnce();
+        worker.runOnce();
+
+        JsonNode forRafael = rafaelDevice.next("translation.updated", p -> p.at("/translation/status").asString().equals("translated"));
+        JsonNode forAna = anaDevice.next("translation.updated", p -> p.at("/translation/status").asString().equals("translated"));
+        assertThat(forRafael.at("/translation/targetLanguage").asString()).isEqualTo("pt-BR");
+        assertThat(forAna.at("/translation/targetLanguage").asString()).isEqualTo("es-ES");
+        Thread.sleep(500);
+        assertThat(rafaelDevice.frames.stream().filter(f -> f.get("type").asString().equals("translation.updated"))
+                .map(f -> f.at("/payload/translation/targetLanguage").asString())).doesNotContain("es-ES");
+    }
+
+    @Test
+    void deliveryReachesTheSenderButNotAcrossABlock() throws Exception {
+        conversation = data.directConversation(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        String sent = steps.send(rafael, conversation, "Oi").get("id").asString();
+        api.post(linh, "/api/conversations/" + conversation + "/delivered", Map.of("messageIds", List.of(sent)))
+                .andExpect(status().isNoContent());
+        // Per-message receipts (V5): the sender's bubble changes through message.updated.
+        assertThat(rafaelDevice.next("message.updated").at("/message/deliveryStatus").asString()).isEqualTo("delivered");
+
+        data.block(linh, rafael);
+        String older = jdbc.sql("SELECT id::text FROM messages WHERE conversation_id = :c").param("c", conversation).query(String.class).single();
+        rafaelDevice.frames.clear();
+        api.post(linh, "/api/conversations/" + conversation + "/read", Map.of("messageId", older)).andExpect(status().isNoContent());
+        rafaelDevice.none("message.read");
+        rafaelDevice.none("message.updated");
+        assertThat(steps.lastMessage(rafael, conversation).get("deliveryStatus").asString())
+                .as("no read mark across a block, also after a refetch").isEqualTo("delivered");
+    }
+
+    @Test
+    void readingNotificationsOnOneDeviceClearsTheBadgeOnTheOthers() throws Exception {
+        Client phone = connect("rafael");
+        Client laptop = connect("rafael");
+        api.put(linh, "/api/profiles/" + rafael + "/follow").andExpect(status().is2xxSuccessful());
+        phone.next("notification.created");
+        laptop.next("notification.created");
+
+        api.post(rafael, "/api/notifications/read-all", null).andExpect(status().is2xxSuccessful());
+
+        phone.next("notifications.read");
+        laptop.next("notifications.read");
+    }
+
+    @Test
+    void closingOneOfTwoTabsDoesNotSayOffline() throws Exception {
+        conversation = steps.direct(rafael, linh);
+        Client rafaelDevice = connect("rafael");
+        Client linhPhone = connect("linh");
+        Client linhLaptop = connect("linh");
+        linhPhone.session.close();
+        rafaelDevice.none("user.offline");
+        linhLaptop.session.close();
+        assertThat(rafaelDevice.next("user.offline").get("userId").asString()).isEqualTo(linh.toString());
     }
 }

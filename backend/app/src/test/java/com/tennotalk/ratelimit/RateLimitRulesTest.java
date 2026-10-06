@@ -28,6 +28,12 @@ class RateLimitRulesTest {
             "POST, /api/conversations/direct, create",
             "POST, /api/conversations/groups, create",
             "POST, /api/admin/ai/openai/check, admin",
+            "POST, /api/messages/abc/forward, send",
+            "POST, /api/messages/abc/reactions, social",
+            "POST, /api/discover/events, discover",
+            "DELETE, /api/discover/hidden/posts/abc, discover",
+            "POST, /api/reports, report",
+            "GET, /api/me/export, export",
     })
     void limitedRequests(String method, String path, String rule) {
         assertThat(RateLimitRules.match(method, path)).hasValueSatisfying(r -> assertThat(r.name()).isEqualTo(rule));
@@ -43,6 +49,8 @@ class RateLimitRulesTest {
             "GET, /api/media/abc",
             "GET, /api/admin/ai",
             "POST, /api/conversations/abc/read",
+            "GET, /api/posts/abc/comments",
+            "GET, /api/discover",
     })
     void unlimitedRequests(String method, String path) {
         assertThat(RateLimitRules.match(method, path)).isEmpty();

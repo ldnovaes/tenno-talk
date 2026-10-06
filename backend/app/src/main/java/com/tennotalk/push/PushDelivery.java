@@ -49,15 +49,23 @@ public class PushDelivery {
             default -> "You have new activity.";
         };
     }
+    /** Jobs per run: a burst (a message to a big group) must not wait one second per recipient. */
+    static final int BATCH = 50;
+
     @Scheduled(fixedDelay = 1000)
     public synchronized void run() {
         if (sender == null) return;
+        for (int i = 0; i < BATCH && runOnce(); i++) { }
+    }
+
+    /** Dispatches one job; false when none is due. */
+    private boolean runOnce() {
         var job = jdbc.sql("""
             UPDATE push_jobs SET available_at = now() + interval '2 minutes', attempts = attempts + 1
             WHERE notification_id = (SELECT notification_id FROM push_jobs WHERE available_at <= now() ORDER BY available_at FOR UPDATE SKIP LOCKED LIMIT 1)
             RETURNING notification_id
             """).query(UUID.class).optional();
-        if (job.isEmpty()) return;
+        if (job.isEmpty()) return false;
         UUID id = job.get();
         try {
             var target = jdbc.sql("""
@@ -78,9 +86,12 @@ public class PushDelivery {
             org.slf4j.LoggerFactory.getLogger(getClass()).warn("Push dispatch failed for notification {}", id);
             jdbc.sql("UPDATE push_jobs SET available_at = now() + make_interval(secs => LEAST(3600, attempts * 30)) WHERE notification_id = :id").param("id", id).update();
         }
+        return true;
     }
-    private void deliver(UUID id, Target target) throws Exception {
-        String url = switch (target.type()) {
+
+    /** Where tapping the push opens the app: the same destinations as the in-app list (destination.ts). */
+    static String url(Target target) {
+        return switch (target.type()) {
             case "like" -> "/posts/" + target.post();
             case "comment" -> "/posts/" + target.post() + "?commentId=" + target.comment();
             case "story_reaction" -> "/stories/" + target.user() + "?storyId=" + target.story();
@@ -88,6 +99,9 @@ public class PushDelivery {
             case "follow", "follow_accepted" -> "/u/" + target.username();
             default -> "/notifications";
         };
+    }
+    private void deliver(UUID id, Target target) throws Exception {
+        String url = url(target);
         byte[] payload = json.writeValueAsString(Map.of("title", target.displayName() == null ? "TENNO TALK" : target.displayName(),
             "body", body(target.type(), target.emoji()), "url", url,
             "notificationId", id, "userId", target.user())).getBytes(StandardCharsets.UTF_8);

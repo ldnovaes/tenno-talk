@@ -1,5 +1,6 @@
 package com.tennotalk.realtime;
 
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -15,15 +16,19 @@ public class TypingSessions {
     private final Map<Key, Map<String, Long>> active = new HashMap<>();
     private final ApplicationEventPublisher events;
     private final ChatRepository chat;
-    public TypingSessions(ApplicationEventPublisher events, ChatRepository chat) {
+    private final Clock clock;
+    /** A typing indicator lasts this long without a renewal (the client renews every 3 s, PLANO_UX.md §10.3). */
+    static final long LEASE_MS = 6000;
+    public TypingSessions(ApplicationEventPublisher events, ChatRepository chat, Clock clock) {
         this.events = events;
         this.chat = chat;
+        this.clock = clock;
     }
     public synchronized void update(String session, UUID user, UUID conversation, boolean typing) {
         if (!chat.isMember(conversation, user)) return;
         Key key = new Key(user, conversation);
         if (typing) {
-            active.computeIfAbsent(key, ignored -> new HashMap<>()).put(session, System.currentTimeMillis() + 6000);
+            active.computeIfAbsent(key, ignored -> new HashMap<>()).put(session, clock.millis() + LEASE_MS);
             events.publishEvent(new TypingReceived(user, conversation, true));
         } else {
             var sessions = active.get(key);
@@ -38,7 +43,7 @@ public class TypingSessions {
     }
     @Scheduled(fixedDelay = 1000)
     public synchronized void expire() {
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
         active.entrySet().removeIf(entry -> {
             entry.getValue().values().removeIf(until -> until <= now);
             if (!entry.getValue().isEmpty()) return false;

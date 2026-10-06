@@ -31,6 +31,20 @@ public class RealtimeHub implements Presence {
     private static final int BUFFER_LIMIT_BYTES = 512 * 1024;
 
     private final Map<UUID, Set<WebSocketSession>> sessions = new ConcurrentHashMap<>();
+    /**
+     * A tab connecting while another of the same user disconnects (a reload) must neither lose the new socket nor
+     * announce "offline" after it. Changing a user's sockets and announcing the change happen under that user's lock
+     * (striped: bounded memory, unrelated users rarely wait for each other).
+     */
+    private final Object[] locks = new Object[64];
+
+    {
+        for (int i = 0; i < locks.length; i++) locks[i] = new Object();
+    }
+
+    private Object lockOf(UUID userId) {
+        return locks[Math.floorMod(userId.hashCode(), locks.length)];
+    }
     private final JsonMapper json;
     private final ApplicationEventPublisher events;
     private final Clock clock;
@@ -43,19 +57,24 @@ public class RealtimeHub implements Presence {
 
     public WebSocketSession register(UUID userId, WebSocketSession raw) {
         WebSocketSession session = new ConcurrentWebSocketSessionDecorator(raw, SEND_TIME_LIMIT_MS, BUFFER_LIMIT_BYTES);
-        boolean first = sessions.computeIfAbsent(userId, id -> ConcurrentHashMap.newKeySet()).isEmpty();
-        sessions.get(userId).add(session);
-        if (first) events.publishEvent(new PresenceChanged(userId, true, clock.instant()));
+        synchronized (lockOf(userId)) {
+            Set<WebSocketSession> set = sessions.computeIfAbsent(userId, id -> ConcurrentHashMap.newKeySet());
+            boolean first = set.isEmpty();
+            set.add(session);
+            if (first) events.publishEvent(new PresenceChanged(userId, true, clock.instant()));
+        }
         return session;
     }
 
     public void unregister(UUID userId, WebSocketSession session) {
-        Set<WebSocketSession> set = sessions.get(userId);
-        if (set == null) return;
-        set.removeIf(item -> item == session || item.getId().equals(session.getId()));
-        if (set.isEmpty()) {
-            sessions.remove(userId);
-            events.publishEvent(new PresenceChanged(userId, false, clock.instant()));
+        synchronized (lockOf(userId)) {
+            Set<WebSocketSession> set = sessions.get(userId);
+            if (set == null) return;
+            set.removeIf(item -> item == session || item.getId().equals(session.getId()));
+            if (set.isEmpty()) {
+                sessions.remove(userId);
+                events.publishEvent(new PresenceChanged(userId, false, clock.instant()));
+            }
         }
     }
 

@@ -27,7 +27,22 @@ public class TestData {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Empties the database between tests. A background worker (realtime jobs left by the previous test) may hold a
+     * lock the TRUNCATE needs and wait for one it holds: PostgreSQL then cancels one side, and trying again wins.
+     */
     public void reset() {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                truncate();
+                return;
+            } catch (org.springframework.dao.PessimisticLockingFailureException deadlock) {
+                if (attempt == 5) throw deadlock;
+            }
+        }
+    }
+
+    private void truncate() {
         jdbc.sql("""
                 TRUNCATE realtime_jobs, users, oauth_accounts, terms_acceptances, user_preferences, follows, blocks, conversations,
                          conversation_members, media, messages, message_media, message_reactions, message_translations,
@@ -58,6 +73,16 @@ public class TestData {
                 .param("id", id)
                 .param("language", receivingLanguage)
                 .update();
+        jdbc.sql("INSERT INTO terms_acceptances (user_id, terms_version) VALUES (:id, :v)").param("id", id).param("v", TERMS).update();
+        return id;
+    }
+
+    /** Signed up and accepted the terms, but has not finished onboarding (no username yet). */
+    public UUID newcomer(String emailName) {
+        UUID id = UUID.randomUUID();
+        jdbc.sql("INSERT INTO users (id, email, native_language) VALUES (:id, :email, 'en-US')")
+                .param("id", id).param("email", emailName + "@example.com").update();
+        jdbc.sql("INSERT INTO user_preferences (user_id, receiving_language) VALUES (:id, 'en-US')").param("id", id).update();
         jdbc.sql("INSERT INTO terms_acceptances (user_id, terms_version) VALUES (:id, :v)").param("id", id).param("v", TERMS).update();
         return id;
     }

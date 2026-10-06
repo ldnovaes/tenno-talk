@@ -26,18 +26,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class PrivacyMatrixIT extends IntegrationTest {
 
-    enum Relation { STRANGER, I_FOLLOW, FOLLOWS_ME, MUTUAL, I_REQUESTED, OWNER_REQUESTED, I_BLOCKED, BLOCKED_ME }
+    /** The 8 relations of the original matrix (MUTUAL_BLOCK is covered by PrivacySurfacesIT). */
+    private static final List<Relation> RELATIONS = List.of(Relation.STRANGER, Relation.I_FOLLOW, Relation.FOLLOWS_ME,
+            Relation.MUTUAL, Relation.I_REQUESTED, Relation.OWNER_REQUESTED, Relation.I_BLOCKED, Relation.BLOCKED_ME);
 
     private static final List<String> AUDIENCES = List.of("everyone", "followers", "nobody");
 
     /** The owner's settings and how the viewer relates to the owner. */
     record Case(Relation relation, String visibility, String message, String comment, String online) {
 
-        boolean blocked() { return relation == Relation.I_BLOCKED || relation == Relation.BLOCKED_ME; }
+        boolean blocked() { return relation.blocked(); }
 
-        boolean ownerFollowsViewer() { return relation == Relation.FOLLOWS_ME || relation == Relation.MUTUAL; }
+        boolean ownerFollowsViewer() { return relation.ownerFollowsViewer(); }
 
-        boolean viewerFollowsOwner() { return relation == Relation.I_FOLLOW || relation == Relation.MUTUAL; }
+        boolean viewerFollowsOwner() { return relation.viewerFollowsOwner(); }
 
         boolean contentVisible() { return !blocked() && ("public".equals(visibility) || viewerFollowsOwner()); }
 
@@ -68,13 +70,12 @@ class PrivacyMatrixIT extends IntegrationTest {
 
     static Stream<Case> cases() {
         List<Case> cases = new ArrayList<>();
-        for (Relation relation : Relation.values())
+        for (Relation relation : RELATIONS)
             for (String visibility : List.of("public", "private"))
                 for (String message : AUDIENCES)
                     for (String comment : AUDIENCES)
                         for (String online : AUDIENCES) {
-                            // A pending request to a public profile can't exist: going public approves them all.
-                            if (relation == Relation.I_REQUESTED && "public".equals(visibility)) continue;
+                            if (!relation.possibleWith(visibility)) continue;
                             cases.add(new Case(relation, visibility, message, comment, online));
                         }
         return cases.stream();
@@ -92,7 +93,7 @@ class PrivacyMatrixIT extends IntegrationTest {
         data.setPreference(owner, "who_can_message", c.message());
         data.setPreference(owner, "who_can_comment", c.comment());
         data.setPreference(owner, "who_can_see_online", c.online());
-        relate(c.relation(), viewer, owner);
+        c.relation().arrange(data, viewer, owner);
 
         // Profile
         JsonNode profile = api.getOk(viewer, "/api/profiles/owner");
@@ -190,25 +191,6 @@ class PrivacyMatrixIT extends IntegrationTest {
     }
 
     // ---- helpers -----------------------------------------------------------
-
-    private void relate(Relation relation, UUID viewer, UUID owner) {
-        switch (relation) {
-            case STRANGER -> { }
-            case I_FOLLOW -> data.follow(viewer, owner);
-            case FOLLOWS_ME -> data.follow(owner, viewer);
-            case MUTUAL -> {
-                data.follow(viewer, owner);
-                data.follow(owner, viewer);
-            }
-            case I_REQUESTED -> data.requestFollow(viewer, owner);
-            case OWNER_REQUESTED -> {
-                data.setPreference(viewer, "profile_visibility", "private");
-                data.requestFollow(owner, viewer);
-            }
-            case I_BLOCKED -> data.block(viewer, owner);
-            case BLOCKED_ME -> data.block(owner, viewer);
-        }
-    }
 
     private String restrictionOf(UUID viewer, UUID conversation) throws Exception {
         return nullableText(api.getOk(viewer, "/api/conversations/" + conversation), "sendRestriction");
