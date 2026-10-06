@@ -76,4 +76,22 @@ class OAuthClientsTest {
         var withoutEmail = OAuth2LoginSuccessHandler.identity("facebook", user(Map.of("id", "f-2"), "id"));
         assertThat(withoutEmail).isEqualTo(new OAuthAccountService.ProviderIdentity("facebook", "f-2", null, false));
     }
+
+    @Test
+    void aRefusedLinkSendsThePersonBackWithoutSigningIn() throws Exception {
+        var accounts = org.mockito.Mockito.mock(OAuthAccountService.class);
+        org.mockito.Mockito.when(accounts.resolve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new OAuthAccountService.LinkRefused());
+        var sessions = org.mockito.Mockito.mock(SessionLogin.class);
+        var properties = new TennoProperties("https://tenno.example", "v", null, null, null, null, null);
+        var handler = new OAuth2LoginSuccessHandler(accounts, sessions, null, properties);
+        var user = user(Map.of("sub", "g-1", "email", "victim@example.com", "email_verified", true), "sub");
+        var token = new org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken(user, user.getAuthorities(), "google");
+        var response = new org.springframework.mock.web.MockHttpServletResponse();
+
+        handler.onAuthenticationSuccess(new org.springframework.mock.web.MockHttpServletRequest(), response, token);
+
+        assertThat(response.getRedirectedUrl()).isEqualTo("https://tenno.example/welcome?error=oauth_link");
+        org.mockito.Mockito.verifyNoInteractions(sessions);
+    }
 }

@@ -13,16 +13,22 @@ export default function WelcomePage() {
   const { t } = useTranslation();
   // The backend sends failed Google/Facebook logins back here (SecurityConfig).
   const [params] = useSearchParams();
-  const oauthFailed = params.get("error") === "oauth";
+  const oauthError = params.get("error");
+  const oauthMessage =
+    oauthError === "oauth_link"
+      ? t("auth.oauthLinkRefused")
+      : oauthError === "oauth"
+        ? t("auth.oauthFailed")
+        : null;
   return (
     <AuthLayout>
       <div className="flex flex-1 flex-col gap-6 p-6">
         <AuthHeader title={t("auth.welcomeTitle")} subtitle={t("auth.welcomeSubtitle")} />
         <TranslationDemo />
         <div className="mt-auto flex flex-col gap-6">
-          {oauthFailed && (
+          {oauthMessage && (
             <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-              {t("auth.oauthFailed")}
+              {oauthMessage}
             </p>
           )}
           <SignInOptions />

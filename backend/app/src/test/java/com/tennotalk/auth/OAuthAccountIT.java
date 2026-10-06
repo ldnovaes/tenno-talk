@@ -45,17 +45,33 @@ class OAuthAccountIT extends IntegrationTest {
     }
 
     @Test
-    void aVerifiedEmailLinksToTheExistingPasswordAccount() throws Exception {
-        mvc.perform(withJson(post("/api/auth/signup"), Map.of("email", "rafael@example.com", "password", "secret123")))
-                .andExpect(status().isCreated());
-        UUID existing = jdbc.sql("SELECT id FROM users WHERE email = 'rafael@example.com'").query(UUID.class).single();
-
+    void aVerifiedEmailLinksToAnAccountWithoutPassword() {
         UUID viaGoogle = accounts.resolve(new ProviderIdentity("google", "g-9", "RAFAEL@example.com", true), "pt-BR");
         UUID viaFacebook = accounts.resolve(new ProviderIdentity("facebook", "f-9", "rafael@example.com", true), "pt-BR");
-        assertThat(viaGoogle).isEqualTo(existing);
-        assertThat(viaFacebook).isEqualTo(existing);
-        assertThat(jdbc.sql("SELECT count(*) FROM oauth_accounts WHERE user_id = :u").param("u", existing).query(Long.class).single())
+        assertThat(viaFacebook).isEqualTo(viaGoogle);
+        assertThat(jdbc.sql("SELECT count(*) FROM oauth_accounts WHERE user_id = :u").param("u", viaGoogle).query(Long.class).single())
                 .isEqualTo(2);
+    }
+
+    @Test
+    void aPasswordAccountWithAnUnconfirmedEmailIsNeverTakenOverBySocialLogin() throws Exception {
+        // Pre-hijacking: someone signs up with the victim's address before the victim ever uses Google.
+        mvc.perform(withJson(post("/api/auth/signup"), Map.of("email", "victim@example.com", "password", "attacker-pass")))
+                .andExpect(status().isCreated());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        accounts.resolve(new ProviderIdentity("google", "g-victim", "victim@example.com", true), "pt-BR"))
+                .isInstanceOf(OAuthAccountService.LinkRefused.class);
+        assertThat(jdbc.sql("SELECT count(*) FROM oauth_accounts").query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM users").query(Long.class).single()).isOne();
+    }
+
+    @Test
+    void aPasswordAccountWithAConfirmedEmailLinks() throws Exception {
+        mvc.perform(withJson(post("/api/auth/signup"), Map.of("email", "rafael@example.com", "password", "secret123")))
+                .andExpect(status().isCreated());
+        jdbc.sql("UPDATE users SET email_verified_at = now()").update();
+        UUID existing = jdbc.sql("SELECT id FROM users WHERE email = 'rafael@example.com'").query(UUID.class).single();
+        assertThat(accounts.resolve(new ProviderIdentity("google", "g-9", "rafael@example.com", true), "pt-BR")).isEqualTo(existing);
     }
 
     @Test

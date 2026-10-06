@@ -55,6 +55,8 @@ export const en = {
     demoDescription: "See the same conversation from both sides.",
     demoAs: "Sign in as {{name}}",
     oauthFailed: "We couldn't sign you in with that account. Try again or use another option.",
+    oauthLinkRefused:
+      "An account with this email already exists. Sign in with your email and password instead.",
     legalNotice:
       "By continuing you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>.",
     signInTitle: "Sign in",

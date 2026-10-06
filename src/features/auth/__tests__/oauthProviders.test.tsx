@@ -30,6 +30,22 @@ describe("social sign-in options", () => {
   });
 
   it.each([
+    ["oauth", "We couldn't sign you in with that account."],
+    ["oauth_link", "An account with this email already exists. Sign in with your email and password instead."],
+  ])("explains a social sign-in sent back with error=%s", async (error, text) => {
+    vi.spyOn(authService, "getOAuthProviders").mockResolvedValue(["google"]);
+    renderApp(`/welcome?error=${error}`);
+    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+  });
+
+  it("shows no alert without an error", async () => {
+    vi.spyOn(authService, "getOAuthProviders").mockResolvedValue(["google"]);
+    renderApp("/welcome?error=unknown");
+    await screen.findByRole("button", { name: "Continue with Google" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it.each([
     ["Google", true],
     ["Facebook", false],
   ])(

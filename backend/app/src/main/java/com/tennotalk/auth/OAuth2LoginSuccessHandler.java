@@ -37,8 +37,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException {
         OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) authentication;
-        UUID userId = accounts.resolve(identity(token.getAuthorizedClientRegistrationId(), token.getPrincipal()),
-                request.getHeader("Accept-Language"));
+        UUID userId;
+        try {
+            userId = accounts.resolve(identity(token.getAuthorizedClientRegistrationId(), token.getPrincipal()),
+                    request.getHeader("Accept-Language"));
+        } catch (OAuthAccountService.LinkRefused refused) {
+            response.sendRedirect(properties.publicUrl() + "/welcome?error=oauth_link");
+            return;
+        }
         sessionLogin.login(userId, users.isAdmin(userId), request, response);
         response.sendRedirect(properties.publicUrl() + "/");
     }
