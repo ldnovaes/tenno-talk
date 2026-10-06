@@ -16,7 +16,7 @@ import type {
   MessageRecord,
   MockDatabase,
 } from "./schema";
-import { conversationRestriction, presenceVisible } from "./privacy";
+import { blockedEitherWay, conversationRestriction, presenceVisible } from "./privacy";
 
 export function originalOf(content: MessageContentRecord): OriginalText | null {
   switch (content.type) {
@@ -234,7 +234,11 @@ export function projectConversation(
         user: toUser(user),
         role: user.id === conversation.createdBy ? ("admin" as const) : ("member" as const),
         receivingLanguage: user.preferences.translation.receivingLanguage,
-        lastReadMessageId: conversation.lastReadMessageId[user.id] ?? null,
+        // Read positions never cross a block (PLAN.md §31.1), not even on a refetch.
+        lastReadMessageId:
+          user.id !== viewerId && blockedEitherWay(db, viewerId, user.id)
+            ? null
+            : (conversation.lastReadMessageId[user.id] ?? null),
         isOnline: presenceVisible(db, viewerId, user.id) && user.isOnline,
         lastSeenAt: presenceVisible(db, viewerId, user.id) ? user.lastSeenAt : null,
       })),

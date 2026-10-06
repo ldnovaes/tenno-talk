@@ -482,6 +482,18 @@ class RealtimeWebSocketIT extends IntegrationTest {
         rafaelDevice.none("message.updated");
         assertThat(steps.lastMessage(rafael, conversation).get("deliveryStatus").asString())
                 .as("no read mark across a block, also after a refetch").isEqualTo("delivered");
+        JsonNode members = api.getOk(rafael, "/api/conversations/" + conversation).get("members");
+        for (JsonNode member : members) {
+            if (member.at("/user/id").asString().equals(linh.toString())) {
+                assertThat(member.get("lastReadMessageId").isNull()).as("linh's read position is hidden from rafael").isTrue();
+            }
+        }
+        JsonNode linhSees = api.getOk(linh, "/api/conversations/" + conversation).get("members");
+        for (JsonNode member : linhSees) {
+            if (member.at("/user/id").asString().equals(linh.toString())) {
+                assertThat(member.get("lastReadMessageId").asString()).as("linh still sees her own").isEqualTo(older);
+            }
+        }
     }
 
     @Test

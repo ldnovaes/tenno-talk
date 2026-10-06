@@ -303,6 +303,23 @@ describe("mockChatService", () => {
       ).toHaveLength(0);
     });
 
+    it("never shows a read position across a block, also on a refetch", async () => {
+      mockDb.update((db) => {
+        const conversation = db.conversations["conv_rafael_linh"];
+        const anyMessage = Object.values(db.messages).find((m) => m.conversationId === "conv_rafael_linh");
+        if (conversation && anyMessage) conversation.lastReadMessageId["usr_linh"] = anyMessage.id;
+      });
+      const linhRead = async () =>
+        (await mockChatService.getConversation("conv_rafael_linh")).members.find(
+          (member) => member.user.id === "usr_linh",
+        )?.lastReadMessageId;
+      expect(await linhRead()).not.toBeNull();
+      mockDb.update((db) => {
+        db.users["usr_linh"]?.blockedUserIds.push("usr_rafael");
+      });
+      expect(await linhRead()).toBeNull();
+    });
+
     it("refuses to message yourself", async () => {
       await expect(
         mockChatService.getOrCreateDirectConversation("usr_rafael"),

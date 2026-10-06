@@ -395,8 +395,11 @@ public class ChatService {
                     row.createdBy(),
                     list.stream().map(m -> {
                         boolean visible = graph.presenceVisible(viewer, m.user().id());
+                        // Read positions never cross a block (PLAN.md §31.1), not even on a refetch.
+                        boolean other = !m.user().id().equals(viewer);
+                        UUID lastRead = other && graph.blockedEitherWay(viewer, m.user().id()) ? null : m.lastReadMessageId();
                         return new ConversationMemberDto(m.user(), m.role(), m.receivingLanguage(),
-                            m.lastReadMessageId(), visible && presence.isOnline(m.user().id()), visible ? m.lastSeenAt() : null);
+                            lastRead, visible && presence.isOnline(m.user().id()), visible ? m.lastSeenAt() : null);
                     }).toList(),
                     last,
                     me == null ? 0 : chat.unreadCount(row.id(), viewer, me.lastReadAt()),
