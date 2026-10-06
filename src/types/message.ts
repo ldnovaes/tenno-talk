@@ -35,6 +35,8 @@ export interface MessageReference {
   senderId: string;
   /** Already in the viewer's display form. */
   preview: string;
+  /** Language of the preview text (original or translation); null for a media label. */
+  language?: LanguageCode | null;
 }
 
 export interface ReactionSummary {

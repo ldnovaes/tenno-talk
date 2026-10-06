@@ -1,4 +1,5 @@
 import { resolveMessageDisplay } from "@/features/translation/lib/resolveMessageDisplay";
+import type { LanguageCode } from "@/types/language";
 import type { Message } from "@/types/message";
 import type { TranslationDisplayMode } from "@/types/preferences";
 
@@ -27,6 +28,23 @@ export function displayTextFor(
     mode,
     override: null,
   }).primary.text;
+}
+
+/** Language of what displayTextFor shows, for the `lang` of user content (CLAUDE.md); none for labels. */
+export function displayLanguageFor(
+  message: Message,
+  viewerId: string,
+  mode: TranslationDisplayMode = "translation",
+): LanguageCode | undefined {
+  const original = originalOf(message);
+  if (!original) return undefined;
+  return resolveMessageDisplay({
+    original,
+    translation: message.translation,
+    isOwn: message.senderId === viewerId,
+    mode,
+    override: null,
+  }).primary.language;
 }
 
 /** Conversation list preview (PLAN.md §9.3). */

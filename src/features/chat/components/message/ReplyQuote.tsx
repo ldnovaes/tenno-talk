@@ -20,7 +20,7 @@ export function ReplyQuote({
       className="mb-1 block w-full rounded-md border-s-[3px] border-primary bg-primary/10 px-2 py-1 text-start text-sm"
     >
       <span className="block truncate font-semibold text-primary">{senderName}</span>
-      <span className="block truncate opacity-80" dir="auto">
+      <span className="block truncate opacity-80" dir="auto" lang={reference.language ?? undefined}>
         {reference.preview}
       </span>
     </button>

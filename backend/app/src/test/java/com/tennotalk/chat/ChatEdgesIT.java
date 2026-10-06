@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
 
 import com.tennotalk.support.IntegrationTest;
@@ -165,6 +166,25 @@ class ChatEdgesIT extends IntegrationTest {
         String fromRafael = steps.send(rafael, group, "Oi").get("id").asString();
         data.block(linh, rafael);
         assertThat(status(api.post(linh, "/api/messages/" + fromRafael + "/reactions", Map.of("emoji", "❤️")))).isEqualTo(200);
+    }
+
+    // ---- A quote says which language it is in (CLAUDE.md: user content carries its lang) ----
+
+    @Autowired
+    com.tennotalk.translation.TranslationWorker worker;
+
+    @Test
+    void aQuoteCarriesTheLanguageOfWhatItShows() throws Exception {
+        UUID conversation = steps.direct(linh, rafael);
+        String quoted = steps.send(linh, conversation, "Chào anh").get("id").asString();
+        worker.runOnce();
+        api.post(rafael, "/api/conversations/" + conversation + "/messages",
+                Map.of("clientId", "r1", "text", "Oi!", "mediaIds", List.of(), "replyToId", quoted)).andReturn();
+
+        JsonNode forRafael = steps.lastMessage(rafael, conversation).get("replyTo");
+        JsonNode forLinh = steps.lastMessage(linh, conversation).get("replyTo");
+        assertThat(forRafael.get("language").asString()).as("the translation Rafael reads").isEqualTo("pt-BR");
+        assertThat(forLinh.get("language").asString()).as("Linh's own original").isEqualTo("vi-VN");
     }
 
     // ---- A profile's posts, page by page ----

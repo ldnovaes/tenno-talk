@@ -70,7 +70,8 @@ public final class ChatDtos {
         }
     }
 
-    public record MessageReferenceDto(UUID messageId, UUID senderId, String preview) {}
+    /** {@code language} is the preview's (original or translation), null for a media placeholder. */
+    public record MessageReferenceDto(UUID messageId, UUID senderId, String preview, String language) {}
 
     public record ReactionSummaryDto(String emoji, int count, boolean reactedByMe) {}
 

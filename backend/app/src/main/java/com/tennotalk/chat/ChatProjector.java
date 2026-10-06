@@ -99,8 +99,8 @@ public class ChatProjector {
             MessageReferenceDto reply = null;
             MessageRow quoted = message.replyToId() == null ? null : replied.get(message.replyToId());
             if (quoted != null) {
-                reply = new MessageReferenceDto(quoted.id(), quoted.senderId(),
-                        preview(quoted, viewer, scope, translated, mediaByMessage));
+                Preview shown = preview(quoted, viewer, scope, translated, mediaByMessage);
+                reply = new MessageReferenceDto(quoted.id(), quoted.senderId(), shown.text(), shown.language());
             }
             result.add(new MessageDto(
                     message.id(),
@@ -162,14 +162,19 @@ public class ChatProjector {
                 .toList();
     }
 
-    private static String preview(MessageRow message, UUID viewer, Scope scope,
+    /** A quoted message as the viewer reads it, and in which language (for the {@code lang} of the quote). */
+    record Preview(String text, String language) {}
+
+    private static Preview preview(MessageRow message, UUID viewer, Scope scope,
             Map<String, MessageTranslationRepository.Row> translated, Map<UUID, List<MediaRow>> mediaByMessage) {
         if (message.originalText() == null) {
-            return mediaByMessage.getOrDefault(message.id(), List.of()).isEmpty() ? "" : "📷";
+            return new Preview(mediaByMessage.getOrDefault(message.id(), List.of()).isEmpty() ? "" : "📷", null);
         }
         ContentTranslationDto translation = translation(message, targetFor(message, viewer, scope), translated);
         boolean showTranslation = !message.senderId().equals(viewer) && translation != null
                 && "translated".equals(translation.status()) && translation.text() != null;
-        return showTranslation ? translation.text() : message.originalText();
+        return showTranslation
+                ? new Preview(translation.text(), translation.targetLanguage())
+                : new Preview(message.originalText(), "story_reaction".equals(message.type()) ? null : message.originalLanguage());
     }
 }

@@ -11,7 +11,7 @@ import type { Message } from "@/types/message";
 import { useReactToMessage } from "../../hooks/useMessageMutations";
 import { useSendMessage } from "../../hooks/useSendMessage";
 import { originalOf } from "../../lib/messageText";
-import { displayTextFor } from "../../lib/previewText";
+import { displayLanguageFor, displayTextFor } from "../../lib/previewText";
 import { useComposerStore } from "../../stores/composerStore";
 import { ForwardDialog } from "../actions/ForwardDialog";
 import { MessageActionsContext, type MessageActionsValue } from "../actions/messageActionsContext";
@@ -51,6 +51,7 @@ export function ConversationView({
           messageId: message.id,
           senderId: message.senderId,
           preview: displayTextFor(message, viewerId, displayMode) ?? t("chat.preview.photo"),
+          language: displayLanguageFor(message, viewerId, displayMode) ?? null,
         }),
       forward: setForwarding,
       learn: setLearning,

@@ -138,16 +138,25 @@ function projectContent(content: MessageContentRecord): MessageContent {
   return structuredClone(content);
 }
 
-function previewText(db: MockDatabase, message: MessageRecord, viewerId: string): string {
+/** A quoted message as the viewer reads it, and its language (ChatProjector.preview). */
+function previewOf(
+  db: MockDatabase,
+  message: MessageRecord,
+  viewerId: string,
+): { preview: string; language: LanguageCode | null } {
   const original = originalOf(message.content);
   const target = targetLanguageFor(db, message, viewerId);
   const translation = projectTranslation(message, target);
   if (message.senderId !== viewerId && translation?.status === "translated" && translation.text) {
-    return translation.text;
+    return { preview: translation.text, language: translation.targetLanguage };
   }
-  if (original) return original.text;
-  if (message.content.type === "story_reaction") return message.content.emoji;
-  return message.content.type === "file" ? message.content.fileName : "📷";
+  if (original) return { preview: original.text, language: original.language };
+  if (message.content.type === "story_reaction")
+    return { preview: message.content.emoji, language: null };
+  return {
+    preview: message.content.type === "file" ? message.content.fileName : "📷",
+    language: null,
+  };
 }
 
 export function projectMessage(
@@ -174,7 +183,7 @@ export function projectMessage(
       ? {
           messageId: replied.id,
           senderId: replied.senderId,
-          preview: previewText(db, replied, viewerId),
+          ...previewOf(db, replied, viewerId),
         }
       : null,
     reactions: [...reactions.entries()].map(([emoji, value]) => ({ emoji, ...value })),

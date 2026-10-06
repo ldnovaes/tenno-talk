@@ -20,7 +20,11 @@ export function ReplyPreviewBar({
         <p className="truncate text-sm font-semibold text-primary">
           {t("chat.composer.replyingTo", { name: senderName })}
         </p>
-        <p className="truncate text-sm text-muted-foreground" dir="auto">
+        <p
+          className="truncate text-sm text-muted-foreground"
+          dir="auto"
+          lang={reference.language ?? undefined}
+        >
           {reference.preview}
         </p>
       </div>

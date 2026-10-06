@@ -17,7 +17,7 @@ import {
   isMuted,
   otherMember,
 } from "../../lib/conversationFilters";
-import { previewText } from "../../lib/previewText";
+import { displayLanguageFor, previewText } from "../../lib/previewText";
 import { DeliveryTicks } from "../message/DeliveryTicks";
 
 interface ConversationListItemProps {
@@ -57,13 +57,7 @@ function ConversationListItemComponent({ conversation, viewerId }: ConversationL
         displayMode,
       )
     : t("chat.preview.noMessages");
-  const previewLanguage =
-    last &&
-    last.senderId !== viewerId &&
-    displayMode !== "original" &&
-    last.translation?.status === "translated"
-      ? last.translation.targetLanguage
-      : undefined;
+  const previewLanguage = last ? displayLanguageFor(last, viewerId, displayMode) : undefined;
 
   return (
     <NavLink
