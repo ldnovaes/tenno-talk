@@ -258,14 +258,33 @@ class TranslationPipelineIT extends IntegrationTest {
     }
 
     @Test
-    void aBetterTranslationReplacesTheOldOneWithAHigherVersion() throws Exception {
+    void aNewTranslationAfterAFailureHasAHigherVersion() throws Exception {
         steps.send(rafael, conversation, "Oi");
         worker.runOnce();
         String id = linhView().get("id").asString();
+        jdbc.sql("UPDATE message_translations SET status = 'failed'").update();
         mvc.perform(post("/api/messages/" + id + "/translation/retry").with(as(linh)).with(csrf()))
                 .andExpect(jsonPath("$.version").value(1));
         worker.runOnce();
         assertThat(linhView().at("/translation/version").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    void retryingWhatIsTranslatedOrQueuedCostsNoAiCall() throws Exception {
+        steps.send(rafael, conversation, "Oi");
+        String id = linhView().get("id").asString();
+        // Still queued: retrying does not add work.
+        mvc.perform(post("/api/messages/" + id + "/translation/retry").with(as(linh)).with(csrf()))
+                .andExpect(jsonPath("$.status").value("pending"));
+        worker.runOnce();
+        assertThat(jdbc.sql("SELECT count(*) FROM translation_jobs WHERE status = 'pending'").query(Long.class).single()).isZero();
+        // Translated: retrying (even in a loop) never re-sends the text to the AI.
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(post("/api/messages/" + id + "/translation/retry").with(as(linh)).with(csrf()))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("translated"));
+        }
+        assertThat(jdbc.sql("SELECT count(*) FROM translation_jobs WHERE status = 'pending'").query(Long.class).single()).isZero();
+        assertThat(linhView().at("/translation/version").asInt()).isEqualTo(1);
     }
 
     @Test

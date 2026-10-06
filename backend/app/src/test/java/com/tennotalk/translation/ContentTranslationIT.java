@@ -109,6 +109,43 @@ class ContentTranslationIT extends IntegrationTest {
     }
 
     @Test
+    void aSlowProviderHoldsNoDatabaseConnectionAndOnlyThreeCallsWaitForIt() throws Exception {
+        List<String> posts = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) posts.add(content("post"));
+        var release = new java.util.concurrent.CountDownLatch(1);
+        ai.holdUntil(release);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(12);
+        try {
+            List<java.util.concurrent.Future<String>> answers = new java.util.ArrayList<>();
+            for (String id : posts) answers.add(pool.submit(() -> translate("post", id, "en-US").get("status").asString()));
+            // More requests than database connections (10) are waiting on the AI, and the app still answers.
+            long started = System.nanoTime();
+            api.getOk(reader, "/api/me");
+            assertThat(java.time.Duration.ofNanos(System.nanoTime() - started)).isLessThan(java.time.Duration.ofSeconds(3));
+            release.countDown();
+            List<String> statuses = new java.util.ArrayList<>();
+            for (var answer : answers) statuses.add(answer.get(15, java.util.concurrent.TimeUnit.SECONDS));
+            assertThat(statuses).filteredOn("translated"::equals).hasSizeLessThanOrEqualTo(3);
+            assertThat(statuses).filteredOn("pending"::equals).hasSizeGreaterThanOrEqualTo(9);
+        } finally {
+            release.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void aPendingTranslationIsNotSentToTheAiAgain() throws Exception {
+        String id = content("post");
+        ai.mode("openai", Mode.QUOTA);
+        ai.mode("anthropic", Mode.QUOTA);
+        assertThat(translate("post", id, "en-US").get("status").asString()).isEqualTo("pending");
+        long calls = ai.translationCalls("openai") + ai.translationCalls("anthropic");
+        ai.mode("openai", Mode.OK);
+        for (int i = 0; i < 3; i++) assertThat(translate("post", id, "en-US").get("status").asString()).isEqualTo("pending");
+        assertThat(ai.translationCalls("openai") + ai.translationCalls("anthropic")).as("the worker owns it").isEqualTo(calls);
+    }
+
+    @Test
     void sameLanguageNeedsNoTranslationAndCallsNoProvider() throws Exception {
         String id = content("post");
         assertThat(translate("post", id, "pt-BR").get("status").asString()).isEqualTo("not_needed");

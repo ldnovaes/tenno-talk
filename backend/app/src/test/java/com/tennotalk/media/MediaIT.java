@@ -64,6 +64,20 @@ class MediaIT extends IntegrationTest {
         return out.toByteArray();
     }
 
+    /** A valid PNG signature and header (IHDR) declaring any size, with no pixel data. */
+    static byte[] pngHeader(int width, int height) {
+        java.nio.ByteBuffer ihdr = java.nio.ByteBuffer.allocate(17);
+        ihdr.put("IHDR".getBytes(StandardCharsets.US_ASCII)).putInt(width).putInt(height)
+                .put((byte) 8).put((byte) 2).put((byte) 0).put((byte) 0).put((byte) 0);
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(ihdr.array());
+        java.nio.ByteBuffer png = java.nio.ByteBuffer.allocate(8 + 4 + 17 + 4 + 12);
+        png.put(new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
+        png.putInt(13).put(ihdr.array()).putInt((int) crc.getValue());
+        png.putInt(0).put("IEND".getBytes(StandardCharsets.US_ASCII)).putInt(0xAE426082);
+        return png.array();
+    }
+
     private ResultActions upload(UUID user, String name, String declaredType, byte[] bytes) throws Exception {
         return mvc.perform(multipart("/api/media").file(new MockMultipartFile("file", name, declaredType, bytes)).with(as(user)).with(csrf()));
     }
@@ -124,6 +138,21 @@ class MediaIT extends IntegrationTest {
         for (int i = 40; i < damaged.length - 12; i++) damaged[i] = (byte) 0x5A;
         upload(rafael, "broken.png", "image/png", damaged)
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation"));
+        assertThat(jdbc.sql("SELECT count(*) FROM media").query(Long.class).single()).isZero();
+    }
+
+    @Test
+    void decompressionBombsAreRejectedWithoutDecoding() throws Exception {
+        upload(rafael, "bomb.png", "image/png", pngHeader(30_000, 30_000))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("validation"));
+        assertThat(jdbc.sql("SELECT count(*) FROM media").query(Long.class).single()).isZero();
+    }
+
+    @Test
+    void photosAboveTheMemoryCeilingAreRejected() throws Exception {
+        byte[] png = image("png", 2, 2);
+        byte[] huge = java.util.Arrays.copyOf(png, (int) MediaService.MAX_IMAGE_BYTES + 1);
+        upload(rafael, "huge.png", "image/png", huge).andExpect(status().isBadRequest());
         assertThat(jdbc.sql("SELECT count(*) FROM media").query(Long.class).single()).isZero();
     }
 

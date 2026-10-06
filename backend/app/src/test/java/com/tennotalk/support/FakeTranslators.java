@@ -32,6 +32,7 @@ public class FakeTranslators {
     private final List<Call> calls = new CopyOnWriteArrayList<>();
     private final List<String> checks = new CopyOnWriteArrayList<>();
     private final List<String> classifications = new CopyOnWriteArrayList<>();
+    private volatile java.util.concurrent.CountDownLatch gate;
 
     public List<Translator> translators() {
         return List.of(new Fake(OpenAiTranslator.ID, "gpt-test"), new Fake(AnthropicTranslator.ID, "claude-test"));
@@ -43,6 +44,12 @@ public class FakeTranslators {
         calls.clear();
         checks.clear();
         classifications.clear();
+        gate = null;
+    }
+
+    /** Every translation waits until {@code release} opens: a slow provider (up to 10 s). */
+    public void holdUntil(java.util.concurrent.CountDownLatch release) {
+        gate = release;
     }
 
     public void mode(String provider, Mode mode) {
@@ -94,6 +101,14 @@ public class FakeTranslators {
         @Override
         public TranslationResult translate(TranslationRequest request) throws TranslatorException {
             calls.add(new Call(id, request));
+            var waiting = gate;
+            if (waiting != null) {
+                try {
+                    waiting.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             Instant now = Instant.now();
             return switch (modes.getOrDefault(id, Mode.OK)) {
                 case OK -> {

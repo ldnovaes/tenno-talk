@@ -5,10 +5,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.tennotalk.chat.ChatDtos.ContentTranslationDto;
 import com.tennotalk.chat.ChatDtos.OriginalTextDto;
@@ -37,10 +40,14 @@ public class TranslationService {
     private final ApplicationEventPublisher events;
     private final Map<String, ContentSource> sources = new HashMap<>();
     private final Clock clock;
+    private final TransactionTemplate tx;
+    /** Synchronous AI calls at once (PLAN.md §38): the rest waits in the queue, never on a database connection. */
+    private final Semaphore syncCalls;
 
     public TranslationService(ChatRepository chat, ChatService chatService, MessageTranslationRepository messages,
             ContentTranslationRepository contents, TranslationJobRepository jobs, FallbackTranslator translator,
-            ApplicationEventPublisher events, org.springframework.beans.factory.ObjectProvider<ContentSource> contentSources, Clock clock) {
+            ApplicationEventPublisher events, org.springframework.beans.factory.ObjectProvider<ContentSource> contentSources, Clock clock,
+            TransactionTemplate tx, @Value("${tenno.translation.sync-permits:3}") int syncPermits) {
         this.chat = chat;
         this.chatService = chatService;
         this.messages = messages;
@@ -49,10 +56,12 @@ public class TranslationService {
         this.translator = translator;
         this.events = events;
         this.clock = clock;
+        this.tx = tx;
+        this.syncCalls = new Semaphore(Math.max(1, syncPermits));
         contentSources.orderedStream().forEach(source -> sources.put(source.kind(), source));
     }
 
-    /** "Retry translation": back to the queue with fresh attempts. */
+    /** "Retry translation": only what failed goes back to the queue, with fresh attempts. */
     @Transactional
     public ContentTranslationDto retry(UUID viewer, UUID messageId) {
         MessageRow message = chat.findMessage(messageId).orElseThrow(() -> ApiException.notFound("Message not found."));
@@ -62,6 +71,8 @@ public class TranslationService {
         if (message.originalText() == null || target == null || Languages.same(message.originalLanguage(), target)) {
             throw ApiException.validation("Nothing to translate.");
         }
+        var current = messages.find(messageId, target);
+        if (current.isPresent() && !"failed".equals(current.get().status())) return current.get().toDto();
         messages.resetForRetry(messageId, target, clock.instant());
         jobs.enqueue("message", messageId, target, clock.instant(), true);
         events.publishEvent(new TranslationChanged(message.conversationId(), messageId, target));
@@ -83,10 +94,10 @@ public class TranslationService {
     }
 
     /**
-     * Captions, comments and story texts: translated on demand and cached. When no
-     * provider is available it is queued and returned as pending.
+     * Captions, comments and story texts: translated on demand and cached. The AI call runs outside any
+     * transaction and only while a permit is free; otherwise (or when no provider answers) it is queued and
+     * returned as pending. A pending item is never sent to the AI again here: the worker owns it.
      */
-    @Transactional
     public ContentTranslationDto translateContent(UUID viewer, String kind, UUID id, String language) {
         ContentSource source = sources.get(kind);
         if (source == null) throw ApiException.notFound("Unknown content.");
@@ -96,14 +107,24 @@ public class TranslationService {
             return new ContentTranslationDto(language, null, "not_needed", 0, clock.instant());
         }
         var cached = contents.find(kind, id, language);
-        if (cached.isPresent() && "translated".equals(cached.get().status())) return cached.get();
-        TranslationOutcome outcome = translator.translate(TranslationRequest.of(original.text(), original.language(), language));
-        if (outcome instanceof TranslationOutcome.Success success) {
-            contents.saveTranslated(kind, id, language, success.result().natural(), clock.instant());
-        } else {
+        if (cached.isPresent() && ("translated".equals(cached.get().status()) || "pending".equals(cached.get().status()))) {
+            return cached.get();
+        }
+        if (syncCalls.tryAcquire()) {
+            try {
+                TranslationOutcome outcome = translator.translate(TranslationRequest.of(original.text(), original.language(), language));
+                if (outcome instanceof TranslationOutcome.Success success) {
+                    contents.saveTranslated(kind, id, language, success.result().natural(), clock.instant());
+                    return contents.find(kind, id, language).orElseThrow();
+                }
+            } finally {
+                syncCalls.release();
+            }
+        }
+        tx.executeWithoutResult(status -> {
             contents.saveStatus(kind, id, language, "pending", clock.instant());
             jobs.enqueue(kind, id, language, clock.instant(), true);
-        }
+        });
         return contents.find(kind, id, language).orElseThrow();
     }
 }
