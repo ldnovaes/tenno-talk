@@ -700,10 +700,10 @@ Na medição da linha de base, a suíte do `main` falhou uma vez com o deadlock 
 
 Revisão de segurança de https://tenno.eldialabs.com (DoS, vazamento de dados, consumo da VPS compartilhada). Regras em [PLAN.md §38](PLAN.md#38-hardening-de-produção-2026-10-06). Branch `security/hardening`.
 
-- [ ] Fase 1 — Bomba de imagem (dimensões antes de decodificar, teto de 25 MB/40 MP)
-- [ ] Fase 1 — Tradução sob demanda fora da transação, com semáforo; `pending` não chama a IA; retry só do que falhou
-- [ ] Fase 1 — nginx: corpo, `limit_req`/`limit_conn`, `server_tokens`, dotfiles
-- [ ] Fase 1 — systemd: limites de memória/CPU/tarefas e sandbox
+- [x] Fase 1 — Bomba de imagem (dimensões antes de decodificar, teto de 25 MB/24 MP)
+- [x] Fase 1 — Tradução sob demanda fora da transação, com semáforo; `pending` não chama a IA; retry só do que falhou
+- [x] Fase 1 — nginx: corpo, `limit_req`/`limit_conn`, `server_tokens`, dotfiles
+- [x] Fase 1 — systemd: limites de memória/CPU/tarefas e sandbox
 - [ ] Fase 2 — Mídia: 100 MB, cota diária e total, limpeza de órfãos e de stories expirados
 - [ ] Fase 2 — IA: limite diário de tradução sob demanda, limite próprio de encaminhar
 - [ ] Fase 2 — WebSocket: frames por socket, "digitando" sem lock global, sockets por pessoa

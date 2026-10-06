@@ -18,12 +18,17 @@ spring:
     timeout: 30d
   servlet:
     multipart:
-      # No product limit on media (PLAN.md §34); a high technical ceiling protects the VPS (R15).
-      max-file-size: ${MAX_UPLOAD_SIZE:500MB}
-      max-request-size: ${MAX_UPLOAD_SIZE:500MB}
+      # 100 MB per file plus per-account quotas (PLAN.md §29, §38); nginx enforces the same ceiling.
+      max-file-size: ${MAX_UPLOAD_SIZE:100MB}
+      max-request-size: ${MAX_UPLOAD_SIZE:100MB}
 
 server:
   forward-headers-strategy: framework
+  tomcat:
+    # Shared VPS (PLAN.md §38): requests are short (AI calls never hold a thread for long, uploads are
+    # buffered by nginx), so a smaller pool bounds memory without queueing normal traffic.
+    threads:
+      max: ${TOMCAT_MAX_THREADS:64}
 
 management:
   endpoints:

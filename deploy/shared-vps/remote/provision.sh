@@ -70,7 +70,7 @@ SERVER_PORT=$PORT
 PUBLIC_URL=https://$DOMAIN
 COOKIE_SECURE=true
 MEDIA_ROOT=$DATA/media
-MAX_UPLOAD_SIZE=500MB
+MAX_UPLOAD_SIZE=100MB
 # Infisical machine identity of the tenno-talk project: it brings OPENAI_API_KEY / ANTHROPIC_API_KEY
 # into the process (tenno-talk.service). Written by set-env.sh from the local vps.env.
 INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=
@@ -86,6 +86,8 @@ ENV
   chown root:tenno "$ENV_FILE"
   chmod 640 "$ENV_FILE"
 fi
+# 2026-10-06 (PLAN.md §38): files are capped at 100 MB; older env files said 500MB.
+sed -i 's/^MAX_UPLOAD_SIZE=500MB$/MAX_UPLOAD_SIZE=100MB/' "$ENV_FILE"
 # Infisical identity for the AI keys (tenno-talk project).
 [ -z "$IDENTITY" ] || bash "$HERE/set-env.sh" "$ENV_FILE" <<<"$IDENTITY"
 db_password="$(grep '^DATABASE_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"

@@ -12,6 +12,13 @@ map $http_upgrade $tenno_connection_upgrade {
     ''      close;
 }
 
+# Per-IP limits at the edge (PLAN.md §38). Generous on purpose: carrier-grade NAT puts many phones
+# behind one IP. The backend keeps its own per-user limits (RateLimitRules).
+limit_req_zone $binary_remote_addr zone=tenno_api:10m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=tenno_auth:10m rate=1r/s;
+limit_conn_zone $binary_remote_addr zone=tenno_conn:10m;
+limit_conn_zone $binary_remote_addr zone=tenno_ws:10m;
+
 server {
     listen 80;
     server_name __DOMAIN__;
@@ -38,14 +45,24 @@ server {
     error_log /var/log/nginx/tenno-talk.error.log;
 
     root /var/www/tenno-talk/current;
-    # Media has no product limit (PLAN.md §34): the backend enforces the technical ceiling.
-    client_max_body_size 500m;
+    server_tokens off;
+    # JSON bodies are small; only the media upload takes files (100 MB, PLAN.md §29).
+    client_max_body_size 1m;
+    limit_conn tenno_conn 50;
+    limit_req_status 429;
+    limit_conn_status 429;
 
     include /etc/nginx/snippets/tenno-talk-headers.conf;
+
+    # Dotfiles (/.env, /.git/...) never exist here: answer 404 instead of the SPA page.
+    location ~ /\. {
+        return 404;
+    }
 
     # The backend listens on 127.0.0.1 only. X-Forwarded-For is REPLACED (not appended): the
     # per-IP rate limits must never trust a value sent by the client (PLAN.md §31).
     location /api/ {
+        limit_req zone=tenno_api burst=120 nodelay;
         proxy_pass http://127.0.0.1:__PORT__;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $remote_addr;
@@ -55,10 +72,24 @@ server {
         proxy_read_timeout 120s;
     }
 
-    # Uploads stream to the backend instead of being buffered on disk by nginx.
-    location = /api/media {
+    # Sign-in, sign-up and password: one per second per IP (bursts of 10), before Argon2 runs.
+    location ~ ^/api/auth/(signin|signup|password)$ {
+        limit_req zone=tenno_auth burst=10 nodelay;
         proxy_pass http://127.0.0.1:__PORT__;
-        proxy_request_buffering off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+    }
+
+    # Uploads are buffered by nginx (default) before reaching the backend: a slow client holds an
+    # nginx connection, never one of the backend's threads.
+    location = /api/media {
+        limit_req zone=tenno_api burst=120 nodelay;
+        client_max_body_size 100m;
+        client_body_timeout 60s;
+        proxy_pass http://127.0.0.1:__PORT__;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
@@ -68,6 +99,7 @@ server {
     }
 
     location ~ ^/(oauth2|login/oauth2)/ {
+        limit_req zone=tenno_auth burst=10 nodelay;
         proxy_pass http://127.0.0.1:__PORT__;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $remote_addr;
@@ -77,6 +109,9 @@ server {
     }
 
     location = /ws {
+        limit_conn tenno_conn 50;
+        limit_conn tenno_ws 20;
+        limit_req zone=tenno_auth burst=20 nodelay;
         proxy_pass http://127.0.0.1:__PORT__;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

@@ -15,13 +15,35 @@ Environment=HOME=/var/lib/tenno-talk
 # The AI API keys (PLAN.md §28.1) come from Infisical straight into the process memory, never to disk.
 # $$ leaves the variables to bash (systemd would otherwise expand them itself).
 # Shared VPS: an explicit memory ceiling so the neighbours keep theirs.
-ExecStart=/bin/bash -c 'TOKEN=$$(/usr/bin/infisical login --method=universal-auth --client-id="$$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" --client-secret="$$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" --silent --plain) && exec /usr/bin/infisical run --token="$$TOKEN" --projectId="$$INFISICAL_PROJECT_ID" --env=prod --silent -- /usr/bin/java -Xmx384m -XX:MaxMetaspaceSize=192m -XX:+ExitOnOutOfMemoryError -jar /opt/tenno-talk/current/app.jar'
+ExecStart=/bin/bash -c 'TOKEN=$$(/usr/bin/infisical login --method=universal-auth --client-id="$$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID" --client-secret="$$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET" --silent --plain) && exec /usr/bin/infisical run --token="$$TOKEN" --projectId="$$INFISICAL_PROJECT_ID" --env=prod --silent -- /usr/bin/java -Xmx384m -XX:MaxMetaspaceSize=192m -XX:MaxDirectMemorySize=64m -XX:+ExitOnOutOfMemoryError -jar /opt/tenno-talk/current/app.jar'
 Restart=on-failure
 RestartSec=5
 SyslogIdentifier=tenno-talk
+# Shared VPS (PLAN.md §38): a spike stays inside this service, so the kernel OOM killer never picks
+# the shared PostgreSQL and the neighbours keep CPU. Heap 384m + metaspace + code cache + threads + direct stay below MemoryHigh.
+MemoryHigh=850M
+MemoryMax=1G
+CPUQuota=150%
+TasksMax=512
+# Sandbox: read-only system, writable only media/HOME (Infisical keeps its login there).
 NoNewPrivileges=true
-ProtectSystem=full
+ProtectSystem=strict
+ReadWritePaths=/var/lib/tenno-talk
 PrivateTmp=true
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
 
 [Install]
 WantedBy=multi-user.target
