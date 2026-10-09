@@ -1,20 +1,29 @@
 import { useTranslation } from "react-i18next";
 
+import type { WorldClockLocale } from "@/app/locales/worldClock";
 import { cn } from "@/lib/utils";
 
 import type { ClockCountry } from "../lib/countries";
 import { getLocalTime } from "../lib/localTime";
 import { CountryFlag } from "./CountryFlag";
 
-export function CountryClock({ country, now }: { country: ClockCountry; now: Date }) {
-  const { t, i18n } = useTranslation();
-  const local = getLocalTime(now, country.timeZone, i18n.language);
+interface CountryClockProps {
+  country: ClockCountry;
+  /** Language the card is written in (the reader's, see readerLocale). */
+  locale: WorldClockLocale;
+  now: Date;
+}
+
+export function CountryClock({ country, locale, now }: CountryClockProps) {
+  const { t } = useTranslation("worldClock", { lng: locale });
+  const local = getLocalTime(now, country.timeZone, locale);
   const night = local.period === "night";
-  const name = t(`worldClock.countries.${country.id}.name`);
+  const name = t(`countries.${country.id}.name`);
   const titleId = `world-clock-${country.id}`;
 
   return (
     <section
+      lang={locale}
       aria-labelledby={titleId}
       data-period={local.period}
       className={cn(
@@ -39,7 +48,7 @@ export function CountryClock({ country, now }: { country: ClockCountry; now: Dat
       />
       <div className="px-3 pt-6 text-center md:pt-6.5 lg:px-4 lg:pt-8.5 xl:pt-10">
         <div className="flex items-center justify-center gap-3.5 md:gap-3 lg:gap-5">
-          <CountryFlag country={country.id} />
+          <CountryFlag country={country.id} label={t(`countries.${country.id}.flag`)} />
           <h2
             id={titleId}
             className="text-[26px] leading-tight font-semibold md:text-[25px] lg:text-[32px] xl:text-4xl"
@@ -53,11 +62,11 @@ export function CountryClock({ country, now }: { country: ClockCountry; now: Dat
             night ? "text-clock-ink-night" : "text-clock-ink-muted",
           )}
         >
-          {t(`worldClock.countries.${country.id}.city`)}
+          {t(`countries.${country.id}.city`)}
         </p>
         <time
           dateTime={now.toISOString()}
-          aria-label={t("worldClock.timeIn", { country: name, time: local.time })}
+          aria-label={t("timeIn", { country: name, time: local.time })}
           className="block text-[80px] leading-[1.12] font-semibold tabular-nums max-[350px]:text-[70px] md:text-[82px] lg:text-[116px] xl:text-[140px]"
         >
           {local.time}

@@ -1,5 +1,3 @@
-import { useTranslation } from "react-i18next";
-
 import type { CountryId } from "../lib/countries";
 
 function BrazilFlag() {
@@ -35,13 +33,12 @@ function VietnamFlag() {
 
 const FLAGS: Record<CountryId, () => React.JSX.Element> = { br: BrazilFlag, vn: VietnamFlag };
 
-export function CountryFlag({ country }: { country: CountryId }) {
-  const { t } = useTranslation();
+export function CountryFlag({ country, label }: { country: CountryId; label: string }) {
   const Flag = FLAGS[country];
   return (
     <span
       role="img"
-      aria-label={t(`worldClock.countries.${country}.flag`)}
+      aria-label={label}
       className="h-[35px] w-[49px] shrink-0 overflow-hidden rounded-lg md:h-[34px] md:w-12 lg:h-11 lg:w-[62px] xl:h-[52px] xl:w-[72px]"
     >
       <Flag />

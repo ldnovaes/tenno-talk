@@ -725,6 +725,7 @@ Página `/time` (Brasil × Vietnã), portada do protótipo `ldnovaes/simple-reac
 - [x] `getLocalTime`/`dayPeriod` puros, com testes (fuso, virada de data, meia-noite)
 - [x] Registro de países + par fixo `br`/`vn`; imagens self-hosted em WebP
 - [x] Rota pública lazy `/time` fora dos guards e do shell; testes de rota (anônimo, logado, período)
+- [x] Idioma cruzado: Brasil em vietnamita, Vietnã em português (namespace `worldClock`, `lang` no card)
 - [x] Tokens `clock-*`/`flag-*`, textos via `t()`; conferido em 375/900/1280 px e no período noturno
 - [ ] Escolha do par pela URL e mais nações
 
