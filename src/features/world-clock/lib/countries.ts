@@ -30,11 +30,10 @@ export const COUNTRIES: Record<CountryId, ClockCountry> = {
     id: "vn",
     timeZone: "Asia/Ho_Chi_Minh",
     locale: "vi",
-    // No night landscape yet: the afternoon one under the night wash.
     images: {
       morning: image("vietnam-morning"),
       afternoon: image("vietnam-afternoon"),
-      night: image("vietnam-afternoon"),
+      night: image("vietnam-night"),
     },
   },
 };
