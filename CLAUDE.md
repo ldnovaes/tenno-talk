@@ -10,7 +10,7 @@ Antes de trabalhar neste repositório, leia:
 - Antes de implementar algo grande, atualize o PLAN.md.
 - Ao concluir uma etapa, marque o item no IMPLEMENTATION.md.
 - Prosa e documentação em português; código, identificadores, rotas e strings de UI em inglês.
-- O branch `main` sincroniza com o Lovable. Trabalhe em branches e não reescreva histórico publicado.
+- Repositório: `git@github.com:ldnovaes/tenno-talk.git` (sem Lovable). Tudo termina na `main`: ao concluir uma etapa, faça merge na `main` e push, sem esperar pedido. Branches são só para o trabalho em andamento. Não reescreva histórico publicado.
 
 ## Regras de desenvolvimento
 
