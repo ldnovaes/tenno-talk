@@ -717,3 +717,14 @@ Revisão de segurança de https://tenno.eldialabs.com (DoS, vazamento de dados, 
 - [x] Deploy e verificação (TENNO e sites da Eldia)
 
 > Notas (2026-10-06): deploy `b7094db`, migration V12 aplicada, e o serviço subiu com o sandbox e os limites. Verificado de fora: `Server: nginx` sem versão, `/.env` e `/api/openapi` respondem 404, corpo de 2 MB no login dá 413, e uma rajada de 14 logins dá 11 requisições passando e 3 com 429. Os jails da TENNO contam falhas. Depois do reboot (libc6 + 5 pacotes de segurança), os 7 sites da Eldia responderam exatamente como antes. `eldialabs-backend`, PostgreSQL, nginx, o container do WhatsApp, Tailscale e ufw voltaram sozinhos, e a porta 8080 continua bloqueada de fora. Achado no caminho: o `[DEFAULT]` do `jail.conf` do servidor usa `backend = systemd` e `banaction = firewallcmd-rich-rules` (firewalld não roda), então os jails nginx/apache da Eldia não monitoram nenhum arquivo. Os jails da TENNO declaram `backend = auto` e `banaction = iptables-multiport`. Os da Eldia não foram alterados. Na suíte e2e mock com o paralelismo padrão, um ou outro teste diferente falha a cada execução por carga; com `--workers=2` passam todos os 63.
+
+## Relógio mundial público (2026-10-09)
+
+Página `/time` (Brasil × Vietnã), portada do protótipo `ldnovaes/simple-react-page`. Regras em [PLAN.md §39](PLAN.md#39-relógio-mundial-público-2026-10-09). Branch `feat/world-clock`.
+
+- [x] `getLocalTime`/`dayPeriod` puros, com testes (fuso, virada de data, meia-noite)
+- [x] Registro de países + par fixo `br`/`vn`; imagens self-hosted em WebP
+- [x] Rota pública lazy `/time` fora dos guards e do shell; testes de rota (anônimo, logado, período)
+- [x] Tokens `clock-*`/`flag-*`, textos via `t()`; conferido em 375/900/1280 px e no período noturno
+- [ ] Escolha do par pela URL e mais nações
+

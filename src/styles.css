@@ -67,6 +67,21 @@
   --color-avatar-5: oklch(0.52 0.15 255);
   --color-avatar-6: oklch(0.52 0.17 300);
   --color-avatar-7: oklch(0.55 0.17 350);
+
+  /* World clock (/time): text sits on photos, so these do not follow the light/dark theme. */
+  --color-clock-cream: oklch(0.97 0.026 65);
+  --color-clock-rose: oklch(0.94 0.035 15);
+  --color-clock-lavender: oklch(0.9 0.044 300);
+  --color-clock-ink: oklch(0.23 0.018 275);
+  --color-clock-ink-muted: oklch(0.42 0.018 275);
+  --color-clock-ink-night: oklch(0.99 0.004 300);
+  --color-clock-day-wash: oklch(0.98 0.025 75 / 58%);
+  --color-clock-night-wash: oklch(0.18 0.04 275 / 65%);
+  --color-clock-edge: oklch(1 0 0 / 35%);
+  --color-flag-green: oklch(0.64 0.17 145);
+  --color-flag-gold: oklch(0.9 0.19 95);
+  --color-flag-blue: oklch(0.38 0.19 265);
+  --color-flag-red: oklch(0.62 0.25 29);
 }
 
 :root {

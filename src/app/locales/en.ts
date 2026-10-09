@@ -707,6 +707,14 @@ export const en = {
       },
     },
   },
+  worldClock: {
+    title: "Our time",
+    timeIn: "Time in {{country}}: {{time}}",
+    countries: {
+      br: { name: "Brazil", city: "São Paulo (UTC−3)", flag: "Flag of Brazil" },
+      vn: { name: "Vietnam", city: "Ho Chi Minh City (UTC+7)", flag: "Flag of Vietnam" },
+    },
+  },
 } as const;
 
 export type Messages = typeof en;

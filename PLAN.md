@@ -52,6 +52,8 @@
 35. [Regras de desenvolvimento](#35-regras-de-desenvolvimento)
 36. [Revisão da experiência social](#36-revisão-da-experiência-social-2026-10-04)
 37. [Algoritmo de descoberta](#37-algoritmo-de-descoberta-2026-10-05)
+38. [Hardening de produção](#38-hardening-de-produção-2026-10-06)
+39. [Relógio mundial público](#39-relógio-mundial-público-2026-10-09)
 
 ---
 
@@ -375,6 +377,7 @@ Regras:
 | `/welcome` | `RedirectIfAuthed` | Landing + Continue with Google / Facebook / Email | Card centralizado |
 | `/signin`, `/signup` | `RedirectIfAuthed` | Formulário email + senha | Card centralizado |
 | `/terms`, `/privacy` | — | Termos de Uso / Política de Privacidade | Página de leitura |
+| `/time` | — (pública) | Relógios empilhados (§39) | Relógios lado a lado |
 | `/onboarding/:step` | `RequireAuth` | Passo em tela cheia | Card centralizado |
 | `/` | — | → `/chats` | → `/chats` |
 | `/chats` | `RequireOnboarded` | Lista | Lista + "Select a chat to start messaging" |
@@ -1789,3 +1792,20 @@ TLS 1.2/1.3, HSTS, CSP estrita; ufw, SSH só por chave, fail2ban do sshd, atuali
 - Papel de admin lido no login: rebaixar alguém vale a partir da próxima sessão.
 - **Termos de Uso / Política de Privacidade:** incluir a retenção nova. Stories e sua mídia são apagados 48 h depois de expirar, notificações lidas depois de 90 dias e arquivos enviados e nunca usados depois de 24 h. Incluir também os limites de envio (100 MB por arquivo, 2 GB por dia, 10 GB por conta).
 
+## 39. Relógio mundial público (2026-10-09)
+
+Página pública `https://tenno.eldialabs.com/time` com dois relógios lado a lado: hora, data e uma paisagem que muda com o período do dia local (manhã 05–12h, tarde 12–18h, noite). Por enquanto o par é fixo em Brasil (São Paulo) e Vietnã (Ho Chi Minh); outras nações entram depois.
+
+**Origem.** Portada do protótipo Lovable `ldnovaes/simple-react-page` ("Nosso Tempo"). O protótipo é um app TanStack Start com SSR (servidor Node próprio). Não o incorporamos como app separado nem como dependência: a página foi reescrita dentro do SPA, com as convenções deste repositório. Assim não há processo, porta, certificado ou bloco de nginx novos. O deploy é o mesmo `./tenno run deploy:prod`.
+
+**Onde está.**
+- `features/world-clock/lib/localTime.ts`: `getLocalTime(now, timeZone, locale)` e `dayPeriod(hour)`. São funções puras, com testes.
+- `features/world-clock/lib/countries.ts`: registro de países (`id`, fuso, imagem por período) e `WORLD_CLOCK_PAIR = ["br", "vn"]`. Para adicionar uma nação, basta acrescentar uma entrada, as imagens em `public/world-clock/`, a bandeira em `CountryFlag` e os textos em `worldClock.countries.*`. Escolher o par pela URL (ex.: `/time?pair=br-jp`) fica para quando houver a terceira nação.
+- `pages/WorldClockPage.tsx`: rota lazy fora dos guards e do `AppShell`, como `/terms`.
+- Textos em `t("worldClock.*")`. A data segue o idioma da interface, e a hora é sempre 24h. As cores são tokens `clock-*`/`flag-*` em `styles.css`; não seguem o tema claro/escuro porque o texto fica sobre foto.
+
+**Segurança.**
+- A página não chama API, não lê sessão e não monta `AuthenticatedRealtime`. Um visitante anônimo não dispara nada além do que `/terms` já dispara.
+- O CSP não mudou. As imagens são self-hosted (`img-src 'self'`); o asset store do Lovable não é usado. A Google Fonts do protótipo foi removida (usamos a Inter local), assim como o reporter de erros do Lovable, que enviava erros para fora.
+- Os metadados do protótipo citavam nomes de pessoas; a página pública não identifica ninguém.
+- As imagens foram convertidas de PNG (2,3–2,5 MB cada) para WebP 1280px (90–150 KB). Ficam em `/world-clock/*.webp` e são servidas pelo `location /` do nginx (`no-cache` + ETag, ou seja, 304 nas visitas seguintes). O Vietnã ainda não tem paisagem noturna e usa a da tarde sob o véu escuro, como no protótipo.

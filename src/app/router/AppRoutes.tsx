@@ -23,6 +23,7 @@ const SignInPage = lazy(() => import("@/pages/SignInPage"));
 const SignUpPage = lazy(() => import("@/pages/SignUpPage"));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
+const WorldClockPage = lazy(() => import("@/pages/WorldClockPage"));
 const OnboardingPage = lazy(() => import("@/pages/OnboardingPage"));
 const ConversationListPage = lazy(() => import("@/pages/ConversationListPage"));
 const ChatsIndexPage = lazy(() => import("@/pages/ChatsIndexPage"));
@@ -63,6 +64,7 @@ export function AppRoutes({ shell }: { shell: ReactNode }) {
       <Routes location={background ?? location}>
         <Route path="/terms" element={page(TermsPage)} />
         <Route path="/privacy" element={page(PrivacyPage)} />
+        <Route path="/time" element={page(WorldClockPage)} />
         <Route element={<RedirectIfAuthed />}>
           <Route path="/welcome" element={page(WelcomePage)} />
           <Route path="/signin" element={page(SignInPage)} />

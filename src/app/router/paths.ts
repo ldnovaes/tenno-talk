@@ -33,6 +33,7 @@ export const paths = {
   signUp: () => "/signup",
   terms: () => "/terms",
   privacy: () => "/privacy",
+  worldClock: () => "/time",
   onboarding: (step: OnboardingStep = "welcome") => `/onboarding/${step}`,
   chats: () => "/chats",
   conversation: (conversationId: string) => `/chats/${encodeURIComponent(conversationId)}`,
