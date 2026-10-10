@@ -20,6 +20,7 @@
   <properties>
     <!-- Lets `./mvnw -pl app -am spring-boot:run` start the app from the reactor. -->
     <spring-boot.run.skip>true</spring-boot.run.skip>
+    <recommender.excludedGroups>stress</recommender.excludedGroups>
   </properties>
 
   <dependencies>
@@ -49,6 +50,13 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludedGroups>${recommender.excludedGroups}</excludedGroups>
+        </configuration>
+      </plugin>
+      <plugin>
         <!-- Mutation testing: ./mvnw -pl recommender org.pitest:pitest-maven:mutationCoverage -->
         <groupId>org.pitest</groupId>
         <artifactId>pitest-maven</artifactId>
@@ -66,9 +74,18 @@
           <mutationThreshold>90</mutationThreshold>
           <timestampedReports>false</timestampedReports>
           <outputFormats><param>XML</param><param>HTML</param></outputFormats>
-          <excludedGroups><param>simulation</param></excludedGroups>
+          <excludedGroups><param>simulation</param><param>stress</param></excludedGroups>
         </configuration>
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <id>recommender-stress</id>
+      <properties>
+        <recommender.excludedGroups></recommender.excludedGroups>
+      </properties>
+    </profile>
+  </profiles>
 </project>

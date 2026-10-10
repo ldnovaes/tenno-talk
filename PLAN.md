@@ -1756,6 +1756,12 @@ O módulo tem a suíte mais pesada: propriedades com jqwik (nunca lança, sem du
 - **Não feito no v1:** `?explain=true` para admin (as contribuições existem em `Ranked.contributions`, só não há endpoint).
 - **Frontend:** `MediaCarousel` ganhou `fill` (tela cheia, tarja preta) e `playing` (autoplay mudo do slide ativo). "Not interested" remove do cache na hora e o toast oferece desfazer.
 
+### 37.10 Validação em escala (2026-10-07)
+
+Ampliar os testes do módulo com populações sintéticas reproduzíveis: catálogo de 100 mil posts, milhares de perfis e sessões, sempre respeitando os 500 candidatos por chamada usados pelo adaptador. Verificar resultados completos, ids elegíveis, filtros pessoais, scores finitos, cota de exposição e ausência de degradação silenciosa. Exercitar a mesma instância em threads concorrentes e comparar com resultados sequenciais; injetar falhas e verificar recuperação. Testes de qualidade com controle cronológico devem comprovar personalização e mudança de interesse após interações reais do `SignalUpdater`.
+
+Os testes massivos ficam em um perfil Maven explícito (`recommender-stress`), com sementes fixas e relatório de latência p50/p95/p99, throughput e fallback em `target/`. Os testes funcionais menores rodam na suíte normal. Separar os limites funcionais dos temporais: determinismo usa orçamento folgado; carga mede também a configuração padrão e falha se houver degradação excessiva. Esta simulação valida o ranking em memória, não a capacidade do PostgreSQL/API nem a relevância medida com usuários reais.
+
 ## 38. Hardening de produção (2026-10-06)
 
 Revisão das camadas de https://tenno.eldialabs.com (borda, VPS, systemd, backend, banco) contra DoS, vazamento de dados e consumo da máquina. A VPS é compartilhada com a Eldia (2 vCPU, 4 GB): a TENNO nunca pode derrubar os vizinhos.
