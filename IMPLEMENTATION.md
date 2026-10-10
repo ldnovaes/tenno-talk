@@ -696,6 +696,20 @@ Na medição da linha de base, a suíte do `main` falhou uma vez com o deadlock 
 | 28 | **Relatado (produção):** no desktop, o rail nunca mostrou os contadores nem marcou a seção atual (desde a fase 1). O `className` em função do `NavLink` passava pelo `Slot` do tooltip, que junta classes como texto: a função virava o atributo `class`, todas as classes do item sumiam e o badge, sem pai posicionado, era desenhado fora da tela. Os e2e não pegaram porque `toBeVisible()` aceita um elemento fora da tela | `navigationRail.test.tsx` (classes e seção atual), `e2e/navigation.spec.ts` (badge sobreposto ao ícone, seção atual destacada) e `expectBadge` nos e2e da pilha | Estado ativo pelo `aria-current` do `NavLink` (variante `aria-[current=page]:`), com `className` fixo |
 | 29 | **Relatado (produção):** uma notificação nova abria um toast preto sobre o cabeçalho da tela, fora do tema: o CSS do sonner (fora das camadas do Tailwind v4) vencia as classes do `Toaster` | `notificationsRealtime.test.tsx` (nenhum tipo abre toast) e `e2e/navigation.spec.ts` | Notificação sem toast, o contador do sino é o sinal (PLAN §36.2); o `Toaster` usa os tokens pelas variáveis do sonner (conferido no navegador nos dois temas) |
 
+## Testes massivos do algoritmo (2026-10-07)
+
+Plano em [§37.10](PLAN.md#3710-validação-em-escala-2026-10-07), execução e limites no [guia do recommender](backend/recommender/README.md). Branch `test/recommender-scale`.
+
+- [x] População reproduzível: 100 mil posts, 2.000 perfis, três sementes, 12 mil sessões, seis milhões de entradas avaliadas; filtros pessoais, duplicatas, dados inválidos, resultado completo e cota de exposição verificados por sessão
+- [x] Concorrência: oito threads na mesma instância; 2.048 rankings iguais às referências sequenciais, inclusive scores e exposição
+- [x] Orçamento padrão: 2.000 sessões extras; limites para p95, fallback e sinais desativados/lentos/falhos, com relatórios JSON
+- [x] Qualidade: seis grupos × quatro sementes; aprendizado a partir de likes supera o controle cronológico e feedback negativo muda o tópico recomendado
+- [x] Recuperação: exceções e NaN isolados, circuit breaker observado e contribuição retomada após cooldown simulado
+- [x] Perfil Maven `recommender-stress`, workflow manual com artefatos e documentação; testes menores no CI normal, sem alterar o algoritmo de produção
+- [x] Execução padrão conferida: `./mvnw -B -pl recommender test` passou com 256 testes em 29,413 s; os cinco casos massivos ficaram excluídos como previsto
+
+**Resultado local:** `./mvnw -B -pl recommender -Precommender-stress test` passou em 53,836 s: **261 testes, zero falhas/erros/pulados** (antes: 246). A carga nova executou 16.048 rankings, equivalentes a 8.024.000 entradas de candidatos, fora aquecimento e referências. Nas três populações, p95 de 0,921–0,977 ms; com orçamento padrão, p50 de 0,811 ms, p95 de 0,904 ms e p99 de 1,106 ms. Zero fallback/degradação nos quatro relatórios. Ambiente local: JDK 21, 12 processadores disponíveis, heap máximo de aproximadamente 4,17 GB; esses tempos **não são medições da VPS/API/PostgreSQL**. Relatórios em `backend/recommender/target/recommender-stress/`.
+
 ## Hardening de produção (2026-10-06)
 
 Revisão de segurança de https://tenno.eldialabs.com (DoS, vazamento de dados, consumo da VPS compartilhada). Regras em [PLAN.md §38](PLAN.md#38-hardening-de-produção-2026-10-06). Branch `security/hardening`.

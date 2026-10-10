@@ -43,6 +43,8 @@ COOKIE_SECURE=false ./mvnw -pl app -am spring-boot:run   # http://localhost:8080
 ./mvnw test                                          # unitários + integração (Postgres real via Testcontainers)
 ```
 
+Teste massivo do algoritmo do Discover (sem Docker): `./mvnw -pl recommender -Precommender-stress test`, dentro de `backend/`. Volumes, critérios e relatórios no [guia do recommender](backend/recommender/README.md).
+
 Com o backend no ar, rode o frontend contra ele:
 
 ```sh
